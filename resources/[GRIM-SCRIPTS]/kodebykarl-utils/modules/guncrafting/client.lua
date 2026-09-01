@@ -12,7 +12,7 @@ local ActiveLocationId = nil
 local SpawnedProps = {}
 
 local SECTION_META = {
-    pistols = { title = 'Handguns & Pistols', icon = 'fa-solid fa-gun', desc = 'SNS, Heavy .45, AP Pistol' },
+    pistols = { title = 'Handguns & Pistols', icon = 'fa-solid fa-gun', desc = 'Heavy Pistol, .50, G29, Desert Deagle, Vintage, Mk II' },
     smgs = { title = 'Submachine Guns', icon = 'fa-solid fa-burst', desc = 'Micro SMG, MP5, Combat PDW' },
     rifles = { title = 'Assault & Heavy Rifles', icon = 'fa-solid fa-crosshairs', desc = 'Compact, AK-47, G36C' },
     shotguns = { title = 'Shotguns', icon = 'fa-solid fa-shield-halved', desc = 'Sawed-Off, Pump Mk II' },
