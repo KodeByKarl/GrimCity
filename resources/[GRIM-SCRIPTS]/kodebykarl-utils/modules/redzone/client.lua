@@ -1,0 +1,66 @@
+local Config = require 'configs.redzone'
+
+if not Config or not Config.Enabled then return end
+
+local insideZones = {}
+
+local function showNotification(title, message, nType, duration)
+    if ESX and ESX.Notify then
+        ESX.Notify(title, message, nType, duration)
+    else
+        lib.notify({
+            title = title,
+            description = message,
+            type = nType or 'inform',
+            duration = duration or 5000,
+        })
+    end
+end
+
+local function refreshActiveTextUI()
+    for i = 1, #Config.Zones do
+        local zone = Config.Zones[i]
+        if insideZones[zone.name] then
+            lib.showTextUI(zone.textUI or ('You are inside the **%s**'):format(zone.label), {
+                position = zone.textUIPosition or 'bottom-center',
+                icon = zone.textUIIcon or 'fa-solid fa-triangle-exclamation',
+            })
+            return
+        end
+    end
+    lib.hideTextUI()
+end
+
+CreateThread(function()
+    for i = 1, #Config.Zones do
+        local zone = Config.Zones[i]
+        if zone.points and #zone.points >= 3 then
+            lib.zones.poly({
+                name = zone.name or ('redzone_%s'):format(i),
+                points = zone.points,
+                thickness = zone.thickness or 80.0,
+                debug = zone.debug == true,
+                onEnter = function()
+                    insideZones[zone.name] = true
+
+                    showNotification('REDZONE', zone.enterMessage or ('You are inside the %s'):format(zone.label), 'error', 5000)
+                    refreshActiveTextUI()
+                end,
+                onExit = function()
+                    insideZones[zone.name] = nil
+
+                    showNotification('REDZONE', zone.exitMessage or ('You left the %s'):format(zone.label), 'inform', 3000)
+                    refreshActiveTextUI()
+                end,
+            })
+        end
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        if next(insideZones) ~= nil then
+            lib.hideTextUI()
+        end
+    end
+end)

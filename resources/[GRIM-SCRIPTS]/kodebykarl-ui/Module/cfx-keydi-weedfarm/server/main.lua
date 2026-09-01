@@ -1,0 +1,455 @@
+ESX = ESX or exports["es_extended"]:getSharedObject()
+
+local plantCooldowns = {}
+-- Per-player collect cooldown (allows multiple players to use the same spot at once)
+local collectCooldowns = {} -- [src] = unix expiry
+local activeHarvesters = {}
+local activeCollectors = {}
+local activeProcessors = {}
+
+local function GetItemCount(src, item)
+    if GetResourceState('ox_inventory') ~= 'started' then return 0 end
+    local ok, count = pcall(function()
+        return exports.ox_inventory:GetItemCount(src, item)
+    end)
+    if ok and type(count) == 'number' then return count end
+    return 0
+end
+
+local function RemoveItem(src, item, amount)
+    if GetResourceState('ox_inventory') ~= 'started' then return false end
+    local ok, res = pcall(function()
+        return exports.ox_inventory:RemoveItem(src, item, amount)
+    end)
+    return ok and res
+end
+
+local function AddItem(src, item, amount)
+    if GetResourceState('ox_inventory') ~= 'started' then return false end
+    local ok, res = pcall(function()
+        return exports.ox_inventory:AddItem(src, item, amount)
+    end)
+    return ok and res
+end
+
+local function IsPlayerBusy(src)
+    return activeHarvesters[src] or activeCollectors[src] or activeProcessors[src]
+end
+
+local function CanUseWeedfarm(src)
+    if type(ConfigServerLocations) ~= "table" or not ConfigServerLocations.CanUseFunction then
+        return true
+    end
+    return ConfigServerLocations.CanUseFunction("grind", src) or ConfigServerLocations.CanUseFunction("weedfarm", src)
+end
+
+local function SessionElapsed(session)
+    if not session then return false end
+    local startAt = tonumber(session.startAt)
+    local durationMs = tonumber(session.durationMs)
+    if not startAt or not durationMs then return false end
+    return (GetGameTimer() - startAt) >= math.max(0, durationMs - 400)
+end
+
+-- ── Weed plant harvest ──────────────────────────────────────────
+RegisterNetEvent("cfx-keydi-weedfarm:server:startHarvest", function(plantIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    plantIndex = tonumber(plantIndex) or 1
+    local plantLoc = Config.WeedFarm.Locations[plantIndex]
+    if not plantLoc then return end
+
+    local pPed = GetPlayerPed(src)
+    local pCoords = GetEntityCoords(pPed)
+
+    if #(pCoords - plantLoc) > 4.0 then
+        print(("[cfx-keydi-weedfarm] Distance check failed for player %s at plant #%s"):format(src, plantIndex))
+        return
+    end
+
+    local currentTime = os.time()
+    if plantCooldowns[plantIndex] and currentTime < plantCooldowns[plantIndex] then
+        TriggerClientEvent('esx:showNotification', src, "~r~This weed plant is currently regrowing.")
+        return
+    end
+
+    if IsPlayerBusy(src) then
+        return
+    end
+
+    if not CanUseWeedfarm(src) then
+        TriggerClientEvent("esx:showNotification", src, ConfigServerLocations.WrongServerMessage("grind"))
+        return
+    end
+
+    local duration = Config.WeedFarm.HarvestDuration or 4000
+    local regrowDuration = Config.WeedFarm.RegrowDuration or 30000
+    local totalCooldownSecs = math.floor((duration + regrowDuration) / 1000)
+
+    plantCooldowns[plantIndex] = currentTime + totalCooldownSecs
+    TriggerClientEvent("cfx-keydi-weedfarm:client:syncCooldown", -1, plantIndex, true)
+
+    SetTimeout(duration + regrowDuration, function()
+        if plantCooldowns[plantIndex] and os.time() >= plantCooldowns[plantIndex] then
+            plantCooldowns[plantIndex] = nil
+            TriggerClientEvent("cfx-keydi-weedfarm:client:syncCooldown", -1, plantIndex, false)
+        end
+    end)
+
+    activeHarvesters[src] = {
+        plantIndex = plantIndex,
+        startTime = currentTime,
+        startAt = GetGameTimer(),
+        durationMs = duration,
+        durationSecs = math.floor(duration / 1000)
+    }
+
+    TriggerClientEvent("cfx-keydi-weedfarm:client:harvestStarted", src, plantIndex, duration)
+end)
+
+RegisterNetEvent("cfx-keydi-weedfarm:server:completeHarvest", function(plantIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local session = activeHarvesters[src]
+    if not session then
+        KeydiElectron.Flag(src, "Weed harvest exploit (no session)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    plantIndex = tonumber(plantIndex)
+    if not plantIndex or plantIndex ~= session.plantIndex then
+        activeHarvesters[src] = nil
+        KeydiElectron.Flag(src, "Weed harvest exploit (invalid plant)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    if not SessionElapsed(session) then
+        KeydiElectron.Flag(src, "Weed harvest exploit (skipped wait)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    activeHarvesters[src] = nil
+
+    local plantLoc = Config.WeedFarm.Locations[plantIndex]
+    local pPed = GetPlayerPed(src)
+    local pCoords = GetEntityCoords(pPed)
+
+    if not plantLoc or #(pCoords - plantLoc) > 6.0 then
+        print(("[cfx-keydi-weedfarm] Player %s walked away during harvest (#%s)"):format(src, plantIndex))
+        return
+    end
+
+    local minAmt = Config.WeedFarm.MinReward or 2
+    local maxAmt = Config.WeedFarm.MaxReward or 5
+    local rewardAmount = math.random(minAmt, maxAmt)
+    local itemName = Config.WeedFarm.ItemName or "weed_bud"
+    local itemLabel = Config.WeedFarm.ItemLabel or "Weed Bud"
+
+    if not AddItem(src, itemName, rewardAmount) then
+        TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — harvest cancelled.")
+        return
+    end
+
+    TriggerClientEvent('esx:showNotification', src, ("~g~Successfully harvested +%s %s!"):format(rewardAmount, itemLabel))
+end)
+
+-- ── Collect stations ────────────────────────────────────────────
+RegisterNetEvent("cfx-keydi-weedfarm:server:startCollect", function(stationIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    stationIndex = tonumber(stationIndex)
+    local station = stationIndex and Config.WeedFarm.CollectStations[stationIndex]
+    if not station then return end
+
+    if IsPlayerBusy(src) then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:collectDenied", src, "busy")
+        return
+    end
+
+    if not CanUseWeedfarm(src) then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:collectDenied", src, "wrong_server")
+        return
+    end
+
+    local currentTime = os.time()
+    if collectCooldowns[src] and currentTime < collectCooldowns[src] then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:collectDenied", src, "cooldown")
+        return
+    end
+
+    local c = station.coords
+    local stationPos = vector3(c.x, c.y, c.z)
+    local pCoords = GetEntityCoords(GetPlayerPed(src))
+    local range = (station.interactionDistance or 2.0) + 2.0
+    if #(pCoords - stationPos) > range then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:collectDenied", src, "distance")
+        return
+    end
+
+    local duration = Config.WeedFarm.CollectDuration or 4000
+    local cooldownMs = Config.WeedFarm.CollectCooldown or 15000
+    local totalCooldownSecs = math.floor((duration + cooldownMs) / 1000)
+
+    -- Per-player only — other players can collect/process at the same time
+    collectCooldowns[src] = currentTime + totalCooldownSecs
+    TriggerClientEvent("cfx-keydi-weedfarm:client:syncCollectCooldown", src, stationIndex, true)
+
+    SetTimeout(duration + cooldownMs, function()
+        if collectCooldowns[src] and os.time() >= collectCooldowns[src] then
+            collectCooldowns[src] = nil
+            TriggerClientEvent("cfx-keydi-weedfarm:client:syncCollectCooldown", src, stationIndex, false)
+        end
+    end)
+
+    activeCollectors[src] = {
+        stationIndex = stationIndex,
+        startTime = currentTime,
+        startAt = GetGameTimer(),
+        durationMs = duration,
+        durationSecs = math.floor(duration / 1000)
+    }
+
+    TriggerClientEvent(
+        "cfx-keydi-weedfarm:client:collectStarted",
+        src,
+        stationIndex,
+        duration,
+        station.progressLabel or station.label or "COLLECTING",
+        station.itemLabel or station.item or "Item"
+    )
+end)
+
+RegisterNetEvent("cfx-keydi-weedfarm:server:completeCollect", function(stationIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local session = activeCollectors[src]
+    if not session then
+        KeydiElectron.Flag(src, "Drug collect exploit (no session)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    stationIndex = tonumber(stationIndex)
+    if not stationIndex or stationIndex ~= session.stationIndex then
+        activeCollectors[src] = nil
+        KeydiElectron.Flag(src, "Drug collect exploit (invalid station)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    if not SessionElapsed(session) then
+        KeydiElectron.Flag(src, "Drug collect exploit (skipped wait)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    activeCollectors[src] = nil
+
+    local station = Config.WeedFarm.CollectStations[stationIndex]
+    if not station then return end
+
+    local c = station.coords
+    local stationPos = vector3(c.x, c.y, c.z)
+    local pCoords = GetEntityCoords(GetPlayerPed(src))
+    if #(pCoords - stationPos) > 6.0 then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:collectDenied", src, "distance")
+        return
+    end
+
+    local minAmt = station.minAmount or 5
+    local maxAmt = station.maxAmount or 10
+    local rewardAmount = math.random(minAmt, maxAmt)
+    local itemName = station.item
+    local itemLabel = station.itemLabel or itemName
+
+    if not itemName then return end
+
+    if not AddItem(src, itemName, rewardAmount) then
+        TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — collect cancelled.")
+        return
+    end
+
+    TriggerClientEvent('esx:showNotification', src, ("~g~Collected +%s %s!"):format(rewardAmount, itemLabel))
+end)
+
+-- ── Process stations ────────────────────────────────────────────
+RegisterNetEvent("cfx-keydi-weedfarm:server:startProcess", function(stationIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    stationIndex = tonumber(stationIndex)
+    local station = stationIndex and Config.WeedFarm.ProcessStations[stationIndex]
+    if not station then return end
+
+    if IsPlayerBusy(src) then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "busy")
+        return
+    end
+
+    if not CanUseWeedfarm(src) then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "wrong_server")
+        return
+    end
+
+    local c = station.coords
+    local stationPos = vector3(c.x, c.y, c.z)
+    local pCoords = GetEntityCoords(GetPlayerPed(src))
+    local range = (station.interactionDistance or 2.0) + 2.0
+    if #(pCoords - stationPos) > range then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "distance")
+        return
+    end
+
+    local input = station.input
+    local requireItem = station.require
+    if not input or not input.item or not input.amount then return end
+
+    if GetItemCount(src, input.item) < input.amount then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input")
+        return
+    end
+
+    if requireItem and requireItem.item then
+        local needAmt = requireItem.amount or 1
+        if GetItemCount(src, requireItem.item) < needAmt then
+            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
+            return
+        end
+    end
+
+    local duration = Config.WeedFarm.ProcessDuration or 5000
+    activeProcessors[src] = {
+        stationIndex = stationIndex,
+        startTime = os.time(),
+        startAt = GetGameTimer(),
+        durationMs = duration,
+        durationSecs = math.floor(duration / 1000)
+    }
+
+    TriggerClientEvent(
+        "cfx-keydi-weedfarm:client:processStarted",
+        src,
+        stationIndex,
+        duration,
+        station.progressLabel or station.label or "PROCESSING",
+        (station.output and station.output.label) or "Item"
+    )
+end)
+
+RegisterNetEvent("cfx-keydi-weedfarm:server:completeProcess", function(stationIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local session = activeProcessors[src]
+    if not session then
+        KeydiElectron.Flag(src, "Drug process exploit (no session)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    stationIndex = tonumber(stationIndex)
+    if not stationIndex or stationIndex ~= session.stationIndex then
+        activeProcessors[src] = nil
+        KeydiElectron.Flag(src, "Drug process exploit (invalid station)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    if not SessionElapsed(session) then
+        KeydiElectron.Flag(src, "Drug process exploit (skipped wait)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    activeProcessors[src] = nil
+
+    local station = Config.WeedFarm.ProcessStations[stationIndex]
+    if not station then return end
+
+    local c = station.coords
+    local stationPos = vector3(c.x, c.y, c.z)
+    local pCoords = GetEntityCoords(GetPlayerPed(src))
+    if #(pCoords - stationPos) > 6.0 then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "distance")
+        return
+    end
+
+    local input = station.input
+    local requireItem = station.require
+    local output = station.output
+    if not input or not output then return end
+
+    if GetItemCount(src, input.item) < input.amount then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input")
+        return
+    end
+
+    if requireItem and requireItem.item then
+        local needAmt = requireItem.amount or 1
+        if GetItemCount(src, requireItem.item) < needAmt then
+            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
+            return
+        end
+    end
+
+    if not RemoveItem(src, input.item, input.amount) then
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input")
+        return
+    end
+
+    if requireItem and requireItem.item then
+        local needAmt = requireItem.amount or 1
+        if not RemoveItem(src, requireItem.item, needAmt) then
+            AddItem(src, input.item, input.amount)
+            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
+            return
+        end
+    end
+
+    if not AddItem(src, output.item, output.amount) then
+        AddItem(src, input.item, input.amount)
+        if requireItem and requireItem.item then
+            AddItem(src, requireItem.item, requireItem.amount or 1)
+        end
+        TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — process cancelled.")
+        return
+    end
+
+    TriggerClientEvent(
+        'esx:showNotification',
+        src,
+        ("~g~Processed %sx %s into %sx %s"):format(
+            input.amount,
+            input.label or input.item,
+            output.amount,
+            output.label or output.item
+        )
+    )
+end)
+
+RegisterNetEvent("cfx-keydi-weedfarm:server:cancelAction", function()
+    local src = source
+    if type(src) ~= "number" or src < 1 then return end
+
+    local harvest = activeHarvesters[src]
+    if harvest and harvest.plantIndex then
+        plantCooldowns[harvest.plantIndex] = nil
+        TriggerClientEvent("cfx-keydi-weedfarm:client:syncCooldown", -1, harvest.plantIndex, false)
+    end
+
+    activeHarvesters[src] = nil
+    activeCollectors[src] = nil
+    activeProcessors[src] = nil
+end)
+
+AddEventHandler("playerDropped", function()
+    local src = source
+    activeHarvesters[src] = nil
+    activeCollectors[src] = nil
+    activeProcessors[src] = nil
+    collectCooldowns[src] = nil
+end)

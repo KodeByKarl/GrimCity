@@ -1,0 +1,15 @@
+# FiveM server cache and databases
+cache/
+db/
+*.log
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# IDE and OS files
+.vscode/
+.DS_Store
+Thumbs.db
+imgui.ini
+.replxx_history

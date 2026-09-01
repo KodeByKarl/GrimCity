@@ -1,0 +1,345 @@
+ESX = ESX or exports["es_extended"]:getSharedObject()
+local isVisible = false
+isIdentityOpen = false
+
+-- Toggle visibility helper
+local function ToggleModules(state)
+    if isIdentityOpen then return end
+    isVisible = state
+    SetNuiFocus(state, state)
+
+    local payload = {
+        action = state and "cfx-keydi-modules:show" or "cfx-keydi-modules:hide"
+    }
+
+    -- Keep Modules patch notes in sync with Welcome (ConfigWelcome.updates)
+    if state then
+        payload.data = {
+            updates = (ConfigWelcome and ConfigWelcome.updates) or {},
+        }
+    end
+
+    SendNUIMessage(payload)
+    
+    if ConfigModules.Debug then
+        print(("[Modules] Visibility set to: %s"):format(tostring(state)))
+    end
+end
+
+-- Unconditionally hides the panel and releases NUI focus, bypassing the
+-- isIdentityOpen guard. Only ever called from a NUI callback fired by a
+-- button *inside* this already-open menu, so identity registration cannot
+-- legitimately still be in progress at that point. This prevents a desynced
+-- isIdentityOpen flag from leaving this panel stuck on top of / underneath
+-- whatever menu we're handing off to (e.g. the Ped Menu), which otherwise
+-- permanently breaks that hand-off for the rest of the session.
+local function ForceCloseModules()
+    isVisible = false
+    isIdentityOpen = false
+    SetNuiFocus(false, false)
+    SendNUIMessage({ action = "cfx-keydi-modules:hide" })
+end
+
+-- Export for toggling from other resources
+exports('ToggleModules', ToggleModules)
+
+-- Register Command & Key Mapping
+RegisterCommand(ConfigModules.OpenCommand, function()
+    ToggleModules(not isVisible)
+end, false)
+
+if ConfigModules.ToggleKey and ConfigModules.ToggleKey ~= "" then
+    RegisterKeyMapping(ConfigModules.OpenCommand, 'Toggle Modules Settings Menu', 'keyboard', ConfigModules.ToggleKey)
+end
+
+-- Close callback from NUI
+RegisterNUICallback("cfx-keydi-modules:closeMenu", function(data, cb)
+    ForceCloseModules()
+    cb("ok")
+end)
+
+-- Patch notes shared with Welcome screen (single source: sh_welcome.lua)
+RegisterNUICallback("cfx-keydi-modules:getPatchNotes", function(_, cb)
+    cb({
+        updates = (ConfigWelcome and ConfigWelcome.updates) or {},
+    })
+end)
+
+-- Open damage indicator callback
+RegisterNUICallback("cfx-keydi-modules:openDamageIndicator", function(data, cb)
+    ForceCloseModules()
+    CreateThread(function()
+        Wait(300)
+        OpenIndicatorConfig()
+    end)
+    cb("ok")
+end)
+
+-- Open report system callback
+RegisterNUICallback("cfx-keydi-modules:openReport", function(data, cb)
+    ForceCloseModules()
+    CreateThread(function()
+        Wait(300)
+        local cmd = (ConfigReport and ConfigReport.OpenCommand) or "report"
+        ExecuteCommand(cmd)
+    end)
+    cb("ok")
+end)
+
+-- Open banking console callback (only if OpenCommand is enabled)
+RegisterNUICallback("cfx-keydi-modules:openBanking", function(data, cb)
+    local cmd = ConfigBanking and ConfigBanking.OpenCommand
+    if not cmd or cmd == "" then
+        cb("ok")
+        return
+    end
+    ForceCloseModules()
+    CreateThread(function()
+        Wait(300)
+        ExecuteCommand(cmd)
+    end)
+    cb("ok")
+end)
+
+-- Open FPS Optimizer callback
+RegisterNUICallback("cfx-keydi-modules:openFpsOptimizer", function(data, cb)
+    ForceCloseModules()
+    CreateThread(function()
+        Wait(300)
+        local cmd = (ConfigFps and ConfigFps.OpenCommand) or "fpsoptimizer"
+        ExecuteCommand(cmd)
+    end)
+    cb("ok")
+end)
+
+local function isRockstarRecording()
+    local ok, rec = pcall(IsRecording)
+    return ok and rec == true
+end
+
+local function setRecordingHud(state)
+    SendNUIMessage({
+        action = "cfx-keydi-modules:recording",
+        recording = state == true,
+    })
+end
+
+RegisterNUICallback("cfx-keydi-modules:getRockstarState", function(_, cb)
+    cb({ recording = isRockstarRecording() })
+end)
+
+-- In-game Rockstar recording (Wolf-style). ActivateRockstarEditor() leaves the server.
+-- https://github.com/Sedres/Wolf-Rockstar-Editor
+RegisterNUICallback("cfx-keydi-modules:rockstarAction", function(data, cb)
+    local button = type(data) == "table" and data.button or nil
+
+    if button == "record" then
+        if isRockstarRecording() then
+            cb({ ok = false, recording = true, message = "already_recording" })
+            return
+        end
+        ForceCloseModules()
+        cb({ ok = true, recording = true, close = true })
+        CreateThread(function()
+            Wait(200)
+            StartRecording(1)
+            setRecordingHud(true)
+            ESX.ShowNotification("Recording started. Open Control Center (F5) to save or discard the clip.", "success")
+        end)
+        return
+    end
+
+    if button == "save" then
+        if not isRockstarRecording() then
+            cb({ ok = false, recording = false, message = "not_recording" })
+            return
+        end
+        StartRecording(0)
+        StopRecordingAndSaveClip()
+        setRecordingHud(false)
+        ESX.ShowNotification("Clip saved. Edit it later from Rockstar Editor (Single Player).", "success")
+        cb({ ok = true, recording = false })
+        return
+    end
+
+    if button == "delete" then
+        if not isRockstarRecording() then
+            cb({ ok = false, recording = false, message = "not_recording" })
+            return
+        end
+        StartRecording(0)
+        StopRecordingAndDiscardClip()
+        setRecordingHud(false)
+        ESX.ShowNotification("Clip discarded.", "info")
+        cb({ ok = true, recording = false })
+        return
+    end
+
+    if button == "photo" then
+        ForceCloseModules()
+        cb({ ok = true, close = true, recording = isRockstarRecording() })
+        CreateThread(function()
+            Wait(250)
+            BeginTakeHighQualityPhoto()
+            SaveHighQualityPhoto(-1)
+            FreeMemoryForHighQualityPhoto()
+            ESX.ShowNotification("Photo saved to your Rockstar Editor gallery.", "success")
+        end)
+        return
+    end
+
+    if button == "open" then
+        ForceCloseModules()
+        cb({ ok = true, close = true })
+        CreateThread(function()
+            Wait(300)
+            ActivateRockstarEditor()
+        end)
+        return
+    end
+
+    cb({ ok = false, recording = isRockstarRecording() })
+end)
+
+CreateThread(function()
+    local last = false
+    while true do
+        local rec = isRockstarRecording()
+        if rec ~= last then
+            last = rec
+            setRecordingHud(rec)
+        end
+        Wait(rec and 500 or 2000)
+    end
+end)
+
+-- Clothing trigger callback
+RegisterNUICallback("cfx-keydi-modules:openClothing", function(data, cb)
+    ForceCloseModules()
+
+    -- Try to open clothing shops based on common scripts
+    CreateThread(function()
+        Wait(500) -- wait for NUI focus cleanup
+
+        -- Ped menu (isPedMenu = true) so the player is not charged like a clothing shop
+        if GetResourceState("illenium-appearance") == "started" then
+            TriggerEvent('illenium-appearance:client:openClothingShop', true)
+        elseif GetResourceState("esx_skin") == "started" or GetResourceState("esx_clothing") == "started" then
+            TriggerEvent('esx_skin:openSaveableMenu')
+        elseif GetResourceState("fivem-appearance") == "started" then
+            TriggerEvent('fivem-appearance:client:openClothingShop')
+        else
+            -- Fallback client print and notify
+            print("[Modules] Clothing menu requested but no standard clothing resource found!")
+            ESX.ShowNotification("Unable to open clothing menu. Resource not found.", "error")
+        end
+    end)
+    cb("ok")
+end)
+
+-- Fetch Multi-Job Roster NUI Callback
+RegisterNUICallback("cfx-keydi-modules:getJobs", function(data, cb)
+    ESX.TriggerServerCallback('cfx-keydi-multijob:server:getJobs', function(res)
+        cb(res or {})
+    end)
+end)
+
+-- Toggle Job Duty NUI Callback (Secured: 1 active duty at a time)
+RegisterNUICallback("cfx-keydi-modules:toggleJobDuty", function(data, cb)
+    if data and data.job then
+        TriggerServerEvent('cfx-keydi-multijob:server:toggleDuty', data.job)
+    end
+    cb("ok")
+end)
+
+-- Helper function to check if local player is in Safezone
+local function IsPlayerInSafezone()
+    if LocalPlayer and LocalPlayer.state and LocalPlayer.state.inSafeZone then
+        return true
+    end
+    if GetResourceState('esx_safezone') == 'started' then
+        local ok, inZone = pcall(function() return exports['esx_safezone']:isInSafezone() end)
+        if ok and inZone then return true end
+    end
+    if GetResourceState('qb-safezone') == 'started' then
+        local ok, inZone = pcall(function() return exports['qb-safezone']:isInSafeZone() end)
+        if ok and inZone then return true end
+    end
+    -- Fallback for standalone test / debug
+    return true
+end
+
+-- Helper function to check if player is locked (Jail, Arena, Job Instance)
+local function IsPlayerLocked()
+    if LocalPlayer and LocalPlayer.state then
+        if LocalPlayer.state.isJailed or LocalPlayer.state.inJail then
+            return true, "In Jail / Community Service"
+        end
+        if LocalPlayer.state.inArena then
+            return true, "Inside Arena Instance"
+        end
+        if ConfigModules.LockInJobInstance and LocalPlayer.state.inJobInstance then
+            return true, "Inside Side Job Instance"
+        end
+    end
+    return false, nil
+end
+
+-- Fetch Designated Servers NUI Callback
+RegisterNUICallback("cfx-keydi-modules:getServers", function(data, cb)
+    ESX.TriggerServerCallback('cfx-keydi-modules:server:getServersData', function(serversData)
+        local inSafezone = IsPlayerInSafezone()
+        local isLocked, lockReason = IsPlayerLocked()
+
+        if serversData then
+            serversData.inSafezone = inSafezone
+            serversData.isLocked = isLocked
+            serversData.lockReason = lockReason or (not inSafezone and "Outside Safezone" or nil)
+        end
+
+        cb(serversData or {})
+    end)
+end)
+
+-- In-game Server Locations switch (routing buckets — never uses `connect`)
+RegisterNUICallback("cfx-keydi-modules:connectServer", function(data, cb)
+    local inSafezone = IsPlayerInSafezone()
+    local isLocked, lockReason = IsPlayerLocked()
+    local requireSafezone = (ConfigServerLocations and ConfigServerLocations.RequireSafezone)
+        or ConfigModules.RequireSafezone
+
+    if requireSafezone and not inSafezone then
+        if ESX and ESX.ShowNotification then
+            ESX.ShowNotification("Server switching locked! You must be inside a Safezone.", "error")
+        end
+        cb({ ok = false, message = "Outside Safezone" })
+        return
+    end
+
+    if isLocked then
+        if ESX and ESX.ShowNotification then
+            ESX.ShowNotification(("Server switching locked while %s."):format(lockReason), "error")
+        end
+        cb({ ok = false, message = lockReason })
+        return
+    end
+
+    local locationId = data and (data.id or data.serverId)
+    if not locationId or locationId == "" then
+        cb({ ok = false, message = "invalid_server_target" })
+        return
+    end
+
+    ForceCloseModules()
+    local serverName = data.name or "Destination Server"
+
+    if ESX and ESX.ShowNotification then
+        ESX.ShowNotification(("Transferring to %s... Please wait."):format(serverName), "info")
+    end
+
+    TriggerServerEvent("cfx-keydi-serverlocations:server:requestSwitch", locationId)
+    cb({ ok = true })
+end)
+
+
+

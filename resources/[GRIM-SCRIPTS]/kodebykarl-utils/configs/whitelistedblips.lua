@@ -1,0 +1,30 @@
+return {
+    Enabled = true,
+    RefreshInterval = 1500, -- Milliseconds between blip location/status updates
+    BlipScale = 0.8,
+    ShowHeading = true,     -- Show rotation/heading arrow indicator on blip
+    ShowOwnBlip = false,    -- Show duplicate blip for own player (false recommended as minimap already shows player)
+    ShareAll = false,       -- False: PD only sees PD, EMS only sees EMS (separated department GPS)
+
+    -- Vehicle specific sprites
+    VehicleSprites = {
+        car = 42,           -- When driving a car/ground vehicle
+        air = 15,           -- When using an air vehicle (helicopter / plane)
+    },
+
+    -- Whitelisted Job Configurations
+    Jobs = {
+        police = {
+            label = 'Police',
+            jobs = { 'police', 'sheriff' },
+            sprite = 60,    -- Standard foot blip sprite
+            color = 38,     -- Blue
+        },
+        ambulance = {
+            label = 'EMS',
+            jobs = { 'ambulance', 'sambulance' },
+            sprite = 60,    -- Standard foot blip sprite
+            color = 1,      -- Red
+        },
+    },
+}
