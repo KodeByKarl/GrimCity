@@ -1,6 +1,16 @@
 local ESX = exports["es_extended"]:getSharedObject()
 local isVisible = false
 
+function ToggleScoreboard(state, data)
+    SetNuiFocus(state, state)
+    SendNUIMessage({
+        action = state and "scoreboard:show" or "scoreboard:hide",
+        data = data
+    })
+end
+
+exports('ToggleScoreboard', ToggleScoreboard)
+
 -- Function to collect stats and update/show the scoreboard
 local function UpdateScoreboard()
     ESX.TriggerServerCallback('cfx-keydi-scoreboard:getServerData', function(serverData)
@@ -52,11 +62,7 @@ local function UpdateScoreboard()
             robberies = serverData.robberies
         }
 
-        if ToggleScoreboard then
-            ToggleScoreboard(isVisible, finalData)
-        else
-            pcall(function() exports[GetCurrentResourceName()]:ToggleScoreboard(isVisible, finalData) end)
-        end
+        ToggleScoreboard(isVisible, finalData)
     end)
 end
 
@@ -66,11 +72,7 @@ RegisterKeyMapping('toggleScoreboard', 'Toggle Server Scoreboard', 'keyboard', C
 RegisterCommand('toggleScoreboard', function()
     if isVisible then
         isVisible = false
-        if ToggleScoreboard then
-            ToggleScoreboard(false, nil)
-        else
-            pcall(function() exports[GetCurrentResourceName()]:ToggleScoreboard(false, nil) end)
-        end
+        ToggleScoreboard(false, nil)
     else
         isVisible = true
         UpdateScoreboard()
@@ -121,11 +123,7 @@ RegisterNUICallback('closeScoreboard', function(data, cb)
     cb('ok')
     if isVisible then
         isVisible = false
-        if ToggleScoreboard then
-            ToggleScoreboard(false, nil)
-        else
-            pcall(function() exports[GetCurrentResourceName()]:ToggleScoreboard(false, nil) end)
-        end
+        ToggleScoreboard(false, nil)
     end
 end)
 
