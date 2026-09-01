@@ -101,32 +101,28 @@ local function countOnlineGangMembers(gangName)
     return count
 end
 
--- Helper: Build Simple Police/Job Style Chat Templates
+-- Helper: Build Fit-To-Text Chat Templates
 local function SendTurfStartChatTemplate(turfLabel, playerName, gangLabel)
-    local curTime = os.date("%H:%M")
-    local template = '<div style="background: #0f0f13; border-radius: 4px; border: 1px solid rgba(255, 58, 58, 0.4); padding: 10px; margin-bottom: 8px; font-family: sans-serif; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
-        .. '  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #ff8080; font-weight: 600; text-transform: uppercase;">'
-        .. '    <span>FEED • TURF WAR | INITIATED</span>'
-        .. '    <span>' .. curTime .. '</span>'
-        .. '  </div>'
-        .. '  <div style="color: #ffffff; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-top: 6px; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.85);">'
-        .. '    TURF WAR HAS BEEN INITIATED AT ' .. turfLabel .. ' BY ' .. playerName:upper() .. ' (' .. gangLabel:upper() .. ')'
-        .. '  </div>'
+    local messageStr = ('TURF WAR HAS BEEN INITIATED AT %s BY %s (%s)'):format(
+        turfLabel:upper(), playerName:upper(), gangLabel:upper()
+    )
+    local template = '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.85) 0%, rgba(15, 10, 14, 0.92) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;">'
+        .. '<b style="color: #ff8080; letter-spacing: 0.3px;">[TURF WAR]</b>'
+        .. '<span style="color: rgba(255,255,255,0.4); margin: 0 6px;">•</span>'
+        .. '<span style="color: #ffffff; font-weight: 600;">' .. messageStr .. '</span>'
         .. '</div>'
 
     TriggerClientEvent('chat:addMessage', -1, { template = template })
 end
 
 local function SendTurfClaimChatTemplate(turfLabel, claimerName, gangLabel)
-    local curTime = os.date("%H:%M")
-    local template = '<div style="background: #0f0f13; border-radius: 4px; border: 1px solid rgba(46, 204, 113, 0.4); padding: 10px; margin-bottom: 8px; font-family: sans-serif; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
-        .. '  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #2ecc71; font-weight: 600; text-transform: uppercase;">'
-        .. '    <span>FEED • TURF WAR | CLAIMED</span>'
-        .. '    <span>' .. curTime .. '</span>'
-        .. '  </div>'
-        .. '  <div style="color: #ffffff; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-top: 6px; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.85);">'
-        .. '    TURF WAR AT ' .. turfLabel .. ' HAS BEEN CLAIMED BY ' .. claimerName:upper() .. ' (' .. gangLabel:upper() .. ')'
-        .. '  </div>'
+    local messageStr = ('TURF WAR AT %s HAS BEEN CLAIMED BY %s (%s)'):format(
+        turfLabel:upper(), claimerName:upper(), gangLabel:upper()
+    )
+    local template = '<div style="background: linear-gradient(135deg, rgba(14, 28, 18, 0.85) 0%, rgba(10, 15, 12, 0.92) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #2ecc71; border-top: 1px solid rgba(46, 204, 113, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;">'
+        .. '<b style="color: #2ecc71; letter-spacing: 0.3px;">[TURF WAR]</b>'
+        .. '<span style="color: rgba(255,255,255,0.4); margin: 0 6px;">•</span>'
+        .. '<span style="color: #ffffff; font-weight: 600;">' .. messageStr .. '</span>'
         .. '</div>'
 
     TriggerClientEvent('chat:addMessage', -1, { template = template })
