@@ -376,8 +376,8 @@ function StartDriveTest(theType)
         -- Register vehicle key with cfx-keydi-carlock
         TriggerServerEvent('cfx-keydi-carlock:server:giveKey', plate)
         pcall(function()
-            if exports['cfx-keydi-ui'] and exports['cfx-keydi-ui'].GiveKey then
-                exports['cfx-keydi-ui']:GiveKey(plate)
+            if exports['kodebykarl-ui'] and exports['kodebykarl-ui'].GiveKey then
+                exports['kodebykarl-ui']:GiveKey(plate)
             end
         end)
 

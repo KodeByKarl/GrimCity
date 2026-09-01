@@ -50,8 +50,8 @@ return {
                     icon = 'fa-solid fa-id-card',
                     label = 'Request License',
                     onSelect = function()
-                        if GetResourceState('cfx-keydi-ui') == 'started' then
-                            exports['cfx-keydi-ui']:RequestLicense()
+                        if GetResourceState('kodebykarl-ui') == 'started' then
+                            exports['kodebykarl-ui']:RequestLicense()
                         else
                             TriggerServerEvent('cfx-keydi-identification:server:giveIdItem')
                         end
@@ -62,7 +62,7 @@ return {
                     icon = 'fa-solid fa-user-pen',
                     label = 'Change Name',
                     onSelect = function()
-                        exports['cfx-keydi-ui']:OpenChangeNameMenu()
+                        exports['kodebykarl-ui']:OpenChangeNameMenu()
                     end,
                     distance = 2.5
                 }
@@ -91,7 +91,7 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['cfx-keydi-ui']:OpenRentalMenu('airport')
+                        exports['kodebykarl-ui']:OpenRentalMenu('airport')
                     end,
                     distance = 3.0
                 },
@@ -128,7 +128,7 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['cfx-keydi-ui']:OpenRentalMenu('rockford')
+                        exports['kodebykarl-ui']:OpenRentalMenu('rockford')
                     end,
                     distance = 3.0
                 }
@@ -157,7 +157,7 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['cfx-keydi-ui']:OpenRentalMenu('boat_lsia')
+                        exports['kodebykarl-ui']:OpenRentalMenu('boat_lsia')
                     end,
                     distance = 3.0
                 }
@@ -186,7 +186,7 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['cfx-keydi-ui']:OpenRentalMenu('boat_terminal')
+                        exports['kodebykarl-ui']:OpenRentalMenu('boat_terminal')
                     end,
                     distance = 3.0
                 }
@@ -215,7 +215,7 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['cfx-keydi-ui']:OpenRentalMenu('boat_delperro')
+                        exports['kodebykarl-ui']:OpenRentalMenu('boat_delperro')
                     end,
                     distance = 3.0
                 }
@@ -244,7 +244,7 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['cfx-keydi-ui']:OpenRentalMenu('boat_paleto')
+                        exports['kodebykarl-ui']:OpenRentalMenu('boat_paleto')
                     end,
                     distance = 3.0
                 }
@@ -252,7 +252,7 @@ return {
         }
     },
     {
-        -- Sell Market NPC (coords must match cfx-keydi-ui ConfigMarket.Locations)
+        -- Sell Market NPC (coords must match kodebykarl-ui ConfigMarket.Locations)
         model = 'a_m_m_business_01',
         coords = vec4(342.9301, -1298.0554, 32.55, 154.4067),
         minusOne = false,
@@ -274,8 +274,8 @@ return {
                     icon = 'fa-solid fa-store',
                     label = 'Open Sell Market',
                     onSelect = function()
-                        if GetResourceState('cfx-keydi-ui') == 'started' then
-                            exports['cfx-keydi-ui']:OpenSellMarket()
+                        if GetResourceState('kodebykarl-ui') == 'started' then
+                            exports['kodebykarl-ui']:OpenSellMarket()
                         else
                             TriggerEvent('cfx-keydi-market:client:open')
                         end

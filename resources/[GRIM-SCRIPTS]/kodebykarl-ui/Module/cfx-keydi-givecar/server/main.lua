@@ -104,7 +104,7 @@ local function GiveCarToPlayer(adminSrc, targetId, model)
     InsertGarageVehicle(xTarget.identifier, model, plate)
 
     pcall(function()
-        exports['cfx-keydi-ui']:GiveKey(targetId, plate)
+        exports['kodebykarl-ui']:GiveKey(targetId, plate)
     end)
 
     Notify(targetId, ('You received a %s (plate: %s) in your garage.'):format(model, plate), 'success')

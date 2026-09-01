@@ -427,7 +427,7 @@ export default function App() {
 
         const resourceName = (window as any).GetParentResourceName 
           ? (window as any).GetParentResourceName() 
-          : "cfx-keydi-ui";
+          : "kodebykarl-ui";
 
         if (scoreboardVisible && (isPressingToggle || isPressingEscape)) {
           fetch(`https://${resourceName}/closeScoreboard`, {
@@ -529,7 +529,7 @@ export default function App() {
           onClose={() => {
             const resourceName = (window as any).GetParentResourceName
               ? (window as any).GetParentResourceName()
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-comserv:close`, {
               method: "POST",
               headers: { "Content-Type": "application/json; charset=UTF-8" },
@@ -544,7 +544,7 @@ export default function App() {
           onClose={() => {
             const resourceName = (window as any).GetParentResourceName
               ? (window as any).GetParentResourceName()
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-lockscript:close`, {
               method: "POST",
               headers: { "Content-Type": "application/json; charset=UTF-8" },
@@ -559,7 +559,7 @@ export default function App() {
           onClose={() => {
             const resourceName = (window as any).GetParentResourceName
               ? (window as any).GetParentResourceName()
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-welcomebanner:close`, {
               method: "POST",
               headers: { "Content-Type": "application/json; charset=UTF-8" },
@@ -575,7 +575,7 @@ export default function App() {
           onClose={() => {
             const resourceName = (window as any).GetParentResourceName
               ? (window as any).GetParentResourceName()
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-welcomebanner:volume:close`, {
               method: "POST",
               headers: { "Content-Type": "application/json; charset=UTF-8" },
@@ -591,7 +591,7 @@ export default function App() {
           onClose={() => {
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/indicator:closeConfig`, {
               method: "POST",
               headers: {
@@ -623,7 +623,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-modules:closeMenu`, {
               method: "POST",
               headers: {
@@ -641,7 +641,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-modules:openDamageIndicator`, {
               method: "POST",
               headers: {
@@ -659,7 +659,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-modules:openFpsOptimizer`, {
               method: "POST",
               headers: {
@@ -677,7 +677,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-modules:openReport`, {
               method: "POST",
               headers: {
@@ -695,7 +695,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-modules:openBanking`, {
               method: "POST",
               headers: {
@@ -712,7 +712,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-modules:openRockstarEditor`, {
               method: "POST",
               headers: {
@@ -736,7 +736,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-fps:close`, {
               method: "POST",
               headers: {
@@ -765,7 +765,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-report:close`, {
               method: "POST",
               headers: {
@@ -788,7 +788,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-banking:close`, {
               method: "POST",
               headers: {
@@ -811,7 +811,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-welcome:close`, {
               method: "POST",
               headers: {
@@ -835,7 +835,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-badge:close`, {
               method: "POST",
               headers: {
@@ -870,7 +870,7 @@ export default function App() {
             }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
-              : "cfx-keydi-ui";
+              : "kodebykarl-ui";
             fetch(`https://${resourceName}/cfx-keydi-radiolist:closeModal`, {
               method: "POST",
               headers: {

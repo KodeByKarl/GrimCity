@@ -52,7 +52,7 @@ local function UpdateScoreboard()
             robberies = serverData.robberies
         }
 
-        exports['cfx-keydi-ui']:ToggleScoreboard(isVisible, finalData)
+        exports['kodebykarl-ui']:ToggleScoreboard(isVisible, finalData)
     end)
 end
 
@@ -62,7 +62,7 @@ RegisterKeyMapping('toggleScoreboard', 'Toggle Server Scoreboard', 'keyboard', C
 RegisterCommand('toggleScoreboard', function()
     if isVisible then
         isVisible = false
-        exports['cfx-keydi-ui']:ToggleScoreboard(false, nil)
+        exports['kodebykarl-ui']:ToggleScoreboard(false, nil)
     else
         isVisible = true
         UpdateScoreboard()
@@ -113,7 +113,7 @@ RegisterNUICallback('closeScoreboard', function(data, cb)
     cb('ok')
     if isVisible then
         isVisible = false
-        exports['cfx-keydi-ui']:ToggleScoreboard(false, nil)
+        exports['kodebykarl-ui']:ToggleScoreboard(false, nil)
     end
 end)
 

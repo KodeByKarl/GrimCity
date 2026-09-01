@@ -39,10 +39,10 @@ local function getWalkStyle()
         end
     end
 
-    -- Fallback to cfx-keydi-ui if present
-    if GetResourceState('cfx-keydi-ui') == 'started' then
+    -- Fallback to kodebykarl-ui if present
+    if GetResourceState('kodebykarl-ui') == 'started' then
         local ok, walk = pcall(function()
-            return exports['cfx-keydi-ui']:getCurrentWalk()
+            return exports['kodebykarl-ui']:getCurrentWalk()
         end)
         if ok and walk and walk ~= '' and walk ~= 'default' then
             return walk

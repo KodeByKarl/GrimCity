@@ -32,7 +32,7 @@ local function updateScoreboardEvents()
 
     if #activeLabels == 0 then
         pcall(function()
-            exports['cfx-keydi-ui']:SetWorldEvent('Turf Wars', {
+            exports['kodebykarl-ui']:SetWorldEvent('Turf Wars', {
                 status = 'INACTIVE',
                 location = 'None',
             })
@@ -40,7 +40,7 @@ local function updateScoreboardEvents()
     else
         table.sort(activeLabels)
         pcall(function()
-            exports['cfx-keydi-ui']:SetWorldEvent('Turf Wars', {
+            exports['kodebykarl-ui']:SetWorldEvent('Turf Wars', {
                 status = 'ACTIVE',
                 location = table.concat(activeLabels, ', '),
             })
@@ -49,9 +49,9 @@ local function updateScoreboardEvents()
 end
 
 local function addScoreboardRobbery(id, label, remainingSecs)
-    if GetResourceState('cfx-keydi-ui') ~= 'started' then return end
+    if GetResourceState('kodebykarl-ui') ~= 'started' then return end
     pcall(function()
-        exports['cfx-keydi-ui']:AddActiveRobbery(('turfwar_%s'):format(id), {
+        exports['kodebykarl-ui']:AddActiveRobbery(('turfwar_%s'):format(id), {
             name = label or 'Turf War',
             location = label or 'Turf Zone',
             timer = math.max(remainingSecs or 0, 1),
@@ -62,9 +62,9 @@ local function addScoreboardRobbery(id, label, remainingSecs)
 end
 
 local function removeScoreboardRobbery(id)
-    if GetResourceState('cfx-keydi-ui') ~= 'started' then return end
+    if GetResourceState('kodebykarl-ui') ~= 'started' then return end
     pcall(function()
-        exports['cfx-keydi-ui']:RemoveActiveRobbery(('turfwar_%s'):format(id))
+        exports['kodebykarl-ui']:RemoveActiveRobbery(('turfwar_%s'):format(id))
     end)
     updateScoreboardEvents()
 end
