@@ -178,14 +178,17 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Another Turf War is currently in progress.', type = 'error' })
     end
 
-    -- Gang Validation
+    -- Gang / Test Job Validation
     local gangName, gangLabel = getPlayerGang(xPlayer)
-    if Config.IgnoreGangs[gangName] then
+    local jobName = (xPlayer.job and xPlayer.job.name) or (xPlayer.getJob and xPlayer.getJob().name) or 'unemployed'
+    local isAllowedTestPlayer = Config.AllowAllJobsForTesting or (Config.AllowTestJobs and Config.AllowTestJobs[jobName])
+
+    if not isAllowedTestPlayer and Config.IgnoreGangs[gangName] then
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'You must belong to an active Gang to initiate a Turf War.', type = 'error' })
     end
 
     -- Online Members Check
-    if Config.MinGangMembersOnline > 0 then
+    if not isAllowedTestPlayer and Config.MinGangMembersOnline > 0 then
         local onlineCount = countOnlineGangMembers(gangName)
         if onlineCount < Config.MinGangMembersOnline then
             return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = ('At least %d members of your gang must be online (%d/%d).'):format(Config.MinGangMembersOnline, onlineCount, Config.MinGangMembersOnline), type = 'error' })
@@ -236,9 +239,12 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'You must be right at the trigger spot to claim rewards.', type = 'error' })
     end
 
-    -- Gang Check
+    -- Gang / Test Job Check
     local gangName, gangLabel = getPlayerGang(xPlayer)
-    if Config.IgnoreGangs[gangName] then
+    local jobName = (xPlayer.job and xPlayer.job.name) or (xPlayer.getJob and xPlayer.getJob().name) or 'unemployed'
+    local isAllowedTestPlayer = Config.AllowAllJobsForTesting or (Config.AllowTestJobs and Config.AllowTestJobs[jobName])
+
+    if not isAllowedTestPlayer and Config.IgnoreGangs[gangName] then
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Only active gang members can claim Turf War rewards.', type = 'error' })
     end
 
