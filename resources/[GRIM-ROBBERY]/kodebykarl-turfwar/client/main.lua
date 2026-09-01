@@ -1,5 +1,7 @@
 local ESX = exports['es_extended']:getSharedObject()
 local RewardProps = {}
+local isBusy = false
+local currentTextUiTurf = nil
 
 -- Helper: Format Seconds into MM:SS Clock
 local function formatClock(seconds)
@@ -20,98 +22,180 @@ RegisterNetEvent('kodebykarl-turfwar:client:announce', function(msg, msgType)
     })
 end)
 
--- Main Target Setup & Claim Bag Spawning
+-- Main Rendering Loop: White 3D Markers & Key Interaction
 CreateThread(function()
-    while GetResourceState('ox_target') ~= 'started' do
-        Wait(200)
-    end
+    while true do
+        local sleep = 700
+        local ped = PlayerPedId()
 
-    for id, data in pairs(Config.TurfWars) do
-        -- Register Target Zone at Trigger Location
-        exports.ox_target:addSphereZone({
-            coords = data.coords,
-            radius = data.interactDistance or 2.5,
-            debug = false,
-            options = {
-                {
-                    name = ('kodebykarl_turfwar_start_%s'):format(id),
-                    icon = 'fa-solid fa-flag-checkered',
-                    label = ('Initiate %s'):format(data.label),
-                    canInteract = function()
-                        local state = GlobalState[('turf_state_%s'):format(id)] or 'IDLE'
-                        return state == 'IDLE'
-                    end,
-                    onSelect = function()
-                        -- Check allowed weapon if weapon restrictions enabled
-                        if data.weapon and data.weapon.enable then
-                            local ped = PlayerPedId()
-                            local _, currentWeapon = GetCurrentPedWeapon(ped, true)
-                            if not data.weapon.list[currentWeapon] then
-                                return lib.notify({
-                                    title = 'WEAPON RESTRICTED',
-                                    description = 'You are not holding an allowed weapon for this Turf War.',
-                                    type = 'error'
-                                })
+        if DoesEntityExist(ped) and not IsEntityDead(ped) then
+            local pCoords = GetEntityCoords(ped)
+            local nearestTurf = nil
+            local nearestDist = 999.0
+
+            for id, data in pairs(Config.TurfWars) do
+                local dist = #(pCoords - data.coords)
+
+                -- Draw White 3D Marker on Ground when within 25 meters
+                if dist <= 25.0 then
+                    sleep = 0
+
+                    -- Pure White Cylinder Marker (Type 1)
+                    DrawMarker(
+                        1,                                -- Marker Type 1 (Cylinder)
+                        data.coords.x, data.coords.y, data.coords.z - 1.0, -- Coords (z adjusted)
+                        0.0, 0.0, 0.0,                    -- Direction
+                        0.0, 0.0, 0.0,                    -- Rotation
+                        2.5, 2.5, 1.0,                    -- Scale (Width, Length, Height)
+                        255, 255, 255, 180,               -- Color (Pure White, 180 Alpha)
+                        false, true, 2, false, nil, nil, false
+                    )
+
+                    -- Floating Inner White Marker ring/dot (Type 27) for extra visibility
+                    DrawMarker(
+                        27,
+                        data.coords.x, data.coords.y, data.coords.z - 0.95,
+                        0.0, 0.0, 0.0,
+                        0.0, 0.0, 0.0,
+                        2.0, 2.0, 1.0,
+                        255, 255, 255, 220,
+                        false, true, 2, false, nil, nil, false
+                    )
+
+                    if dist < nearestDist then
+                        nearestDist = dist
+                        nearestTurf = { id = id, data = data }
+                    end
+                end
+            end
+
+            -- Handle Nearby Key Prompt & Interaction (when within 2.0 meters)
+            if nearestTurf and nearestDist <= (nearestTurf.data.interactDistance or 2.0) then
+                local id = nearestTurf.id
+                local data = nearestTurf.data
+                local state = GlobalState[('turf_state_%s'):format(id)] or 'IDLE'
+                local claimable = GlobalState[('turf_claimable_%s'):format(id)] == true
+
+                if not isBusy then
+                    if state == 'IDLE' and not claimable then
+                        if currentTextUiTurf ~= ('start_%s'):format(id) then
+                            currentTextUiTurf = ('start_%s'):format(id)
+                            lib.showTextUI(('[E] Initiate %s'):format(data.label), {
+                                position = 'bottom-center',
+                                icon = 'fa-solid fa-flag-checkered',
+                                style = { backgroundColor = '#140d11', color = '#ffffff', border = '1px solid #ffffff' }
+                            })
+                        end
+
+                        if IsControlJustPressed(0, 38) then -- Key E
+                            -- Check weapon restriction if enabled
+                            if data.weapon and data.weapon.enable then
+                                local _, currentWeapon = GetCurrentPedWeapon(ped, true)
+                                if not data.weapon.list[currentWeapon] then
+                                    lib.notify({
+                                        title = 'WEAPON RESTRICTED',
+                                        description = 'You are not holding an allowed weapon for this Turf War.',
+                                        type = 'error'
+                                    })
+                                    goto skip_action
+                                end
                             end
+
+                            isBusy = true
+                            lib.hideTextUI()
+                            currentTextUiTurf = nil
+
+                            local ok = lib.progressBar({
+                                duration = 4000,
+                                label = ('Initiating %s...'):format(data.label),
+                                useWhileDead = false,
+                                canCancel = true,
+                                disable = { move = true, car = true, combat = true },
+                                anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }
+                            })
+
+                            if ok then
+                                TriggerServerEvent('kodebykarl-turfwar:server:startTurf', id)
+                            end
+                            isBusy = false
                         end
 
-                        local ok = lib.progressBar({
-                            duration = 4000,
-                            label = ('Initiating %s...'):format(data.label),
-                            useWhileDead = false,
-                            canCancel = true,
-                            disable = { move = true, car = true, combat = true },
-                            anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }
+                    elseif claimable then
+                        if currentTextUiTurf ~= ('claim_%s'):format(id) then
+                            currentTextUiTurf = ('claim_%s'):format(id)
+                            lib.showTextUI(('[E] Claim %s Rewards'):format(data.label), {
+                                position = 'bottom-center',
+                                icon = 'fa-solid fa-box-open',
+                                style = { backgroundColor = '#140d11', color = '#2ecc71', border = '1px solid #2ecc71' }
+                            })
+                        end
+
+                        if IsControlJustPressed(0, 38) then -- Key E
+                            isBusy = true
+                            lib.hideTextUI()
+                            currentTextUiTurf = nil
+
+                            local ok = lib.progressBar({
+                                duration = data.claimTime or 8000,
+                                label = ('Securing %s Rewards...'):format(data.label),
+                                useWhileDead = false,
+                                canCancel = true,
+                                disable = { move = true, car = true, combat = true },
+                                anim = { dict = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@', clip = 'machinic_loop_mecheckbox', flag = 49 }
+                            })
+
+                            if ok then
+                                TriggerServerEvent('kodebykarl-turfwar:server:claimTurf', id)
+                            end
+                            isBusy = false
+                        end
+
+                    elseif state == 'ACTIVE' then
+                        local remainingSecs = GlobalState[('turf_timer_%s'):format(id)] or 0
+                        if currentTextUiTurf ~= ('active_%s'):format(id) then
+                            currentTextUiTurf = ('active_%s'):format(id)
+                        end
+                        lib.showTextUI(('TURF WAR IN PROGRESS: %s | Time Left: %s'):format(data.label, formatClock(remainingSecs)), {
+                            position = 'bottom-center',
+                            icon = 'fa-solid fa-stopwatch',
+                            style = { backgroundColor = '#140d11', color = '#ff3a3a', border = '1px solid #ff3a3a' }
                         })
 
-                        if ok then
-                            TriggerServerEvent('kodebykarl-turfwar:server:startTurf', id)
+                    elseif state == 'COOLDOWN' then
+                        local cooldownSecs = GlobalState[('turf_cooldown_%s'):format(id)] or 0
+                        if currentTextUiTurf ~= ('cd_%s'):format(id) then
+                            currentTextUiTurf = ('cd_%s'):format(id)
                         end
-                    end
-                },
-                {
-                    name = ('kodebykarl_turfwar_claim_%s'):format(id),
-                    icon = 'fa-solid fa-box-open',
-                    label = ('Claim %s Rewards'):format(data.label),
-                    canInteract = function()
-                        local claimable = GlobalState[('turf_claimable_%s'):format(id)]
-                        return claimable == true
-                    end,
-                    onSelect = function()
-                        local ok = lib.progressBar({
-                            duration = data.claimTime or 8000,
-                            label = ('Securing %s Rewards...'):format(data.label),
-                            useWhileDead = false,
-                            canCancel = true,
-                            disable = { move = true, car = true, combat = true },
-                            anim = { dict = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@', clip = 'machinic_loop_mecheckbox', flag = 49 }
+                        lib.showTextUI(('TURF ON COOLDOWN: %s | Ready in: %s'):format(data.label, formatClock(cooldownSecs)), {
+                            position = 'bottom-center',
+                            icon = 'fa-solid fa-clock-rotate-left',
+                            style = { backgroundColor = '#140d11', color = '#a08890', border = '1px solid #a08890' }
                         })
-
-                        if ok then
-                            TriggerServerEvent('kodebykarl-turfwar:server:claimTurf', id)
-                        end
                     end
-                }
-            }
-        })
+
+                    ::skip_action::
+                end
+            else
+                if currentTextUiTurf then
+                    lib.hideTextUI()
+                    currentTextUiTurf = nil
+                end
+            end
+        end
+
+        Wait(sleep)
     end
 end)
 
--- Claim Reward Bag Prop & Live TextUI Loop
+-- Claim Reward Bag Prop Spawning Thread
 CreateThread(function()
     local rewardBagModel = Config.RewardBag.model or `prop_cs_heist_bag_02`
 
     while true do
         Wait(500)
-        local ped = PlayerPedId()
-        local pCoords = GetEntityCoords(ped)
-
         for id, data in pairs(Config.TurfWars) do
-            local state = GlobalState[('turf_state_%s'):format(id)] or 'IDLE'
             local claimable = GlobalState[('turf_claimable_%s'):format(id)] == true
-            local dist = #(pCoords - data.coords)
 
-            -- Handle Claim Reward Bag Prop at Trigger Location
             if claimable then
                 if not RewardProps[id] or not DoesEntityExist(RewardProps[id]) then
                     lib.requestModel(rewardBagModel, 5000)
@@ -131,18 +215,6 @@ CreateThread(function()
                     RewardProps[id] = nil
                 end
             end
-
-            -- Live HUD Stopwatch when standing near trigger spot during ACTIVE sequence
-            if state == 'ACTIVE' and dist <= 25.0 then
-                local remainingSecs = GlobalState[('turf_timer_%s'):format(id)] or 0
-                if remainingSecs > 0 then
-                    lib.showTextUI(('TURF WAR: %s | Time Remaining: %s'):format(data.label, formatClock(remainingSecs)), {
-                        position = 'top-center',
-                        icon = 'fa-solid fa-stopwatch',
-                        style = { backgroundColor = '#140d11', color = '#ff3a3a', border = '1px solid #ff3a3a' }
-                    })
-                end
-            end
         end
     end
 end)
@@ -154,5 +226,8 @@ AddEventHandler('onResourceStop', function(resName)
         if DoesEntityExist(prop) then
             DeleteObject(prop)
         end
+    end
+    if currentTextUiTurf then
+        lib.hideTextUI()
     end
 end)

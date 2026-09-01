@@ -27,6 +27,5 @@ server_scripts {
 dependencies {
     'es_extended',
     'ox_lib',
-    'ox_inventory',
-    'ox_target'
+    'ox_inventory'
 }
