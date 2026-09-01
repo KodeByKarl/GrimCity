@@ -41,16 +41,18 @@ CreateThread(function()
                 DisplayRadar(true)
                 DisplayHud(true)
 
-                lib.showTextUI(('⚠️ %s (UNLI TRAPHOUSE REDZONE - KILL ON SIGHT)'):format(zone.label:upper()), {
-                    position = 'bottom-center',
-                    icon = 'fa-solid fa-skull-crossbones',
+                lib.showTextUI('TRAPHOUSE REDZONE • KILL ON SIGHT', {
+                    position = 'top-center',
+                    icon = 'fa-solid fa-skull',
                     style = {
-                        borderRadius = 8,
-                        backgroundColor = '#140a0e',
-                        color = '#ff3a3a',
-                        border = '1px solid #ff3a3a',
-                        fontFamily = 'Outfit, sans-serif',
-                        fontWeight = 700
+                        borderRadius = '6px',
+                        backgroundColor = 'rgba(13, 13, 18, 0.9)',
+                        color = '#ff4d4d',
+                        border = '1px solid rgba(255, 58, 58, 0.4)',
+                        padding = '6px 12px',
+                        fontSize = '12px',
+                        fontWeight = '600',
+                        letterSpacing = '0.5px'
                     }
                 })
             end,
