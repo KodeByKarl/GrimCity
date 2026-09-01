@@ -40,25 +40,14 @@ CreateThread(function()
                 if dist <= 25.0 then
                     sleep = 0
 
-                    -- Pure White Cylinder Marker (Type 1)
+                    -- White MarkerTypeVerticalCylinder (Marker Type 1)
                     DrawMarker(
-                        1,                                -- Marker Type 1 (Cylinder)
+                        1,                                -- MarkerTypeVerticalCylinder (1)
                         data.coords.x, data.coords.y, data.coords.z - 1.0, -- Coords (z adjusted)
                         0.0, 0.0, 0.0,                    -- Direction
                         0.0, 0.0, 0.0,                    -- Rotation
                         2.5, 2.5, 1.0,                    -- Scale (Width, Length, Height)
-                        255, 255, 255, 180,               -- Color (Pure White, 180 Alpha)
-                        false, true, 2, false, nil, nil, false
-                    )
-
-                    -- Floating Inner White Marker ring/dot (Type 27) for extra visibility
-                    DrawMarker(
-                        27,
-                        data.coords.x, data.coords.y, data.coords.z - 0.95,
-                        0.0, 0.0, 0.0,
-                        0.0, 0.0, 0.0,
-                        2.0, 2.0, 1.0,
-                        255, 255, 255, 220,
+                        255, 255, 255, 200,               -- Color (Pure White 255, 255, 255, 200 Alpha)
                         false, true, 2, false, nil, nil, false
                     )
 
