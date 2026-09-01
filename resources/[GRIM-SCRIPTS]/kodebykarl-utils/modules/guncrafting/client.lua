@@ -13,11 +13,8 @@ local SpawnedProps = {}
 
 local SECTION_META = {
     pistols = { title = 'Handguns & Pistols', icon = 'fa-solid fa-gun', desc = 'Heavy Pistol, .50, G29, Desert Deagle, Vintage, Mk II' },
-    smgs = { title = 'Submachine Guns', icon = 'fa-solid fa-burst', desc = 'Micro SMG, MP5, Combat PDW' },
-    rifles = { title = 'Assault & Heavy Rifles', icon = 'fa-solid fa-crosshairs', desc = 'Compact, AK-47, G36C' },
-    shotguns = { title = 'Shotguns', icon = 'fa-solid fa-shield-halved', desc = 'Sawed-Off, Pump Mk II' },
     attachments = { title = 'Weapon Attachments', icon = 'fa-solid fa-screwdriver-wrench', desc = 'Suppressors, Extended Mags' },
-    ammo = { title = 'Ammunition Boxes', icon = 'fa-solid fa-boxes-stacked', desc = '9mm, 5.56 Rifle, 12 Gauge Shells' },
+    ammo = { title = 'Ammunition Boxes', icon = 'fa-solid fa-boxes-stacked', desc = '9mm Pistol Ammunition' },
 }
 
 local function notify(msg, nType)

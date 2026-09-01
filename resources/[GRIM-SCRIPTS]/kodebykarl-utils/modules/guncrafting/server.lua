@@ -23,7 +23,7 @@ local GunCrafting = {
             coords = vec4(723.15, -1088.74, 22.17, 90.0),
             model = 'gr_prop_gr_bench_02b',
             spawnProp = true,
-            sections = { 'pistols', 'smgs', 'rifles', 'shotguns', 'attachments', 'ammo' },
+            sections = { 'pistols', 'attachments', 'ammo' },
         },
         {
             id = 2,
@@ -31,7 +31,7 @@ local GunCrafting = {
             coords = vec4(1424.78, -2579.92, 45.45, 180.0),
             model = 'prop_tool_bench02',
             spawnProp = true,
-            sections = { 'pistols', 'smgs', 'rifles', 'shotguns', 'attachments', 'ammo' },
+            sections = { 'pistols', 'attachments', 'ammo' },
         },
         {
             id = 3,
@@ -39,7 +39,7 @@ local GunCrafting = {
             coords = vec4(2481.65, 4956.12, 44.82, 315.0),
             model = 'gr_prop_gr_bench_02b',
             spawnProp = true,
-            sections = { 'pistols', 'smgs', 'rifles', 'shotguns', 'attachments', 'ammo' },
+            sections = { 'pistols', 'attachments', 'ammo' },
         },
         {
             id = 4,
@@ -47,7 +47,7 @@ local GunCrafting = {
             coords = vec4(-584.22, 5284.11, 70.26, 70.0),
             model = 'gr_prop_gr_bench_02b',
             spawnProp = true,
-            sections = { 'pistols', 'smgs', 'rifles', 'shotguns', 'attachments', 'ammo' },
+            sections = { 'pistols', 'attachments', 'ammo' },
         },
     },
 
@@ -138,130 +138,6 @@ local GunCrafting = {
                 { item = 'steel', label = 'Steel', count = 10 },
                 { item = 'aluminum', label = 'Aluminum', count = 5 },
                 { item = 'weapon_parts', label = 'Weapon Parts', count = 3 },
-            },
-        },
-
-        -- =============================================================
-        -- SUBMACHINE GUNS (SMGs)
-        -- =============================================================
-        {
-            id = 'craft_microsmg',
-            section = 'smgs',
-            label = 'Micro SMG (Mini Uzi)',
-            description = 'Compact high rate of fire submachine gun.',
-            item = 'WEAPON_MICROSMG',
-            count = 1,
-            craftTime = 8500,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 10 },
-                { item = 'iron', label = 'Iron', count = 6 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 2 },
-            },
-        },
-        {
-            id = 'craft_smg',
-            section = 'smgs',
-            label = 'MP5 Submachine Gun',
-            description = 'Tactical submachine gun for close combat.',
-            item = 'WEAPON_SMG',
-            count = 1,
-            craftTime = 10000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 15 },
-                { item = 'aluminum', label = 'Aluminum', count = 8 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 4 },
-            },
-        },
-        {
-            id = 'craft_combatpdw',
-            section = 'smgs',
-            label = 'Combat PDW (SIG MPX)',
-            description = 'Integrated suppressor submachine gun.',
-            item = 'WEAPON_COMBATPDW',
-            count = 1,
-            craftTime = 12000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 18 },
-                { item = 'aluminum', label = 'Aluminum', count = 10 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 5 },
-            },
-        },
-
-        -- =============================================================
-        -- ASSAULT & HEAVY RIFLES
-        -- =============================================================
-        {
-            id = 'craft_compactrifle',
-            section = 'rifles',
-            label = 'Compact Rifle (Draco)',
-            description = 'Shortened assault rifle with high mobility.',
-            item = 'WEAPON_COMPACTRIFLE',
-            count = 1,
-            craftTime = 13000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 20 },
-                { item = 'iron', label = 'Iron', count = 12 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 5 },
-            },
-        },
-        {
-            id = 'craft_assaultrifle',
-            section = 'rifles',
-            label = 'Assault Rifle (AK-47)',
-            description = 'Rugged and powerful automatic rifle.',
-            item = 'WEAPON_ASSAULTRIFLE',
-            count = 1,
-            craftTime = 15000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 25 },
-                { item = 'iron', label = 'Iron', count = 15 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 6 },
-            },
-        },
-        {
-            id = 'craft_specialcarbine',
-            section = 'rifles',
-            label = 'Special Carbine (G36C)',
-            description = 'Accurate assault carbine with high fire rate.',
-            item = 'WEAPON_SPECIALCARBINE',
-            count = 1,
-            craftTime = 18000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 28 },
-                { item = 'aluminum', label = 'Aluminum', count = 15 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 8 },
-            },
-        },
-
-        -- =============================================================
-        -- SHOTGUNS
-        -- =============================================================
-        {
-            id = 'craft_sawnoff',
-            section = 'shotguns',
-            label = 'Sawed-Off Shotgun',
-            description = 'Short-barreled double shot blast.',
-            item = 'WEAPON_SAWNOFFSHOTGUN',
-            count = 1,
-            craftTime = 9000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 12 },
-                { item = 'iron', label = 'Iron', count = 8 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 3 },
-            },
-        },
-        {
-            id = 'craft_pumpshotgun',
-            section = 'shotguns',
-            label = 'Pump Shotgun Mk II',
-            description = 'Tactical 12-gauge pump shotgun.',
-            item = 'WEAPON_PUMPSHOTGUN_MK2',
-            count = 1,
-            craftTime = 11000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 16 },
-                { item = 'aluminum', label = 'Aluminum', count = 8 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 4 },
             },
         },
 
