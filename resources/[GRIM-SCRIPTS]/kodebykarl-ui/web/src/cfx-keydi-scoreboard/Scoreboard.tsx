@@ -134,7 +134,7 @@ export default function Scoreboard({ data = {} }: ScoreboardProps) {
     <div className="pandora animate-fade-in flex min-h-screen items-center justify-center p-6 bg-black/60 backdrop-blur-md select-none pointer-events-auto antialiased">
       {/* 3-Panel Scoreboard Grid with 3D Perspective */}
       <div 
-        className="grid grid-cols-3 gap-6 max-w-6xl w-full h-[620px]"
+        className="grid grid-cols-3 gap-4 max-w-[880px] w-full h-[580px]"
         style={{ perspective: "1500px", transformStyle: "preserve-3d" }}
       >
         
