@@ -6,12 +6,9 @@ Config.MinGangMembersOnline = 0      -- Minimum online members of the same gang 
 Config.GoBackDrainPerSecond = 10     -- HP drain per second when outside active turf boundary
 Config.WebhookURL = ''               -- Discord Webhook URL for logs (optional)
 
--- Testing Phase Settings (Allows Student job / testing jobs to trigger & claim)
-Config.AllowAllJobsForTesting = true
-Config.AllowTestJobs = {
-    ['student'] = true,
-    ['unemployed'] = true,
-}
+-- Testing Phase Settings (DISABLED - Strict Gang Only)
+Config.AllowAllJobsForTesting = false
+Config.AllowTestJobs = {}
 
 -- Ignored Gangs & Jobs from triggering/claiming
 Config.IgnoreGangs = {

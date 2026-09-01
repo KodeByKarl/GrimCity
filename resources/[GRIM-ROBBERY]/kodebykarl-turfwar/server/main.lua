@@ -101,10 +101,10 @@ local function countOnlineGangMembers(gangName)
     return count
 end
 
--- Helper: Build Fit-To-Text Chat Templates
-local function SendTurfStartChatTemplate(turfLabel, playerName, gangLabel)
-    local messageStr = ('TURF WAR HAS BEEN INITIATED AT %s BY %s (%s)'):format(
-        turfLabel:upper(), playerName:upper(), gangLabel:upper()
+-- Helper: Build Fit-To-Text Chat Templates (Gang Name Only)
+local function SendTurfStartChatTemplate(turfLabel, gangLabel)
+    local messageStr = ('TURF WAR HAS BEEN INITIATED AT %s BY %s'):format(
+        turfLabel:upper(), gangLabel:upper()
     )
     local template = '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.85) 0%, rgba(15, 10, 14, 0.92) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;">'
         .. '<b style="color: #ff8080; letter-spacing: 0.3px;">[TURF WAR]</b>'
@@ -115,9 +115,9 @@ local function SendTurfStartChatTemplate(turfLabel, playerName, gangLabel)
     TriggerClientEvent('chat:addMessage', -1, { template = template })
 end
 
-local function SendTurfClaimChatTemplate(turfLabel, claimerName, gangLabel)
-    local messageStr = ('TURF WAR AT %s HAS BEEN CLAIMED BY %s (%s)'):format(
-        turfLabel:upper(), claimerName:upper(), gangLabel:upper()
+local function SendTurfClaimChatTemplate(turfLabel, gangLabel)
+    local messageStr = ('TURF WAR AT %s HAS BEEN CLAIMED BY %s'):format(
+        turfLabel:upper(), gangLabel:upper()
     )
     local template = '<div style="background: linear-gradient(135deg, rgba(14, 28, 18, 0.85) 0%, rgba(10, 15, 12, 0.92) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #2ecc71; border-top: 1px solid rgba(46, 204, 113, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;">'
         .. '<b style="color: #2ecc71; letter-spacing: 0.3px;">[TURF WAR]</b>'
@@ -203,12 +203,12 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Another Turf War is currently in progress.', type = 'error' })
     end
 
-    -- Gang / Test Job Validation
+    -- Gang Validation
     local gangName, gangLabel = getPlayerGang(xPlayer)
     local jobName = (xPlayer.job and xPlayer.job.name) or (xPlayer.getJob and xPlayer.getJob().name) or 'unemployed'
     local isAllowedTestPlayer = Config.AllowAllJobsForTesting or (Config.AllowTestJobs and Config.AllowTestJobs[jobName])
 
-    if not isAllowedTestPlayer and Config.IgnoreGangs[gangName] then
+    if not isAllowedTestPlayer and (Config.IgnoreGangs[gangName] or gangName == 'none' or gangName == 'unemployed') then
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'You must belong to an active Gang to initiate a Turf War.', type = 'error' })
     end
 
@@ -232,8 +232,8 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
 
     addScoreboardRobbery(turfId, data.label, data.timer)
 
-    -- Send Simple Police Announcement Style Chat Template
-    SendTurfStartChatTemplate(data.label, xPlayer.name, gangLabel)
+    -- Send Chat Template Announcement with Gang Name Only
+    SendTurfStartChatTemplate(data.label, gangLabel)
 
     -- Webhook Log
     local logMsg = ('**Initiated By:** %s (ID: %d)\n**Gang:** %s\n**Location:** %s\n**Timer:** %d seconds'):format(
@@ -263,12 +263,12 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'You must be right at the trigger spot to claim rewards.', type = 'error' })
     end
 
-    -- Gang / Test Job Check
+    -- Gang Check
     local gangName, gangLabel = getPlayerGang(xPlayer)
     local jobName = (xPlayer.job and xPlayer.job.name) or (xPlayer.getJob and xPlayer.getJob().name) or 'unemployed'
     local isAllowedTestPlayer = Config.AllowAllJobsForTesting or (Config.AllowTestJobs and Config.AllowTestJobs[jobName])
 
-    if not isAllowedTestPlayer and Config.IgnoreGangs[gangName] then
+    if not isAllowedTestPlayer and (Config.IgnoreGangs[gangName] or gangName == 'none' or gangName == 'unemployed') then
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Only active gang members can claim Turf War rewards.', type = 'error' })
     end
 
@@ -291,8 +291,8 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
 
     local itemsListStr = table.concat(claimedSummary, ', ')
 
-    -- Send Simple Police Announcement Style Chat Template
-    SendTurfClaimChatTemplate(data.label, xPlayer.name, gangLabel)
+    -- Send Chat Template Announcement with Gang Name Only
+    SendTurfClaimChatTemplate(data.label, gangLabel)
 
     TriggerClientEvent('ox_lib:notify', src, {
         title = 'REWARDS CLAIMED',
