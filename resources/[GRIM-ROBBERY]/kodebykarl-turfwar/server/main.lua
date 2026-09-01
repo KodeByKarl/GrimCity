@@ -101,45 +101,31 @@ local function countOnlineGangMembers(gangName)
     return count
 end
 
--- Helper: Build Rich HTML Chat Templates
-local function SendTurfStartChatTemplate(turfLabel, playerName, gangLabel, timerSecs)
-    local mins = math.ceil(timerSecs / 60)
-    local template = '<div style="background: linear-gradient(135deg, rgba(35, 12, 18, 0.96) 0%, rgba(18, 9, 12, 0.98) 100%); border-radius: 10px; border-left: 4px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.35); border-right: 1px solid rgba(255, 58, 58, 0.15); border-bottom: 1px solid rgba(255, 58, 58, 0.15); padding: 12px 14px; margin-bottom: 8px; font-family: \'Outfit\', sans-serif; box-shadow: 0 8px 25px rgba(0,0,0,0.7); position: relative; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
-        .. '  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #ff8080; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">'
-        .. '    <span style="display: flex; align-items: center; gap: 6px;"><span style="color: #ff3a3a;">⚔️</span> TURF WAR INITIATED • ' .. turfLabel .. '</span>'
-        .. '    <span style="background: rgba(255,58,58,0.2); border: 1px solid #ff3a3a; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">' .. mins .. ' MINS</span>'
+-- Helper: Build Simple Police/Job Style Chat Templates
+local function SendTurfStartChatTemplate(turfLabel, playerName, gangLabel)
+    local curTime = os.date("%H:%M")
+    local template = '<div style="background: #0f0f13; border-radius: 4px; border: 1px solid rgba(255, 58, 58, 0.4); padding: 10px; margin-bottom: 8px; font-family: sans-serif; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
+        .. '  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #ff8080; font-weight: 600; text-transform: uppercase;">'
+        .. '    <span>FEED • TURF WAR | INITIATED</span>'
+        .. '    <span>' .. curTime .. '</span>'
         .. '  </div>'
-        .. '  <div style="color: #ffffff; font-size: 13.5px; font-weight: 600; margin-top: 8px; line-height: 1.4;">'
-        .. '    <strong style="color: #ff4d4d;">' .. playerName .. '</strong> (<span style="color: #ff9999;">' .. gangLabel .. '</span>) has initiated a Turf War sequence at <strong style="color: #ffffff;">' .. turfLabel .. '</strong>!'
-        .. '  </div>'
-        .. '</div>'
-
-    TriggerClientEvent('chat:addMessage', -1, { template = template })
-end
-
-local function SendTurfReadyChatTemplate(turfLabel)
-    local template = '<div style="background: linear-gradient(135deg, rgba(32, 28, 12, 0.96) 0%, rgba(18, 16, 8, 0.98) 100%); border-radius: 10px; border-left: 4px solid #f1c40f; border-top: 1px solid rgba(241, 196, 15, 0.35); border-right: 1px solid rgba(241, 196, 15, 0.15); border-bottom: 1px solid rgba(241, 196, 15, 0.15); padding: 12px 14px; margin-bottom: 8px; font-family: \'Outfit\', sans-serif; box-shadow: 0 8px 25px rgba(0,0,0,0.7); position: relative; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
-        .. '  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #f1c40f; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">'
-        .. '    <span style="display: flex; align-items: center; gap: 6px;"><span style="color: #f1c40f;">💰</span> REWARDS READY TO CLAIM • ' .. turfLabel .. '</span>'
-        .. '    <span style="background: rgba(241,196,15,0.2); border: 1px solid #f1c40f; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">LOOT READY</span>'
-        .. '  </div>'
-        .. '  <div style="color: #ffffff; font-size: 13.5px; font-weight: 600; margin-top: 8px; line-height: 1.4;">'
-        .. '    The War Sequence timer for <strong style="color: #f1c40f;">' .. turfLabel .. '</strong> has finished! The Loot Bag is now active at the trigger spot!'
+        .. '  <div style="color: #ffffff; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-top: 6px; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.85);">'
+        .. '    TURF WAR HAS BEEN INITIATED AT ' .. turfLabel .. ' BY ' .. playerName:upper() .. ' (' .. gangLabel:upper() .. ')'
         .. '  </div>'
         .. '</div>'
 
     TriggerClientEvent('chat:addMessage', -1, { template = template })
 end
 
-local function SendTurfClaimChatTemplate(turfLabel, claimerName, gangLabel, itemsSummary)
-    local template = '<div style="background: linear-gradient(135deg, rgba(12, 32, 20, 0.96) 0%, rgba(8, 18, 12, 0.98) 100%); border-radius: 10px; border-left: 4px solid #2ecc71; border-top: 1px solid rgba(46, 204, 113, 0.35); border-right: 1px solid rgba(46, 204, 113, 0.15); border-bottom: 1px solid rgba(46, 204, 113, 0.15); padding: 12px 14px; margin-bottom: 8px; font-family: \'Outfit\', sans-serif; box-shadow: 0 8px 25px rgba(0,0,0,0.7); position: relative; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
-        .. '  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #2ecc71; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">'
-        .. '    <span style="display: flex; align-items: center; gap: 6px;"><span style="color: #2ecc71;">🏆</span> TURF WAR CLAIMED • ' .. turfLabel .. '</span>'
-        .. '    <span style="background: rgba(46,204,113,0.2); border: 1px solid #2ecc71; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">VICTORY</span>'
+local function SendTurfClaimChatTemplate(turfLabel, claimerName, gangLabel)
+    local curTime = os.date("%H:%M")
+    local template = '<div style="background: #0f0f13; border-radius: 4px; border: 1px solid rgba(46, 204, 113, 0.4); padding: 10px; margin-bottom: 8px; font-family: sans-serif; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; min-height: min-content;">'
+        .. '  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #2ecc71; font-weight: 600; text-transform: uppercase;">'
+        .. '    <span>FEED • TURF WAR | CLAIMED</span>'
+        .. '    <span>' .. curTime .. '</span>'
         .. '  </div>'
-        .. '  <div style="color: #ffffff; font-size: 13.5px; font-weight: 600; margin-top: 8px; line-height: 1.4;">'
-        .. '    <strong style="color: #2ecc71;">' .. claimerName .. '</strong> (<span style="color: #a3e635;">' .. gangLabel .. '</span>) has claimed rewards at <strong style="color: #ffffff;">' .. turfLabel .. '</strong>!'
-        .. '    <div style="margin-top: 6px; font-size: 12px; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.35); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(46,204,113,0.2);">📦 Claimed: ' .. itemsSummary .. '</div>'
+        .. '  <div style="color: #ffffff; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-top: 6px; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.85);">'
+        .. '    TURF WAR AT ' .. turfLabel .. ' HAS BEEN CLAIMED BY ' .. claimerName:upper() .. ' (' .. gangLabel:upper() .. ')'
         .. '  </div>'
         .. '</div>'
 
@@ -168,7 +154,6 @@ CreateThread(function()
                     local data = Config.TurfWars[id]
                     if data then
                         addScoreboardRobbery(id, data.label, 0)
-                        SendTurfReadyChatTemplate(data.label)
                     end
                 end
             end
@@ -251,8 +236,8 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
 
     addScoreboardRobbery(turfId, data.label, data.timer)
 
-    -- Send Rich Chat Template Announcement to all players
-    SendTurfStartChatTemplate(data.label, xPlayer.name, gangLabel, data.timer)
+    -- Send Simple Police Announcement Style Chat Template
+    SendTurfStartChatTemplate(data.label, xPlayer.name, gangLabel)
 
     -- Webhook Log
     local logMsg = ('**Initiated By:** %s (ID: %d)\n**Gang:** %s\n**Location:** %s\n**Timer:** %d seconds'):format(
@@ -310,8 +295,8 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
 
     local itemsListStr = table.concat(claimedSummary, ', ')
 
-    -- Send Rich Chat Template Announcement to all players
-    SendTurfClaimChatTemplate(data.label, xPlayer.name, gangLabel, itemsListStr)
+    -- Send Simple Police Announcement Style Chat Template
+    SendTurfClaimChatTemplate(data.label, xPlayer.name, gangLabel)
 
     TriggerClientEvent('ox_lib:notify', src, {
         title = 'REWARDS CLAIMED',
