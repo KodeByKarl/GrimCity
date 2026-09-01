@@ -1,73 +1,102 @@
 local ESX = exports['es_extended']:getSharedObject()
 local isInRedZone = false
 local currentZoneLabel = nil
-local activeSpheres = {}
-local ZoneBlips = {}
+local activeSphere = nil
+local activeBlips = {}
 
--- Create Radius Map Blips
-CreateThread(function()
-    for _, zone in ipairs(Config.TrapZones) do
-        if zone.blip and zone.blip.enable then
-            local radiusBlip = AddBlipForRadius(zone.coords.x, zone.coords.y, zone.coords.z, zone.radius)
-            SetBlipColour(radiusBlip, zone.blip.color or 1)
-            SetBlipAlpha(radiusBlip, zone.blip.alpha or 110)
+-- Helper: Clean up existing blips & sphere zone
+local function clearActiveTrapHouseZone()
+    if activeSphere then
+        activeSphere:remove()
+        activeSphere = nil
+    end
 
-            local markerBlip = AddBlipForCoord(zone.coords.x, zone.coords.y, zone.coords.z)
-            SetBlipSprite(markerBlip, 310)
-            SetBlipColour(markerBlip, 1)
-            SetBlipScale(markerBlip, 0.85)
-            SetBlipAsShortRange(markerBlip, true)
-            BeginTextCommandSetBlipName("STRING")
-            AddTextComponentString(('TRAPHOUSE: %s'):format(zone.label))
-            EndTextCommandSetBlipName(markerBlip)
-
-            ZoneBlips[#ZoneBlips + 1] = radiusBlip
-            ZoneBlips[#ZoneBlips + 1] = markerBlip
+    for _, blip in ipairs(activeBlips) do
+        if DoesBlipExist(blip) then
+            RemoveBlip(blip)
         end
     end
-end)
+    activeBlips = {}
 
--- Initialize ox_lib Zones efficiently
-CreateThread(function()
-    for _, zone in ipairs(Config.TrapZones) do
-        local sphere = lib.zones.sphere({
-            coords = zone.coords,
-            radius = zone.radius,
-            debug = false,
-            onEnter = function()
-                isInRedZone = true
-                currentZoneLabel = zone.label
-
-                DisplayRadar(true)
-                DisplayHud(true)
-
-                lib.showTextUI('TRAPHOUSE REDZONE • KILL ON SIGHT', {
-                    position = 'top-center',
-                    icon = 'fa-solid fa-skull',
-                    style = {
-                        borderRadius = '6px',
-                        backgroundColor = 'rgba(13, 13, 18, 0.9)',
-                        color = '#ff4d4d',
-                        border = '1px solid rgba(255, 58, 58, 0.4)',
-                        padding = '6px 12px',
-                        fontSize = '12px',
-                        fontWeight = '600',
-                        letterSpacing = '0.5px'
-                    }
-                })
-            end,
-            onExit = function()
-                isInRedZone = false
-                currentZoneLabel = nil
-                lib.hideTextUI()
-            end
-        })
-
-        activeSpheres[#activeSpheres + 1] = sphere
+    if isInRedZone then
+        isInRedZone = false
+        currentZoneLabel = nil
+        lib.hideTextUI()
     end
+end
+
+-- Helper: Load and activate single active TrapHouse zone
+local function updateActiveTrapHouseZone(zoneData)
+    clearActiveTrapHouseZone()
+    if not zoneData or not zoneData.coords then return end
+
+    -- Create Radius Blip for Active TrapHouse
+    local radiusBlip = AddBlipForRadius(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z, zoneData.radius)
+    SetBlipColour(radiusBlip, (zoneData.blip and zoneData.blip.color) or 1)
+    SetBlipAlpha(radiusBlip, (zoneData.blip and zoneData.blip.alpha) or 110)
+
+    -- Create Marker Skull Blip for Active TrapHouse
+    local markerBlip = AddBlipForCoord(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z)
+    SetBlipSprite(markerBlip, 310)
+    SetBlipColour(markerBlip, 1)
+    SetBlipScale(markerBlip, 0.85)
+    SetBlipAsShortRange(markerBlip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentString(('TRAPHOUSE: %s'):format(zoneData.label))
+    EndTextCommandSetBlipName(markerBlip)
+
+    activeBlips[#activeBlips + 1] = radiusBlip
+    activeBlips[#activeBlips + 1] = markerBlip
+
+    -- Create Sphere Zone for Active TrapHouse ONLY
+    activeSphere = lib.zones.sphere({
+        coords = zoneData.coords,
+        radius = zoneData.radius,
+        debug = false,
+        onEnter = function()
+            isInRedZone = true
+            currentZoneLabel = zoneData.label
+
+            DisplayRadar(true)
+            DisplayHud(true)
+
+            lib.showTextUI('TRAPHOUSE REDZONE • KILL ON SIGHT', {
+                position = 'top-center',
+                icon = 'fa-solid fa-skull',
+                style = {
+                    borderRadius = '6px',
+                    backgroundColor = 'rgba(13, 13, 18, 0.9)',
+                    color = '#ff4d4d',
+                    border = '1px solid rgba(255, 58, 58, 0.4)',
+                    padding = '6px 12px',
+                    fontSize = '12px',
+                    fontWeight = '600',
+                    letterSpacing = '0.5px'
+                }
+            })
+        end,
+        onExit = function()
+            isInRedZone = false
+            currentZoneLabel = nil
+            lib.hideTextUI()
+        end
+    })
+end
+
+-- Listen to GlobalState change for instant rotation
+AddStateBagChangeHandler('traphouse_active_zone', 'global', function(bagName, key, value)
+    updateActiveTrapHouseZone(value)
 end)
 
--- Optional Vehicle Cleanup Thread inside TrapHouse Zone
+-- Initial Load on Client Start
+CreateThread(function()
+    while not GlobalState.traphouse_active_zone do
+        Wait(500)
+    end
+    updateActiveTrapHouseZone(GlobalState.traphouse_active_zone)
+end)
+
+-- Optional Vehicle Cleanup Thread inside Active TrapHouse Zone
 CreateThread(function()
     if not Config.DeleteVehiclesInZone then return end
 
@@ -110,8 +139,5 @@ exports('InRedZoneField', InRedZoneField)
 -- Cleanup on Resource Stop
 AddEventHandler('onResourceStop', function(resName)
     if resName ~= GetCurrentResourceName() then return end
-    lib.hideTextUI()
-    for _, sphere in ipairs(activeSpheres) do
-        sphere:remove()
-    end
+    clearActiveTrapHouseZone()
 end)

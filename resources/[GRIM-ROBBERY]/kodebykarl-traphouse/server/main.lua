@@ -23,17 +23,68 @@ local function getPlayerGangLabel(xPlayer)
     return 'Unemployed'
 end
 
--- Helper: Check if server vector coords is inside any TrapHouse zone
+local currentZoneIndex = 0
+
+-- Helper: Build Fit-To-Text Rotation Chat Template
+local function SendTrapHouseRotationChatTemplate(zoneLabel)
+    local template = '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.85) 0%, rgba(15, 10, 14, 0.92) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;">'
+        .. '<b style="color: #ff8080; letter-spacing: 0.3px;">[TRAPHOUSE REDZONE]</b>'
+        .. '<span style="color: rgba(255,255,255,0.4); margin: 0 6px;">•</span>'
+        .. '<span style="color: #ffffff; font-weight: 600;">ACTIVE TRAPHOUSE HAS ROTATED TO ' .. zoneLabel:upper() .. ' FOR THE NEXT ' .. (Config.RotationMinutes or 15) .. ' MINUTES!</span>'
+        .. '</div>'
+
+    TriggerClientEvent('chat:addMessage', -1, { template = template })
+end
+
+-- Helper: Rotate to Next TrapHouse Location
+local function rotateActiveTrapHouse()
+    if #Config.TrapZones == 0 then return end
+
+    local nextIndex = currentZoneIndex + 1
+    if nextIndex > #Config.TrapZones then
+        nextIndex = 1
+    end
+    currentZoneIndex = nextIndex
+
+    local zone = Config.TrapZones[currentZoneIndex]
+    local activeData = {
+        id = zone.id,
+        label = zone.label,
+        coords = zone.coords,
+        radius = zone.radius,
+        blip = zone.blip,
+        expires = os.time() + ((Config.RotationMinutes or 15) * 60)
+    }
+
+    GlobalState:set('traphouse_active_zone', activeData, true)
+    SendTrapHouseRotationChatTemplate(zone.label)
+
+    Webhook.SendLog('TRAPHOUSE ROTATED', 16744192, ('**Active Zone:** %s\n**Duration:** %d minutes'):format(zone.label, Config.RotationMinutes or 15))
+end
+
+-- Helper: Check if server vector coords is inside current ACTIVE TrapHouse zone
 local function getActiveTrapZone(coords)
     if not coords then return nil end
-    for _, zone in ipairs(Config.TrapZones) do
-        local dist = #(coords - zone.coords)
-        if dist <= zone.radius then
-            return zone
-        end
+    local activeZone = GlobalState.traphouse_active_zone
+    if not activeZone then return nil end
+
+    local dist = #(coords - activeZone.coords)
+    if dist <= activeZone.radius then
+        return activeZone
     end
     return nil
 end
+
+-- Server Loop for 15-Minute Rotation
+CreateThread(function()
+    Wait(2000) -- Initial startup delay
+    rotateActiveTrapHouse()
+
+    while true do
+        Wait((Config.RotationMinutes or 15) * 60 * 1000)
+        rotateActiveTrapHouse()
+    end
+end)
 
 -- Helper: Generate Weighted Items to Give
 local function generateKillRewards()

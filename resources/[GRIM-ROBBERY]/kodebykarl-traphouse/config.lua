@@ -1,6 +1,7 @@
 Config = {}
 
 -- General Settings
+Config.RotationMinutes = 15        -- Active TrapHouse rotates every 15 minutes (1 at a time)
 Config.AntiFarmCooldown = 180      -- Cooldown in seconds before same killer can get loot from same victim
 Config.DeleteVehiclesInZone = true  -- Auto-remove vehicles left unoccupied inside TrapHouse zones
 Config.WebhookURL = ''             -- Discord Webhook URL for logs (optional)
