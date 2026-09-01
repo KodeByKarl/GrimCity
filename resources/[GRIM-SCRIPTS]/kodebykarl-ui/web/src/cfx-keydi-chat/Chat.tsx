@@ -28,10 +28,10 @@ interface Suggestion {
 }
 
 const DEFAULT_TEMPLATES: Record<string, string> = {
-  default: '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.82) 0%, rgba(15, 10, 14, 0.9) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box;"><b style="color: #ff8080; letter-spacing: 0.3px;">{0}</b><span style="color: rgba(255,255,255,0.4); margin: 0 6px;">•</span><span style="color: #ffffff; font-weight: 500;">{1}</span></div>',
-  defaultAlt: "{0}",
-  print: "<pre style='text-align: left; font-family: monospace; font-size: 13px; color: #ff8080; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; margin: 0;'>{0}</pre>",
-  "example:important": "<h1 style='text-align: left; color: #ff3a3a; word-break: break-word; overflow-wrap: anywhere;'>^2{0}</h1>"
+  default: '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.82) 0%, rgba(15, 10, 14, 0.9) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;"><b style="color: #ff8080; letter-spacing: 0.3px;">{0}</b><span style="color: rgba(255,255,255,0.4); margin: 0 6px;">•</span><span style="color: #ffffff; font-weight: 500;">{1}</span></div>',
+  defaultAlt: "<div style='word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; flex-shrink: 0; min-height: min-content; line-height: 1.4;'>{0}</div>",
+  print: "<pre style='text-align: left; font-family: monospace; font-size: 13px; color: #ff8080; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; margin: 0; flex-shrink: 0; min-height: min-content; line-height: 1.4;'>{0}</pre>",
+  "example:important": "<h1 style='text-align: left; color: #ff3a3a; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; line-height: 1.4;'>^2{0}</h1>"
 };
 
 const MAX_MESSAGES = 80;
@@ -110,8 +110,8 @@ function formatMessage(msg: Message, templates: Record<string, string>): string 
 const MessageRow = memo(function MessageRow({ html }: { html: string }) {
   return (
     <div
-      className="text-[14px] leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-hidden"
-      style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}
+      className="shrink-0 min-h-min text-[14px] leading-normal break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-hidden"
+      style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "pre-wrap", flexShrink: 0, minHeight: "min-content" }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -177,16 +177,28 @@ export default function Chat() {
   }, [resetShowWindowTimer]);
 
   const scrollMessagesToBottom = useCallback(() => {
-    const els = [openListRef.current, overlayListRef.current];
-    for (let i = 0; i < els.length; i++) {
-      const el = els[i];
-      if (!el) continue;
-      el.scrollTop = el.scrollHeight;
-    }
+    const doScroll = () => {
+      const els = [openListRef.current, overlayListRef.current];
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (!el) continue;
+        el.scrollTop = el.scrollHeight;
+      }
+    };
+    doScroll();
+    requestAnimationFrame(() => {
+      doScroll();
+      setTimeout(doScroll, 10);
+      setTimeout(doScroll, 50);
+    });
   }, []);
 
   // Pin to newest message as soon as DOM updates (fixes "stuck on old chats")
   useLayoutEffect(() => {
+    scrollMessagesToBottom();
+  }, [messages, showWindow, isOpen, scrollMessagesToBottom]);
+
+  useEffect(() => {
     scrollMessagesToBottom();
   }, [messages, showWindow, isOpen, scrollMessagesToBottom]);
 
@@ -211,6 +223,7 @@ export default function Chat() {
             clearTimeout(timerRef.current);
             timerRef.current = null;
           }
+          scrollMessagesToBottom();
           break;
 
         case "ON_MESSAGE": {
@@ -222,6 +235,7 @@ export default function Chat() {
             return next.length > MAX_MESSAGES ? next.slice(next.length - MAX_MESSAGES) : next;
           });
           resetShowWindowTimerRef.current();
+          scrollMessagesToBottom();
           break;
         }
 
