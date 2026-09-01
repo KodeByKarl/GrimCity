@@ -52,7 +52,11 @@ local function UpdateScoreboard()
             robberies = serverData.robberies
         }
 
-        exports['kodebykarl-ui']:ToggleScoreboard(isVisible, finalData)
+        if ToggleScoreboard then
+            ToggleScoreboard(isVisible, finalData)
+        else
+            pcall(function() exports[GetCurrentResourceName()]:ToggleScoreboard(isVisible, finalData) end)
+        end
     end)
 end
 
@@ -62,7 +66,11 @@ RegisterKeyMapping('toggleScoreboard', 'Toggle Server Scoreboard', 'keyboard', C
 RegisterCommand('toggleScoreboard', function()
     if isVisible then
         isVisible = false
-        exports['kodebykarl-ui']:ToggleScoreboard(false, nil)
+        if ToggleScoreboard then
+            ToggleScoreboard(false, nil)
+        else
+            pcall(function() exports[GetCurrentResourceName()]:ToggleScoreboard(false, nil) end)
+        end
     else
         isVisible = true
         UpdateScoreboard()
@@ -113,7 +121,11 @@ RegisterNUICallback('closeScoreboard', function(data, cb)
     cb('ok')
     if isVisible then
         isVisible = false
-        exports['kodebykarl-ui']:ToggleScoreboard(false, nil)
+        if ToggleScoreboard then
+            ToggleScoreboard(false, nil)
+        else
+            pcall(function() exports[GetCurrentResourceName()]:ToggleScoreboard(false, nil) end)
+        end
     end
 end)
 
