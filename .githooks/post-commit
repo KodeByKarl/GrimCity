@@ -1,0 +1,22 @@
+#!/bin/sh
+# Auto-sync: every local commit is pushed to origin immediately.
+# Prevents lost work when the machine/disk is wiped before a manual push.
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0
+if [ "$branch" = "HEAD" ]; then
+  exit 0
+fi
+
+remote=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
+if [ -z "$remote" ]; then
+  echo "[auto-sync] No upstream set — pushing $branch to origin..."
+  git push -u origin "$branch" && echo "[auto-sync] Pushed $branch to origin." || echo "[auto-sync] WARNING: push failed. Run: git push -u origin $branch"
+  exit 0
+fi
+
+echo "[auto-sync] Pushing $branch to origin..."
+if git push origin "$branch"; then
+  echo "[auto-sync] Synced $branch → origin/$branch"
+else
+  echo "[auto-sync] WARNING: push failed. Your commit is local only until: git push"
+fi

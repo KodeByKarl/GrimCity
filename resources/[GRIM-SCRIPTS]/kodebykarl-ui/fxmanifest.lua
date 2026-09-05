@@ -39,7 +39,6 @@ shared_scripts {
     'Module/cfx-keydi-identity/shared/config.lua',
     'Module/cfx-keydi-identity/shared/constants.lua',
     'Module/cfx-keydi-identity/shared/utils.lua',
-    'Module/cfx-keydi-mdt/shared/config.lua',
     'Module/cfx-keydi-badge/shared/config.lua',
     'Module/cfx-keydi-radiolist/shared/config.lua',
     'Module/cfx-keydi-scoreboard/shared/config.lua',
@@ -70,7 +69,6 @@ client_scripts {
     'Module/cfx-keydi-identity/client/commands.lua',
     'Module/cfx-keydi-identity/client/events.lua',
     'Module/cfx-keydi-identity/client/nui.lua',
-    'Module/cfx-keydi-mdt/client/main.lua',
 
     'Module/cfx-keydi-badge/client/main.lua',
     'Module/cfx-keydi-radiolist/client/main.lua',
@@ -108,7 +106,6 @@ server_scripts {
     'Module/cfx-keydi-identity/server/main.lua',
     'Module/cfx-keydi-identity/server/callbacks.lua',
     'Module/cfx-keydi-identity/server/events.lua',
-    'Module/cfx-keydi-mdt/server/main.lua',
 
     'Module/cfx-keydi-modules/server/electron.lua',
     'Module/cfx-keydi-badge/server/main.lua',

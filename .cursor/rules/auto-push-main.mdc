@@ -1,0 +1,14 @@
+---
+description: Always push GrimCity commits to origin/main immediately
+alwaysApply: true
+---
+
+# Auto-sync to GitHub
+
+After **any** `git commit` in this repository:
+
+1. Immediately run `git push -u origin HEAD` (or push the current branch to `origin`).
+2. Confirm the branch is **not** still `ahead of origin` before ending the turn.
+3. Never leave commits local-only — unpushed work was lost before when the disk was wiped.
+
+The repo also has `.githooks/post-commit` and Cursor hooks that auto-push; still verify push succeeded if anything looks offline.
