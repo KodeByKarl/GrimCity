@@ -45,6 +45,9 @@ export interface WelcomeBannerPanelData {
   players?: WelcomeBannerPlayer[];
   online?: WelcomeBannerOnlinePlayer[];
   duration?: number;
+  /** VIP self-service: only edit own banner */
+  selfEdit?: boolean;
+  selfIdentifier?: string;
 }
 
 interface WelcomeBannerPanelProps {
@@ -78,6 +81,7 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
   const [showDrawer, setShowDrawer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const selfEdit = !!data?.selfEdit;
 
   // Form Fields
   const [identifier, setIdentifier] = useState("");
@@ -187,6 +191,10 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
 
   const openAddForm = () => {
     resetForm();
+    if (selfEdit && data?.selfIdentifier) {
+      setIdentifier(data.selfIdentifier);
+      setName(data.staffName || "");
+    }
     setShowDrawer(true);
   };
 
@@ -257,12 +265,12 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30">
-                  {data?.staffGroup || "Staff Management"}
+                  {selfEdit ? "VIP Self Edit" : data?.staffGroup || "Staff Management"}
                 </span>
                 <span className="text-xs text-slate-400">• {data?.staffName || "Admin"}</span>
               </div>
               <h2 className="text-base font-black text-white tracking-wide">
-                Custom Welcome Banner System
+                {selfEdit ? "My Welcome Banner" : "Custom Welcome Banner System"}
               </h2>
             </div>
           </div>
@@ -274,7 +282,7 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
               className="flex items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-cyan-600/20 hover:bg-cyan-600 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:text-white transition-all shadow-md active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              Add Player Banner
+              {selfEdit ? (players.length > 0 ? "Edit My Banner" : "Create My Banner") : "Add Player Banner"}
             </button>
             <button
               type="button"
@@ -287,6 +295,7 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
         </div>
 
         {/* Search Bar */}
+        {!selfEdit && (
         <div className="border-b border-slate-800 bg-[#090d18] px-6 py-2.5">
           <div className="flex items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-1.5 shadow-inner">
             <Search className="h-4 w-4 text-slate-400 shrink-0" />
@@ -303,6 +312,7 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
             )}
           </div>
         </div>
+        )}
 
         {/* Main Content Area */}
         <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -312,8 +322,14 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
               <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500 py-12">
                 <Users className="h-12 w-12 stroke-1 opacity-40 text-cyan-400" />
                 <div className="text-center">
-                  <p className="text-sm font-bold text-slate-300">No Custom Banner Players Found</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Click "Add Player Banner" to assign custom GIF & sound to any citizen or VIP.</p>
+                  <p className="text-sm font-bold text-slate-300">
+                    {selfEdit ? "No Banner Yet" : "No Custom Banner Players Found"}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selfEdit
+                      ? 'Click "Create My Banner" to set your join GIF & sound.'
+                      : 'Click "Add Player Banner" to assign custom GIF & sound to any citizen or VIP.'}
+                  </p>
                 </div>
               </div>
             ) : (
@@ -452,10 +468,13 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder="license:xxxxxxxx..."
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-white outline-none focus:border-cyan-500"
+                    disabled={selfEdit}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-white outline-none focus:border-cyan-500 disabled:opacity-60"
                   />
                   <span className="text-[10px] text-slate-500 mt-1 block">
-                    Use full license identifier or select an online player below.
+                    {selfEdit
+                      ? "Locked to your VIP license."
+                      : "Use full license identifier or select an online player below."}
                   </span>
                 </div>
 
@@ -604,34 +623,36 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                   </div>
                 </div>
 
-                {/* Quick Select from Online Players */}
-                <div>
-                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Quick Pick Online Players ({online.length})
-                  </p>
-                  <div className="no-scrollbar max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 p-1.5">
-                    {online.length === 0 ? (
-                      <p className="text-[11px] text-slate-500 p-2 text-center">No other players online.</p>
-                    ) : (
-                      online.map((player) => (
-                        <button
-                          key={`${player.id}-${player.identifier}`}
-                          type="button"
-                          onClick={() => pickOnline(player)}
-                          className={cn(
-                            "w-full rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors",
-                            identifier === player.identifier
-                              ? "border-cyan-500 bg-cyan-600/20 text-white font-bold"
-                              : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white"
-                          )}
-                        >
-                          <span className="block truncate">{player.name}</span>
-                          <span className="block truncate font-mono text-[9px] opacity-60">{player.identifier}</span>
-                        </button>
-                      ))
-                    )}
+                {/* Quick Select from Online Players (staff only) */}
+                {!selfEdit && (
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Quick Pick Online Players ({online.length})
+                    </p>
+                    <div className="no-scrollbar max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 p-1.5">
+                      {online.length === 0 ? (
+                        <p className="text-[11px] text-slate-500 p-2 text-center">No other players online.</p>
+                      ) : (
+                        online.map((player) => (
+                          <button
+                            key={`${player.id}-${player.identifier}`}
+                            type="button"
+                            onClick={() => pickOnline(player)}
+                            className={cn(
+                              "w-full rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors",
+                              identifier === player.identifier
+                                ? "border-cyan-500 bg-cyan-600/20 text-white font-bold"
+                                : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            )}
+                          >
+                            <span className="block truncate">{player.name}</span>
+                            <span className="block truncate font-mono text-[9px] opacity-60">{player.identifier}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Form Action Buttons */}

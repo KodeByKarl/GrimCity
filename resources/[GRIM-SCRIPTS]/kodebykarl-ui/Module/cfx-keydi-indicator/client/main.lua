@@ -124,6 +124,96 @@ CreateThread(function()
     end
 end)
 
+------------------------------------------------------------------
+-- Bone zone helpers (shared DeathScreenBones map + zone colors)
+------------------------------------------------------------------
+local ZONE_PROJECT = {
+    head = 31086,  -- SKEL_Head
+    neck = 39317,  -- SKEL_Neck_1
+    torso = 24818, -- SKEL_Spine3
+    arms = 45509,  -- SKEL_L_UpperArm
+    legs = 58271,  -- SKEL_L_Thigh
+}
+
+local function ResolveZone(bonehash)
+    if DeathScreenBones and DeathScreenBones.ZoneFromBone then
+        return DeathScreenBones.ZoneFromBone(bonehash)
+    end
+    return "torso"
+end
+
+local function ZoneColor(zone)
+    local colors = ConfigIndicator.ZoneColors or {}
+    return colors[zone] or colors.torso or "#f59e0b"
+end
+
+local function ZoneLabel(zone)
+    local labels = ConfigIndicator.ZoneLabels or {}
+    return labels[zone] or "B"
+end
+
+local function ReadDamageBone(ped)
+    local found, bone = GetPedLastDamageBone(ped)
+    local bonehash = (found and tonumber(bone)) or -1
+    local zone = ResolveZone(bonehash)
+    pcall(function()
+        ClearPedLastDamageBone(ped)
+    end)
+    if ConfigIndicator.Debug then
+        local id = DeathScreenBones and DeathScreenBones.NormalizeBoneId(bonehash) or bonehash
+        print(("[cfx-keydi-indicator] bone raw=%s id=%s zone=%s"):format(tostring(bonehash), tostring(id), zone))
+    end
+    return bonehash, zone
+end
+
+local function projectHitToScreen(ped, bonehash, zone)
+    zone = zone or ResolveZone(bonehash)
+    local boneId = ZONE_PROJECT[zone] or 24818
+    if DeathScreenBones and DeathScreenBones.ProjectBoneForZone then
+        boneId = DeathScreenBones.ProjectBoneForZone(zone)
+    end
+
+    local coords = GetPedBoneCoords(ped, boneId, 0.0, 0.0, 0.0)
+    if not coords or (coords.x == 0.0 and coords.y == 0.0 and coords.z == 0.0) then
+        coords = GetEntityCoords(ped)
+        if zone == "head" then
+            coords = vector3(coords.x, coords.y, coords.z + 0.75)
+        elseif zone == "neck" then
+            coords = vector3(coords.x, coords.y, coords.z + 0.62)
+        elseif zone == "legs" then
+            coords = vector3(coords.x, coords.y, coords.z + 0.25)
+        else
+            coords = vector3(coords.x, coords.y, coords.z + 0.45)
+        end
+    elseif zone == "head" then
+        coords = vector3(coords.x, coords.y, coords.z - 0.02)
+    end
+
+    local onScreen, screenX, screenY = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
+    if not screenX or not screenY then
+        screenX, screenY = 0.5, 0.4
+    end
+    screenX = math.max(0.04, math.min(0.96, screenX))
+    screenY = math.max(0.04, math.min(0.96, screenY))
+    return true, screenX, screenY, zone
+end
+
+local function PushDamageNui(dmgType, amount, screenX, screenY, zone)
+    SendNUIMessage({
+        action = "indicator:triggerDamage",
+        data = {
+            id = GetGameTimer() .. math.random(100, 999),
+            type = dmgType,
+            amount = amount,
+            x = screenX,
+            y = screenY,
+            zone = zone,
+            zoneLabel = ZoneLabel(zone),
+            zoneColor = ZoneColor(zone),
+        }
+    })
+end
+
 -- Damage event listener
 AddEventHandler('gameEventTriggered', function(eventName, data)
     if eventName == 'CEventNetworkEntityDamage' then
@@ -176,8 +266,7 @@ AddEventHandler('gameEventTriggered', function(eventName, data)
 
                     -- Trigger server event to relay the hit info to the attacker
                     if hit.health > 0 or hit.armor > 0 or fatallyInjured then
-                        local foundLastDamagedBone, lastDamagedBone = GetPedLastDamageBone(playerPed)
-                        local bonehash = foundLastDamagedBone and tonumber(lastDamagedBone) or -1
+                        local bonehash = select(1, ReadDamageBone(playerPed))
                         TriggerServerEvent('cfx-keydi-indicator:server:registerHit', attackerServerId, hit, fatallyInjured, bonehash)
                     end
                 end
@@ -210,52 +299,18 @@ AddEventHandler('gameEventTriggered', function(eventName, data)
                     time = GetGameTimer()
                 }
 
-                -- Project entity head/body coordinates to screen coordinates
-                local targetCoords = GetPedBoneCoords(victim, 31086, 0.0, 0.0, 0.0) -- Head bone
-                if targetCoords.x == 0.0 then
-                    targetCoords = GetEntityCoords(victim)
-                end
+                local bonehash, zone = ReadDamageBone(victim)
+                local onScreen, screenX, screenY = projectHitToScreen(victim, bonehash, zone)
 
-                local onScreen, screenX, screenY = GetScreenCoordFromWorldCoord(targetCoords.x, targetCoords.y, targetCoords.z + 0.3)
-                
                 if onScreen then
-                    -- Trigger damage indicators
                     if isDead then
-                        SendNUIMessage({
-                            action = "indicator:triggerDamage",
-                            data = {
-                                id = GetGameTimer() .. math.random(100, 999),
-                                type = "dead",
-                                amount = currentSettings.deadText or "Dead",
-                                x = screenX,
-                                y = screenY
-                            }
-                        })
+                        PushDamageNui("dead", currentSettings.deadText or "Dead", screenX, screenY, zone)
                     else
                         if armorDiff > 0 then
-                            SendNUIMessage({
-                                action = "indicator:triggerDamage",
-                                data = {
-                                    id = GetGameTimer() .. math.random(100, 999),
-                                    type = "armor",
-                                    amount = armorDiff,
-                                    x = screenX,
-                                    y = screenY
-                                }
-                            })
+                            PushDamageNui("armor", armorDiff, screenX, screenY, zone)
                         end
-
                         if healthDiff > 0 then
-                            SendNUIMessage({
-                                action = "indicator:triggerDamage",
-                                data = {
-                                    id = GetGameTimer() .. math.random(100, 999),
-                                    type = "health",
-                                    amount = healthDiff,
-                                    x = screenX,
-                                    y = screenY
-                                }
-                            })
+                            PushDamageNui("health", healthDiff, screenX, screenY, zone)
                         end
                     end
                 end
@@ -264,183 +319,23 @@ AddEventHandler('gameEventTriggered', function(eventName, data)
     end
 end)
 
--- Receive synced damage indicators from server (for player victims)
--- Receive synced damage indicators from server (for player victims)
-local HEAD_BONES = {
-    [31085] = true,
-    [31086] = true, -- SKEL_Head (ID)
-    [12844] = true, -- IK_Head
-    [65068] = true, -- FACIAL_facialRoot
-    [24532] = true, -- MH_Hair_Scale
-    [37193] = true,
-    [19336] = true,
-    [58331] = true,
-    [45750] = true,
-    [25260] = true,
-    [21550] = true,
-    [29868] = true,
-    [43536] = true,
-    [27474] = true,
-    [47419] = true,
-    [20178] = true,
-    [17188] = true,
-    [20623] = true,
-    [49979] = true,
-    [20279] = true,
-    [17719] = true,
-    [61839] = true,
-    [1356] = true,
-    [11174] = true,
-    [46240] = true,
-    [47495] = true,
-    [64654] = true,
-    [39317] = true, -- SKEL_Neck_1 ID
-    [35731] = true,
-    -- Bone INDEX from GetPedBoneIndex — GetPedLastDamageBone often returns these
-    -- https://docs.fivem.net/natives/?_0x3F428D08BE5AAE31
-    [97] = true,  -- neck
-    [98] = true,  -- SKEL_Head
-    [99] = true,  -- IK_Head
-    [102] = true,
-    [103] = true,
-    [104] = true,
-    [105] = true,
-    [106] = true,
-    [107] = true,
-    [108] = true,
-    [109] = true,
-    [110] = true,
-    [111] = true,
-    [112] = true,
-    [113] = true,
-    [114] = true,
-    [115] = true,
-    [116] = true,
-    [117] = true,
-    [118] = true,
-    [119] = true,
-    [120] = true,
-    [121] = true,
-    [122] = true,
-    [123] = true,
-    [124] = true, -- neck alt
-    [125] = true,
-}
-
--- GetPedBoneCoords takes a bone ID, not a bone index
-local BONE_INDEX_TO_ID = {
-    [97] = 39317,
-    [98] = 31086,
-    [99] = 12844,
-    [102] = 65068,
-    [103] = 58331,
-    [104] = 45750,
-    [105] = 25260,
-    [106] = 21550,
-    [107] = 29868,
-    [108] = 43536,
-    [109] = 27474,
-    [110] = 19336,
-    [111] = 1356,
-    [112] = 11174,
-    [113] = 37193,
-    [114] = 20178,
-    [115] = 61839,
-    [116] = 20279,
-    [117] = 17719,
-    [118] = 46240,
-    [119] = 17188,
-    [120] = 20623,
-    [121] = 47419,
-    [122] = 49979,
-    [123] = 47495,
-    [124] = 35731,
-    [125] = 64654,
-}
-
-local function toBoneId(bonehash)
-    bonehash = tonumber(bonehash) or -1
-    return BONE_INDEX_TO_ID[bonehash] or bonehash
-end
-
-local function resolveIndicatorBone(ped, bonehash)
-    bonehash = toBoneId(bonehash)
-    -- Prefer reported bone; head-family bones always use SKEL_Head for stable screen projection
-    if bonehash > 0 and HEAD_BONES[bonehash] then
-        return 31086
-    end
-    if bonehash > 0 then
-        return bonehash
-    end
-    return 31086
-end
-
-local function projectHitToScreen(ped, bonehash)
-    local bone = resolveIndicatorBone(ped, bonehash)
-    local coords = GetPedBoneCoords(ped, bone, 0.0, 0.0, 0.0)
-    if not coords or (coords.x == 0.0 and coords.y == 0.0 and coords.z == 0.0) then
-        coords = GetEntityCoords(ped)
-        -- Nudge up toward upper body so unknown bones still show
-        coords = vector3(coords.x, coords.y, coords.z + 0.65)
-    elseif HEAD_BONES[bone] or bone == 31086 then
-        -- Slightly lower so head markers stay on-screen when ADS / close
-        coords = vector3(coords.x, coords.y, coords.z - 0.05)
-    end
-
-    local onScreen, screenX, screenY = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
-    if not screenX or not screenY then
-        screenX, screenY = 0.5, 0.4
-    end
-    -- Clamp so off-screen headshots still indicate
-    screenX = math.max(0.04, math.min(0.96, screenX))
-    screenY = math.max(0.04, math.min(0.96, screenY))
-    return true, screenX, screenY
-end
-
 RegisterNetEvent('cfx-keydi-indicator:client:onHit', function(victimServerId, hit, victimDied, bonehash)
     local victimPlayer = GetPlayerFromServerId(victimServerId)
     if NetworkIsPlayerActive(victimPlayer) then
         local victimPed = GetPlayerPed(victimPlayer)
         if victimPed and victimPed ~= 0 then
-            local onScreen, screenX, screenY = projectHitToScreen(victimPed, bonehash)
-            
+            local zone = ResolveZone(bonehash)
+            local onScreen, screenX, screenY = projectHitToScreen(victimPed, bonehash, zone)
+
             if onScreen then
                 if victimDied then
-                    SendNUIMessage({
-                        action = "indicator:triggerDamage",
-                        data = {
-                            id = GetGameTimer() .. math.random(100, 999),
-                            type = "dead",
-                            amount = currentSettings.deadText or "Dead",
-                            x = screenX,
-                            y = screenY
-                        }
-                    })
+                    PushDamageNui("dead", currentSettings.deadText or "Dead", screenX, screenY, zone)
                 else
                     if hit.armor and hit.armor > 0 then
-                        SendNUIMessage({
-                            action = "indicator:triggerDamage",
-                            data = {
-                                id = GetGameTimer() .. math.random(100, 999),
-                                type = "armor",
-                                amount = hit.armor,
-                                x = screenX,
-                                y = screenY
-                            }
-                        })
+                        PushDamageNui("armor", hit.armor, screenX, screenY, zone)
                     end
-
                     if hit.health and hit.health > 0 then
-                        SendNUIMessage({
-                            action = "indicator:triggerDamage",
-                            data = {
-                                id = GetGameTimer() .. math.random(100, 999),
-                                type = "health",
-                                amount = hit.health,
-                                x = screenX,
-                                y = screenY
-                            }
-                        })
+                        PushDamageNui("health", hit.health, screenX, screenY, zone)
                     end
                 end
             end

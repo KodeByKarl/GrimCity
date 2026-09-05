@@ -358,9 +358,29 @@ export default function IndicatorConfig({ settings: initialSettings, onClose }: 
                 <span className="text-[10px] font-black uppercase tracking-wider">DAMAGE COLOR SCHEME</span>
               </div>
 
+              <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
+                <p className="mb-2 text-[9px] font-black uppercase tracking-wider text-[#a08890]">
+                  Bone Zone Colors (live hitmarkers)
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                  <span className="flex items-center gap-1.5 text-[#3b82f6]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#3b82f6]" /> Head · Blue
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[#ef4444]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" /> Neck · Red
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[#f59e0b]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]" /> Body · Amber
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[#22c55e]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" /> Legs · Green
+                  </span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider text-[#ff4d4d] block mb-1">HEALTH DAMAGE</label>
+                  <label className="text-[9px] font-black uppercase tracking-wider text-[#ff4d4d] block mb-1">HEALTH FALLBACK</label>
                   <div className="flex gap-2">
                     <div 
                       className="h-8.5 w-8.5 rounded-xl border border-[#ff3a3a]/40 shrink-0 cursor-pointer hover:border-[#ff3a3a] transition-colors relative overflow-hidden"

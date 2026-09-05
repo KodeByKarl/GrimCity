@@ -313,10 +313,39 @@ if Config.EnablePedMenu then
                 optional = true
             },
         },
-        restricted = Config.PedMenuGroup
+        -- Staff ACE still preferred; VIP 2+ also allowed via kodebykarl-ui export (checked below).
     }, function(source, args)
+        local isStaff = IsPlayerAceAllowed(source, Config.PedMenuGroup or "group.admin")
+        local isVip = false
+        if GetResourceState("kodebykarl-ui") == "started" then
+            local ok, allowed = pcall(function()
+                return exports["kodebykarl-ui"]:CanUsePedMenu(source)
+            end)
+            isVip = ok and allowed == true
+        end
+
+        if not isStaff and not isVip then
+            lib.notify(source, {
+                title = _L("commands.pedmenu.failure.title"),
+                description = "VIP 2+ or staff required for Ped Menu.",
+                type = "error",
+                position = Config.NotifyOptions.position
+            })
+            return
+        end
+
         local target = source
+        -- Only staff may open ped menu on another player
         if args.playerID then
+            if not isStaff then
+                lib.notify(source, {
+                    title = _L("commands.pedmenu.failure.title"),
+                    description = "Only staff can open ped menu on other players.",
+                    type = "error",
+                    position = Config.NotifyOptions.position
+                })
+                return
+            end
             local citizenID = Framework.GetPlayerID(args.playerID)
             if citizenID then
                 target = args.playerID

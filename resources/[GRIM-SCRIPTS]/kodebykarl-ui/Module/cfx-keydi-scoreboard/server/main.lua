@@ -419,6 +419,10 @@ exports('RemoveActiveRobbery', RemoveActiveRobbery)
 exports('SetWorldEvent', SetWorldEvent)
 exports('SetPriorityStatus', SetPriorityStatus)
 exports('GetPriorityStatus', GetPriorityStatus)
+exports('GetPlayerKDA', function(identifier)
+    if not identifier then return { kills = 0, deaths = 0, kd = "0.00" } end
+    return playerKDA[identifier] or { kills = 0, deaths = 0, kd = "0.00" }
+end)
 
 -- Server Callback to aggregate scoreboard details
 ESX.RegisterServerCallback('cfx-keydi-scoreboard:getServerData', function(source, cb)

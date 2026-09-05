@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Skull, HeartCrack, Ghost, AlertTriangle, X, Ban, 
-  Smile 
+import {
+  Skull, HeartCrack, Ghost, AlertTriangle, X, Ban,
+  Smile
 } from "lucide-react";
 
 interface IndicatorSettings {
@@ -20,6 +20,9 @@ interface DamageItem {
   amount: string | number;
   x: number;
   y: number;
+  zone?: string;
+  zoneLabel?: string;
+  zoneColor?: string;
   settings: IndicatorSettings;
 }
 
@@ -42,7 +45,13 @@ const getDeadIconElement = (iconName: string) => {
   }
 };
 
-
+function resolveHitColor(item: DamageItem) {
+  // Zone colors always win so you can see where the bone registered
+  if (item.zoneColor) return item.zoneColor;
+  if (item.type === "health") return item.settings.healthColor;
+  if (item.type === "armor") return item.settings.armorColor;
+  return "#ffffff";
+}
 
 export default function DamageOverlay({ currentSettings }: DamageOverlayProps) {
   const [indicators, setIndicators] = useState<DamageItem[]>([]);
@@ -58,13 +67,14 @@ export default function DamageOverlay({ currentSettings }: DamageOverlayProps) {
           amount: data.data.amount,
           x: data.data.x,
           y: data.data.y,
-          settings: { ...currentSettings } // Snapshot current settings at the time of damage
+          zone: data.data.zone,
+          zoneLabel: data.data.zoneLabel,
+          zoneColor: data.data.zoneColor,
+          settings: { ...currentSettings }
         };
 
-        // Append to state list
         setIndicators((prev) => [...prev, item]);
 
-        // Auto-remove after the configured duration finishes
         const dur = (item.settings.duration || 3.0) * 1000;
         setTimeout(() => {
           setIndicators((prev) => prev.filter((i) => i.id !== item.id));
@@ -78,16 +88,13 @@ export default function DamageOverlay({ currentSettings }: DamageOverlayProps) {
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none z-50 w-full h-full overflow-hidden">
-
       {indicators.map((item) => {
-        const color = item.type === "health" 
-          ? item.settings.healthColor 
-          : (item.type === "armor" ? item.settings.armorColor : "#ffffff");
-        
+        const color = resolveHitColor(item);
+
         return (
           <div
             key={item.id}
-            className="absolute animate-damage-float font-extrabold flex items-center justify-center gap-1.5"
+            className="absolute animate-damage-float font-extrabold flex items-center justify-center gap-1"
             style={{
               left: `${item.x * 100}%`,
               top: `${item.y * 100}%`,
@@ -95,21 +102,30 @@ export default function DamageOverlay({ currentSettings }: DamageOverlayProps) {
               fontSize: `${item.settings.fontSize}px`,
               color: color,
               textShadow: "0 2px 5px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95)",
-              // Inject the custom duration variable to be read by the CSS keyframe animation
               ["--duration" as any]: `${item.settings.duration}s`
             }}
           >
             {item.type === "dead" && (
               <span className="flex items-center gap-1.5">
                 {getDeadIconElement(item.settings.deadIcon)}
+                {item.zoneLabel && (
+                  <span className="text-[0.7em] font-black opacity-90">{item.zoneLabel}</span>
+                )}
                 <span className="uppercase">{item.amount}</span>
               </span>
             )}
 
             {item.type !== "dead" && (
               <>
-                {item.type === "health" ? "-" : ""}
-                {item.amount}
+                {item.zoneLabel && (
+                  <span className="text-[0.72em] font-black tracking-wide opacity-95">
+                    {item.zoneLabel}
+                  </span>
+                )}
+                <span>
+                  {item.type === "health" ? "-" : ""}
+                  {item.amount}
+                </span>
               </>
             )}
           </div>

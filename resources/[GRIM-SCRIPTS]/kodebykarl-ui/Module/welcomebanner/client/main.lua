@@ -231,7 +231,7 @@ local function OpenPanel()
         if not data then
             lib.notify({
                 title = "Welcome Banner",
-                description = "Owner and Developer only.",
+                description = "No access. Need staff or active VIP.",
                 type = "error",
                 position = "top-center",
             })

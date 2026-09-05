@@ -31,6 +31,7 @@ files {
     'Module/welcomebanner/data/*.json',
     'Module/cfx-keydi-invoice/sql/*.sql',
     'Module/cfx-keydi-playtimeshop/sql/*.sql',
+    'Module/cfx-keydi-vip/sql/*.sql',
     'Module/cfx-keydi-market/phone/**/*',
 }
 
@@ -44,6 +45,8 @@ shared_scripts {
     'Module/cfx-keydi-radiolist/shared/config.lua',
     'Module/cfx-keydi-scoreboard/shared/config.lua',
     'Module/cfx-keydi-indicator/shared/config.lua',
+    'Module/cfx-keydi-deathscreen/shared/config.lua',
+    'Module/cfx-keydi-deathscreen/shared/bones.lua',
     'Module/cfx-keydi-chat/shared/config.lua',
     'Module/cfx-keydi-modules/shared/config.lua',
     'Module/cfx-keydi-serverlocations/shared/config.lua',
@@ -65,6 +68,7 @@ shared_scripts {
     'Module/cfx-keydi-invoice/shared/config.lua',
     'Module/cfx-keydi-ipad/shared/config.lua',
     'Module/cfx-keydi-playtimeshop/shared/config.lua',
+    'Module/cfx-keydi-vip/shared/config.lua',
 }
 
 client_scripts {
@@ -101,6 +105,8 @@ client_scripts {
     'Module/cfx-keydi-invoice/client/main.lua',
     'Module/cfx-keydi-ipad/client/main.lua',
     'Module/cfx-keydi-playtimeshop/client/main.lua',
+    'Module/cfx-keydi-vip/client/main.lua',
+    'Module/cfx-keydi-deathscreen/client/main.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 
@@ -143,6 +149,8 @@ server_scripts {
     'Module/cfx-keydi-invoice/server/main.lua',
     'Module/cfx-keydi-ipad/server/economy.lua',
     'Module/cfx-keydi-playtimeshop/server/main.lua',
+    'Module/cfx-keydi-vip/server/main.lua',
+    'Module/cfx-keydi-deathscreen/server/main.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 

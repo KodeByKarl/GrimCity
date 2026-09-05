@@ -9,6 +9,13 @@ import ReportSystem, { OpenReport, ReportCategory } from "./cfx-keydi-report/Rep
 import BankingSystem from "./cfx-keydi-banking/BankingSystem";
 import ImpoundNotification from "./cfx-keydi-impound/ImpoundNotification";
 import AutofarmHud from "./cfx-keydi-autofarm/AutofarmHud";
+import PatchNotes from "./cfx-keydi-patchnotes/PatchNotes";
+import MultiJob from "./cfx-keydi-multijob/MultiJob";
+import Regions from "./cfx-keydi-regions/Regions";
+import RockstarRecording from "./cfx-keydi-rockstar/RockstarRecording";
+import VipStatus from "./cfx-keydi-vip/VipStatus";
+import DeathScreen from "./cfx-keydi-deathscreen/DeathScreen";
+import { PREVIEW_DEATH, type DeathScreenData } from "./cfx-keydi-deathscreen/types";
 import WelcomeBanner from "./welcomebanner/WelcomeBanner";
 import WelcomeBannerPanel, { WelcomeBannerPanelData } from "./welcomebanner/WelcomeBannerPanel";
 import WelcomeBannerVolume, { WelcomeBannerVolumeData } from "./welcomebanner/WelcomeBannerVolume";
@@ -160,6 +167,13 @@ export default function App() {
   const [modulesVisible, setModulesVisible] = useState(false);
   const [modulesUpdates, setModulesUpdates] = useState<any[]>([]);
   const [rockstarRecording, setRockstarRecording] = useState(false);
+  const [patchNotesVisible, setPatchNotesVisible] = useState(false);
+  const [multiJobVisible, setMultiJobVisible] = useState(false);
+  const [regionsVisible, setRegionsVisible] = useState(false);
+  const [rockstarVisible, setRockstarVisible] = useState(false);
+  const [vipVisible, setVipVisible] = useState(false);
+  const [deathScreenVisible, setDeathScreenVisible] = useState(false);
+  const [deathScreenData, setDeathScreenData] = useState<DeathScreenData | null>(null);
   const [fpsVisible, setFpsVisible] = useState(false);
   const [fpsPreset, setFpsPreset] = useState("default");
   const [fpsPresets, setFpsPresets] = useState<Record<string, FpsPreset>>({});
@@ -229,7 +243,7 @@ export default function App() {
       setRadioHudVisible(false);
       setIpadVisible(true);
       // Prod-default: citizen iPad. Preview staff apps with ?preview=police|boss|owner
-      // Playtime shop: ?preview=shop
+      // Playtime shop: ?preview=shop | Autofarm: ?preview=autofarm | Modules: ?preview=modules | Death: ?preview=deathscreen
       const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
       const isOwner = preview === "owner";
       const isBoss = preview === "boss" || isOwner;
@@ -252,6 +266,48 @@ export default function App() {
       }
       if (preview === "autofarm") {
         setIpadVisible(false);
+      }
+      if (preview === "deathscreen") {
+        setIpadVisible(false);
+        setDeathScreenVisible(true);
+        setDeathScreenData(PREVIEW_DEATH);
+      }
+      if (preview === "modules") {
+        setIpadVisible(false);
+        setModulesVisible(true);
+        setModulesUpdates([
+          {
+            version: "2.4.0",
+            date: "2026-09-05",
+            title: "Autofarm + iPad Apps",
+            tag: "UPDATE",
+            notes: [
+              "New Grim City autofarm HUD with bag-full ETA",
+              "iPad Economy / PD Boss / Party preview apps",
+              "Playtime shop Grim Coins rewards",
+            ],
+          },
+        ]);
+        setReportCategories([
+          { id: "bug", label: "Bug Report" },
+          { id: "player", label: "Player Report" },
+          { id: "other", label: "Other" },
+        ]);
+        setBankingData({
+          playerName: "Karl Dev",
+          accountNumber: "GC-882194",
+          bankBalance: 128400,
+          cashBalance: 2450,
+          transactions: [
+            {
+              id: "1",
+              type: "deposit",
+              label: "Salary",
+              amount: 2500,
+              date: "Today",
+            },
+          ],
+        });
       }
       setFreeCarVisible(false);
     }
@@ -328,6 +384,15 @@ export default function App() {
         setModulesVisible(false);
       } else if (data.action === "cfx-keydi-modules:recording") {
         setRockstarRecording(!!data.recording);
+      }
+
+      // Death Screen
+      if (data.action === "deathscreen:show") {
+        if (data.data) setDeathScreenData(data.data as DeathScreenData);
+        setDeathScreenVisible(true);
+      } else if (data.action === "deathscreen:hide") {
+        setDeathScreenVisible(false);
+        setDeathScreenData(null);
       }
 
       // FPS Optimizer UI Handlers
@@ -567,6 +632,43 @@ export default function App() {
     };
   }, [scoreboardData, scoreboardVisible, indicatorConfigVisible, modulesVisible, fpsVisible, reportVisible, bankingVisible, welcomeVisible, comServMenuVisible, lockMenuVisible, invoiceVisible]);
 
+  const isBrowserPreview =
+    typeof window !== "undefined" &&
+    !(window as any).invokeNative &&
+    !navigator.userAgent.includes("FiveM");
+  const isModulesPreview =
+    isBrowserPreview &&
+    new URLSearchParams(window.location.search).get("preview") === "modules";
+
+  const returnToModulesPreview = () => {
+    if (!isModulesPreview) return;
+    setIndicatorConfigVisible(false);
+    setFpsVisible(false);
+    setReportVisible(false);
+    setBankingVisible(false);
+    setPatchNotesVisible(false);
+    setMultiJobVisible(false);
+    setRegionsVisible(false);
+    setRockstarVisible(false);
+    setVipVisible(false);
+    setDeathScreenVisible(false);
+    setModulesVisible(true);
+  };
+
+  const openModulePage = (open: () => void) => {
+    setModulesVisible(false);
+    open();
+  };
+
+  const closeModulePage = (close: () => void) => {
+    close();
+    if (isBrowserPreview) {
+      returnToModulesPreview();
+      return;
+    }
+    setModulesVisible(true);
+  };
+
   return (
     <>
       {scoreboardVisible && <Scoreboard data={scoreboardData} />}
@@ -636,6 +738,11 @@ export default function App() {
         <IndicatorConfig 
           settings={indicatorSettings} 
           onClose={() => {
+            if (isBrowserPreview) {
+              setIndicatorConfigVisible(false);
+              returnToModulesPreview();
+              return;
+            }
             const resourceName = (window as any).GetParentResourceName 
               ? (window as any).GetParentResourceName() 
               : "kodebykarl-ui";
@@ -661,7 +768,6 @@ export default function App() {
 
       {modulesVisible && (
         <ModulesMenu
-          updates={modulesUpdates}
           onClose={() => {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
@@ -682,8 +788,7 @@ export default function App() {
           onOpenDamageIndicator={() => {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
-              setModulesVisible(false);
-              setIndicatorConfigVisible(true);
+              openModulePage(() => setIndicatorConfigVisible(true));
               return;
             }
             const resourceName = (window as any).GetParentResourceName 
@@ -700,8 +805,7 @@ export default function App() {
           onOpenFpsOptimizer={() => {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
-              setModulesVisible(false);
-              setFpsVisible(true);
+              openModulePage(() => setFpsVisible(true));
               return;
             }
             const resourceName = (window as any).GetParentResourceName 
@@ -718,8 +822,7 @@ export default function App() {
           onOpenReport={() => {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
-              setModulesVisible(false);
-              setReportVisible(true);
+              openModulePage(() => setReportVisible(true));
               return;
             }
             const resourceName = (window as any).GetParentResourceName 
@@ -733,40 +836,52 @@ export default function App() {
               body: JSON.stringify({})
             }).catch(() => {});
           }}
-          onOpenBanking={() => {
-            const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
-            if (isBrowser) {
-              setModulesVisible(false);
-              setBankingVisible(true);
-              return;
-            }
-            const resourceName = (window as any).GetParentResourceName 
-              ? (window as any).GetParentResourceName() 
-              : "kodebykarl-ui";
-            fetch(`https://${resourceName}/cfx-keydi-modules:openBanking`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json; charset=UTF-8"
-              },
-              body: JSON.stringify({})
-            }).catch(() => {});
+          onOpenPatchNotes={() => openModulePage(() => setPatchNotesVisible(true))}
+          onOpenMultiJob={() => openModulePage(() => setMultiJobVisible(true))}
+          onOpenRegions={() => openModulePage(() => setRegionsVisible(true))}
+          onOpenRockstar={() => openModulePage(() => setRockstarVisible(true))}
+          onOpenVip={() => openModulePage(() => setVipVisible(true))}
+          onOpenDeathScreen={() => {
+            openModulePage(() => {
+              setDeathScreenData(PREVIEW_DEATH);
+              setDeathScreenVisible(true);
+            });
           }}
-          onOpenRockstarEditor={() => {
-            const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
-            if (isBrowser) {
-              setModulesVisible(false);
-              return;
+        />
+      )}
+
+      {patchNotesVisible && (
+        <PatchNotes
+          initialUpdates={modulesUpdates}
+          onClose={() => closeModulePage(() => setPatchNotesVisible(false))}
+        />
+      )}
+      {multiJobVisible && (
+        <MultiJob onClose={() => closeModulePage(() => setMultiJobVisible(false))} />
+      )}
+      {regionsVisible && (
+        <Regions onClose={() => closeModulePage(() => setRegionsVisible(false))} />
+      )}
+      {rockstarVisible && (
+        <RockstarRecording
+          onRecordingChange={setRockstarRecording}
+          onClose={() => closeModulePage(() => setRockstarVisible(false))}
+        />
+      )}
+      {vipVisible && (
+        <VipStatus onClose={() => closeModulePage(() => setVipVisible(false))} />
+      )}
+
+      {deathScreenVisible && (
+        <DeathScreen
+          data={deathScreenData}
+          onClose={() => {
+            setDeathScreenVisible(false);
+            setDeathScreenData(null);
+            if (isBrowserPreview) {
+              const preview = new URLSearchParams(window.location.search).get("preview");
+              if (preview === "modules") returnToModulesPreview();
             }
-            const resourceName = (window as any).GetParentResourceName 
-              ? (window as any).GetParentResourceName() 
-              : "kodebykarl-ui";
-            fetch(`https://${resourceName}/cfx-keydi-modules:openRockstarEditor`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json; charset=UTF-8"
-              },
-              body: JSON.stringify({})
-            }).catch(() => {});
           }}
         />
       )}
@@ -779,6 +894,7 @@ export default function App() {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
               setFpsVisible(false);
+              returnToModulesPreview();
               return;
             }
             const resourceName = (window as any).GetParentResourceName 
@@ -808,6 +924,7 @@ export default function App() {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
               setReportVisible(false);
+              returnToModulesPreview();
               return;
             }
             const resourceName = (window as any).GetParentResourceName 
@@ -831,6 +948,7 @@ export default function App() {
             const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
             if (isBrowser) {
               setBankingVisible(false);
+              returnToModulesPreview();
               return;
             }
             const resourceName = (window as any).GetParentResourceName 

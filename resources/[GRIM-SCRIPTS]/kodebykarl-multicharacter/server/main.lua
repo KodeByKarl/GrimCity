@@ -77,7 +77,19 @@ local function GetPlayerSlots(identifier)
     EnsureSlotsTable()
 
     local dbSlots = MySQL.scalar.await("SELECT slots FROM multicharacter_slots WHERE identifier = ?", { identifier })
-    return ClampSlots(dbSlots or DEFAULT_SLOTS)
+    local slots = ClampSlots(dbSlots or DEFAULT_SLOTS)
+
+    -- Active Grim VIP can raise the floor (VIP 2 = 2 slots, VIP 3+ = 3)
+    if GetResourceState("kodebykarl-ui") == "started" then
+        local ok, vipSlots = pcall(function()
+            return exports["kodebykarl-ui"]:GetVipSlotsForIdentifier(identifier)
+        end)
+        if ok and vipSlots then
+            slots = math.max(slots, ClampSlots(vipSlots))
+        end
+    end
+
+    return slots
 end
 
 local function SetPlayerSlots(identifier, slots, playerName, staffName)
@@ -103,6 +115,11 @@ local function SetPlayerSlots(identifier, slots, playerName, staffName)
 
     return slots
 end
+
+--- Optional export used by kodebykarl-ui VIP grant/revoke sync
+exports("SetVipSlots", function(identifier, slots, playerName, staffName)
+    return SetPlayerSlots(identifier, slots, playerName, staffName)
+end)
 
 local function IsVipStaff(xPlayer)
     if not xPlayer then return false end

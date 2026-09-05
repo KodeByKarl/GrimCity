@@ -39,6 +39,49 @@ local function IsAllowed(xPlayer)
     return allowed[group] == true
 end
 
+local function IsVipBannerEditor(src)
+    if GetResourceState("kodebykarl-ui") ~= "started" then return false end
+    local ok, allowed = pcall(function()
+        return exports["kodebykarl-ui"]:CanEditWelcomeBanner(src)
+    end)
+    return ok and allowed == true
+end
+
+local function GetVipLicense(src)
+    if GetResourceState("kodebykarl-ui") ~= "started" then return nil end
+    local ok, license = pcall(function()
+        return exports["kodebykarl-ui"]:GetVipLicense(src)
+    end)
+    if ok and type(license) == "string" then
+        return NormalizeLicense(license)
+    end
+    return nil
+end
+
+local function BuildSelfPanelData(xPlayer, src)
+    LoadPlayers()
+    local license = NormalizeLicense(GetVipLicense(src) or (xPlayer and xPlayer.identifier))
+    local own = nil
+    if license then
+        for _, entry in ipairs(bannerPlayers) do
+            if NormalizeLicense(entry.identifier) == license then
+                own = entry
+                break
+            end
+        end
+    end
+
+    return {
+        staffName = GetCharacterName(xPlayer, src),
+        staffGroup = "vip",
+        selfEdit = true,
+        selfIdentifier = license,
+        players = own and { own } or {},
+        online = {},
+        duration = ConfigWelcomeBanner.Duration or 8,
+    }
+end
+
 local function SanitizeEntry(entry)
     if type(entry) ~= "table" then return nil end
 
@@ -248,16 +291,21 @@ end)
 
 ESX.RegisterServerCallback("cfx-keydi-welcomebanner:open", function(source, cb)
     local xPlayer = ESX.GetPlayerFromId(source)
-    if not IsAllowed(xPlayer) then
-        return cb(false)
+    if IsAllowed(xPlayer) then
+        LoadPlayers()
+        return cb(BuildPanelData(xPlayer))
     end
-    LoadPlayers()
-    cb(BuildPanelData(xPlayer))
+    if IsVipBannerEditor(source) then
+        return cb(BuildSelfPanelData(xPlayer, source))
+    end
+    return cb(false)
 end)
 
 ESX.RegisterServerCallback("cfx-keydi-welcomebanner:add", function(source, cb, payload)
     local xPlayer = ESX.GetPlayerFromId(source)
-    if not IsAllowed(xPlayer) then
+    local staff = IsAllowed(xPlayer)
+    local vip = IsVipBannerEditor(source)
+    if not staff and not vip then
         return cb({ ok = false, message = "No permission." })
     end
 
@@ -273,6 +321,19 @@ ESX.RegisterServerCallback("cfx-keydi-welcomebanner:add", function(source, cb, p
     local wanted = NormalizeLicense(clean.identifier)
     if not wanted then
         return cb({ ok = false, message = "Invalid identifier." })
+    end
+
+    -- VIP self-edit: lock to own license only
+    if vip and not staff then
+        local own = NormalizeLicense(GetVipLicense(source))
+        if not own or wanted ~= own then
+            return cb({ ok = false, message = "You can only edit your own welcome banner." })
+        end
+        clean.identifier = own
+        wanted = own
+        if clean.name == "" then
+            clean.name = GetCharacterName(xPlayer, source)
+        end
     end
 
     if clean.name == "" then
@@ -291,18 +352,40 @@ ESX.RegisterServerCallback("cfx-keydi-welcomebanner:add", function(source, cb, p
         if NormalizeLicense(existing.identifier) == wanted then
             bannerPlayers[index] = clean
             SavePlayers()
+            if vip and not staff then
+                return cb({
+                    ok = true,
+                    updated = true,
+                    players = { clean },
+                    online = {},
+                    selfEdit = true,
+                    selfIdentifier = wanted,
+                })
+            end
             return cb({ ok = true, updated = true, players = bannerPlayers, online = GetOnlinePlayers() })
         end
     end
 
     bannerPlayers[#bannerPlayers + 1] = clean
     SavePlayers()
+    if vip and not staff then
+        return cb({
+            ok = true,
+            updated = false,
+            players = { clean },
+            online = {},
+            selfEdit = true,
+            selfIdentifier = wanted,
+        })
+    end
     cb({ ok = true, updated = false, players = bannerPlayers, online = GetOnlinePlayers() })
 end)
 
 ESX.RegisterServerCallback("cfx-keydi-welcomebanner:remove", function(source, cb, payload)
     local xPlayer = ESX.GetPlayerFromId(source)
-    if not IsAllowed(xPlayer) then
+    local staff = IsAllowed(xPlayer)
+    local vip = IsVipBannerEditor(source)
+    if not staff and not vip then
         return cb({ ok = false, message = "No permission." })
     end
 
@@ -310,6 +393,13 @@ ESX.RegisterServerCallback("cfx-keydi-welcomebanner:remove", function(source, cb
     local wanted = NormalizeLicense(payload.identifier)
     if not wanted then
         return cb({ ok = false, message = "Invalid identifier." })
+    end
+
+    if vip and not staff then
+        local own = NormalizeLicense(GetVipLicense(source))
+        if not own or wanted ~= own then
+            return cb({ ok = false, message = "You can only remove your own welcome banner." })
+        end
     end
 
     local removed = false
@@ -325,5 +415,8 @@ ESX.RegisterServerCallback("cfx-keydi-welcomebanner:remove", function(source, cb
     end
 
     SavePlayers()
+    if vip and not staff then
+        return cb({ ok = true, players = {}, online = {}, selfEdit = true, selfIdentifier = wanted })
+    end
     cb({ ok = true, players = bannerPlayers, online = GetOnlinePlayers() })
 end)
