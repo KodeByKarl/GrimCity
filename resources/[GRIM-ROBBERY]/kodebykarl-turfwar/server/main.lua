@@ -71,6 +71,18 @@ end
 
 -- Helper: Get Player Gang Data
 local function getPlayerGang(xPlayer)
+    if not xPlayer then return 'none', 'Unemployed' end
+
+    -- Prefer kodebykarl-gangsystem
+    if GetResourceState('kodebykarl-gangsystem') == 'started' then
+        local ok, gang = pcall(function()
+            return exports['kodebykarl-gangsystem']:GetPlayerGang(xPlayer.source)
+        end)
+        if ok and type(gang) == 'table' and gang.name then
+            return gang.name, gang.label or gang.name
+        end
+    end
+
     local gang = nil
     if xPlayer.getGang then
         gang = xPlayer.getGang()

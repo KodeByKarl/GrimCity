@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS `kbk_gang_members` (
+    `identifier` VARCHAR(60) NOT NULL,
+    `gang_id` VARCHAR(32) NOT NULL,
+    `grade` INT NOT NULL DEFAULT 0,
+    `claimed_car` TINYINT(1) NOT NULL DEFAULT 0,
+    `claimed_plate` VARCHAR(12) DEFAULT NULL,
+    `hired_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`identifier`),
+    KEY `gang_id` (`gang_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
