@@ -203,12 +203,12 @@ export default function ModulesMenu({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col justify-between">
-            <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-1.5 pr-2 custom-scrollbar">
+            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto p-1.5 pr-2 custom-scrollbar">
               {moduleItems.map((item) => (
                 <div
                   key={item.id}
                   onClick={item.action}
-                  className="group flex cursor-pointer items-center justify-between rounded-xl border border-[#ff3a3a]/30 bg-[#181216] p-4 transition-all hover:border-[#ff3a3a] hover:bg-[#ff3a3a]/25"
+                  className="group flex cursor-pointer items-center justify-between rounded-xl border border-[#ff3a3a]/30 bg-[#181216] p-3.5 transition-all hover:border-[#ff3a3a] hover:bg-[#ff3a3a]/25"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3.5">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#ff3a3a] bg-[#ff3a3a]/20 text-white">

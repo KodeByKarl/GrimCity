@@ -268,22 +268,19 @@ input[type="number"] {
   background: #ff4d4d;
 }
 
-/* Chat text wrapping & overflow prevention */
-.pandora,
-.pandora * {
+/* Chat text wrapping & overflow prevention (scoped strictly to Chat to prevent stretching other modules) */
+.grim-chat-console,
+.grim-chat-overlay,
+.grim-chat-msg,
+.grim-chat-msg * {
   box-sizing: border-box;
-}
-
-.pandora pre,
-.pandora div,
-.pandora p,
-.pandora span,
-.pandora code,
-.pandora b {
   max-width: 100%;
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;
+}
+
+.grim-chat-msg {
   flex-shrink: 0 !important;
   min-height: min-content !important;
 }

@@ -110,7 +110,7 @@ function formatMessage(msg: Message, templates: Record<string, string>): string 
 const MessageRow = memo(function MessageRow({ html }: { html: string }) {
   return (
     <div
-      className="shrink-0 min-h-min text-[14px] leading-normal break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-hidden"
+      className="grim-chat-msg shrink-0 min-h-min text-[14px] leading-normal break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-hidden"
       style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "pre-wrap", flexShrink: 0, minHeight: "min-content" }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -195,10 +195,6 @@ export default function Chat() {
 
   // Pin to newest message as soon as DOM updates (fixes "stuck on old chats")
   useLayoutEffect(() => {
-    scrollMessagesToBottom();
-  }, [messages, showWindow, isOpen, scrollMessagesToBottom]);
-
-  useEffect(() => {
     scrollMessagesToBottom();
   }, [messages, showWindow, isOpen, scrollMessagesToBottom]);
 
@@ -461,7 +457,7 @@ export default function Chat() {
     <>
       {/* Full Chat Console (when typing) */}
       <div
-        className={`pandora fixed top-[4%] left-[24px] w-[430px] z-40 rounded-2xl border-2 border-[#ff3a3a] shadow-2xl p-4 flex flex-col font-sans backdrop-blur-xl transition-all duration-300 ${isOpen
+        className={`pandora grim-chat-console fixed top-[4%] left-[24px] w-[430px] z-40 rounded-2xl border-2 border-[#ff3a3a] shadow-2xl p-4 flex flex-col font-sans backdrop-blur-xl transition-all duration-300 ${isOpen
             ? "opacity-100 translate-x-0 pointer-events-auto scale-100"
             : "opacity-0 -translate-x-6 pointer-events-none scale-95"
           }`}
@@ -587,7 +583,7 @@ export default function Chat() {
       {/* Overlay: only mount when closed + visible so new chats aren't stuck off-screen */}
       {!isOpen && showWindow && (
         <div
-          className="fixed top-[5%] left-[25px] w-[400px] max-w-[calc(100vw-50px)] z-30 font-sans opacity-100 overflow-x-hidden"
+          className="grim-chat-overlay fixed top-[5%] left-[25px] w-[400px] max-w-[calc(100vw-50px)] z-30 font-sans opacity-100 overflow-x-hidden"
           style={{ transition: "opacity 200ms ease" }}
         >
           <div ref={overlayListRef} className="max-h-[380px] overflow-y-auto overflow-x-hidden pr-1 flex flex-col gap-2.5 no-scrollbar w-full max-w-full">
