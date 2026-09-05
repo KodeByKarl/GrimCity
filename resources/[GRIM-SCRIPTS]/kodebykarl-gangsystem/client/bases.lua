@@ -98,7 +98,7 @@ CreateThread(function()
             TriggerServerEvent('kodebykarl-gangsystem:server:openStash', g.id, 'public')
         end)
 
-        AddBoxTarget(('kbk_personal_%s'):format(g.id), p.personalStash, 'Personal Stash', 'fa-solid fa-locker', function()
+        AddBoxTarget(('kbk_personal_%s'):format(g.id), p.personalStash, 'Personal Stash', 'fa-solid fa-box-archive', function()
             if not IsInGang(g.id) then return Notify('Not your gang.', 'error') end
             TriggerServerEvent('kodebykarl-gangsystem:server:openStash', g.id, 'personal')
         end)
