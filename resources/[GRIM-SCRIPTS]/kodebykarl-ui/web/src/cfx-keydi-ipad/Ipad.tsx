@@ -6,23 +6,11 @@ import {
   Wifi,
   Flashlight,
   Camera,
-  Settings,
-  Map,
-  Image,
-  NotebookPen,
-  Music2,
   MessageCircle,
-  Compass,
-  Clock3,
-  CloudSun,
   Wallet,
   Users,
-  Phone,
-  CalendarDays,
-  Mail,
   AppWindow,
   Trophy,
-  Radio,
   CircleDollarSign,
   Shield,
   ClipboardList,
@@ -30,7 +18,6 @@ import {
   Zap,
 } from "lucide-react";
 
-const SettingsApp = lazy(() => import("./SettingsApp"));
 const LeaderboardApp = lazy(() => import("./LeaderboardApp"));
 const EconomyApp = lazy(() => import("./EconomyApp"));
 const PoliceBossApp = lazy(() => import("./PoliceBossApp"));
@@ -68,22 +55,7 @@ type AppDef = {
 };
 
 const APPS: AppDef[] = [
-  { id: "messages", label: "Messages", icon: MessageCircle, color: "#34c759" },
-  { id: "safari", label: "Safari", icon: Compass, color: "#007aff" },
-  { id: "music", label: "Music", icon: Music2, color: "#ff2d55" },
-  { id: "mail", label: "Mail", icon: Mail, color: "#5ac8fa" },
-  { id: "maps", label: "Maps", icon: Map, color: "#3a3a3c" },
-  { id: "photos", label: "Photos", icon: Image, color: "#ff9f0a" },
-  { id: "notes", label: "Notes", icon: NotebookPen, color: "#ffd60a" },
-  { id: "events", label: "Events", icon: CalendarDays, color: "#ff6b00" },
-  { id: "clock", label: "Clock", icon: Clock3, color: "#1c1c1e" },
-  { id: "weather", label: "Weather", icon: CloudSun, color: "#5ac8fa" },
   { id: "wallet", label: "Wallet", icon: Wallet, color: "#1c1c1e" },
-  { id: "contacts", label: "Contacts", icon: Users, color: "#ff9f0a" },
-  { id: "phone", label: "Phone", icon: Phone, color: "#34c759" },
-  { id: "camera", label: "Camera", icon: Camera, color: "#636366" },
-  { id: "settings", label: "Settings", icon: Settings, color: "#3a3a3c" },
-  { id: "radio", label: "Radio", icon: Radio, color: "#ff2d55" },
   { id: "grim", label: "Grim City", icon: AppWindow, color: "#8b0000" },
   { id: "leaderboard", label: "Leaderboards", icon: Trophy, color: "#e10600" },
   { id: "economy", label: "Economy", icon: CircleDollarSign, color: "#2e7d32" },
@@ -93,11 +65,11 @@ const APPS: AppDef[] = [
   { id: "pvp", label: "PvP", icon: Zap, color: "#f97316" },
 ];
 
-const HOME_APPS = ["party", "pvp", "leaderboard", "settings", "maps", "events", "radio"] as const;
+const HOME_APPS = ["party", "pvp", "leaderboard"] as const;
 const HOME_APPS_OWNER = ["economy"] as const;
 const HOME_APPS_POLICE_BOSS = ["policeboss"] as const;
 const HOME_APPS_POLICE_MDT = ["policemdt"] as const;
-const DOCK = ["phone", "safari", "messages", "settings"] as const;
+const DOCK = ["party", "pvp", "leaderboard", "grim"] as const;
 
 async function fetchNui(event: string, data: Record<string, unknown> = {}) {
   const isBrowser = !(window as unknown as { invokeNative?: unknown }).invokeNative
@@ -403,21 +375,17 @@ function HomeScreen({
             </div>
           </button>
 
-          <button
-            type="button"
-            className="col-span-4 flex h-[112px] flex-col justify-between rounded-[22px] bg-white/88 px-4 py-3.5 text-left text-[#1c1c1e] shadow-[0_10px_28px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-transform active:scale-[0.99]"
-            onClick={() => onOpenApp("settings")}
-          >
+          <div className="col-span-4 flex h-[112px] flex-col justify-between rounded-[22px] bg-black/45 px-4 py-3.5 text-left text-white shadow-[0_10px_28px_rgba(0,0,0,0.14)] backdrop-blur-xl">
             <div className="flex items-center justify-between">
-              <p className="text-[12px] font-semibold text-[#8e8e93]">Profile</p>
-              <Users className="h-4 w-4 text-[#8e8e93]" />
+              <p className="text-[12px] font-semibold text-white/70">Profile</p>
+              <Users className="h-4 w-4 text-white/80" />
             </div>
             <div>
               <p className="text-[17px] font-semibold tracking-tight leading-tight">{name}</p>
-              <p className="mt-1 text-[12px] text-[#8e8e93]">Job · {player?.job || "Unemployed"}</p>
-              <p className="text-[12px] text-[#8e8e93]">Gang · {player?.gang || "None"}</p>
+              <p className="mt-1 text-[12px] text-white/65">Job · {player?.job || "Unemployed"}</p>
+              <p className="text-[12px] text-white/65">Gang · {player?.gang || "None"}</p>
             </div>
-          </button>
+          </div>
 
           <div className="col-span-4 flex h-[112px] flex-col justify-between rounded-[22px] bg-gradient-to-br from-[#1c1c1e] to-[#000000] px-4 py-3.5 text-white shadow-[0_10px_28px_rgba(0,0,0,0.2)]">
             <div className="flex items-center justify-between">
@@ -441,7 +409,7 @@ function HomeScreen({
         </div>
       </div>
 
-      {/* Flat phone-style apps — Leaderboards / Settings / Maps / Events / Radio */}
+      {/* Citizen apps — Party / PvP / Leaderboards (+ staff apps when granted) */}
       <div className="relative z-10 px-10 pt-2">
         <div className="flex flex-wrap items-start justify-center gap-x-8 gap-y-5">
           {homeApps.map((id) => {
@@ -514,13 +482,6 @@ function AppScreen({
     </div>
   );
 
-  if (appId === "settings") {
-    return (
-      <Suspense fallback={fallback}>
-        <SettingsApp player={player} />
-      </Suspense>
-    );
-  }
   if (appId === "leaderboard") {
     return (
       <Suspense fallback={fallback}>

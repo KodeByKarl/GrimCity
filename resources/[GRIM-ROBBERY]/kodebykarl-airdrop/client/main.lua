@@ -131,10 +131,7 @@ local function styleBlip(blip, cfg, name)
     BeginTextCommandSetBlipName('STRING')
     AddTextComponentString(name or cfg.Label or 'Airdrop')
     EndTextCommandSetBlipName(blip)
-    if cfg.Route then
-        SetBlipRoute(blip, true)
-        SetBlipRouteColour(blip, cfg.RouteColor or cfg.Color or 1)
-    end
+    SetBlipRoute(blip, false)
 end
 
 local function ensureCoordBlip(key, coords, cfg, name)

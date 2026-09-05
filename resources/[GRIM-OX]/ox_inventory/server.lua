@@ -457,7 +457,7 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
         local consume = item.consume
         local label = data.metadata.label or item.label
 
-        if durability and consume then
+        if durability then
             if durability > 100 then
                 local ostime = os.time()
 
@@ -465,7 +465,7 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
                     Items.UpdateDurability(inventory, data, item, 0)
                     return TriggerClientEvent('ox_lib:notify', source,
                         { type = 'error', description = locale('no_durability', label) })
-                elseif consume ~= 0 and consume < 1 then
+                elseif consume and consume ~= 0 and consume < 1 then
                     local degrade = (data.metadata.degrade or item.degrade) * 60
                     local percentage = ((durability - ostime) * 100) / degrade
 
@@ -477,12 +477,12 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
             elseif durability <= 0 then
                 return TriggerClientEvent('ox_lib:notify', source,
                     { type = 'error', description = locale('no_durability', label) })
-            elseif consume ~= 0 and consume < 1 and durability < consume * 100 then
+            elseif consume and consume ~= 0 and consume < 1 and durability < consume * 100 then
                 return TriggerClientEvent('ox_lib:notify', source,
                     { type = 'error', description = locale('not_enough_durability', label) })
             end
 
-            if data.count > 1 and consume < 1 and consume > 0 and not Inventory.GetEmptySlot(inventory) then
+            if consume and data.count > 1 and consume < 1 and consume > 0 and not Inventory.GetEmptySlot(inventory) then
                 return TriggerClientEvent('ox_lib:notify', source,
                     { type = 'error', description = locale('cannot_use', label) })
             end

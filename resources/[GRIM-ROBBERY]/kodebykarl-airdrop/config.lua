@@ -67,7 +67,7 @@ Config.Crate = {
 -- =============================================================================
 -- BLIPS (visible to ALL players on pause map + minimap)
 -- Sprite 423 = airplane, 478 = crate. ShortRange false = shows across the map.
--- Route = GPS line so players can drive to the drop.
+-- Map markers only — no GPS waypoint / route.
 -- =============================================================================
 Config.Blips = {
     Plane = {
@@ -80,7 +80,6 @@ Config.Blips = {
         Display = 4,            -- pause map + minimap
         ShortRange = false,
         HighDetail = true,
-        Route = false,
     },
     Drop = {
         Enable = true,
@@ -92,8 +91,6 @@ Config.Blips = {
         Display = 4,
         ShortRange = false,
         HighDetail = true,
-        Route = true,           -- GPS route for every player
-        RouteColor = 1,
     },
     Radius = { Enable = true, Color = 1, Alpha = 140, Scale = 120.0 },
 }

@@ -91,6 +91,17 @@ for type, data in pairs(lib.load('data.weapons') or {}) do
 			v.stack = v.throwable and true or false
 			v.durability = v.durability or 0.05
 			v.weapon = true
+
+			local isMelee = not v.ammoname and not v.throwable and k ~= 'WEAPON_UNARMED'
+				and k ~= 'WEAPON_FIREEXTINGUISHER' and k ~= 'WEAPON_FLASHLIGHT'
+				and k ~= 'WEAPON_PETROLCAN' and k ~= 'WEAPON_HAZARDCAN'
+				and k ~= 'WEAPON_FERTILIZERCAN' and k ~= 'WEAPON_METALDETECTOR'
+				and k ~= 'WEAPON_RAYPISTOL' and k ~= 'WEAPON_STUNGUN'
+
+			if isMelee then
+				v.degrade = v.degrade or 4320
+				if v.decay == nil then v.decay = true end
+			end
 		else
 			v.stack = true
 		end

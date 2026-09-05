@@ -1493,7 +1493,7 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 				DisableControlAction(0, 80, true)
 				DisableControlAction(0, 140, true)
 
-				if currentWeapon.metadata.durability <= 0 or not currentWeapon.timer then
+				if currentWeapon.metadata.durability <= 0 or not currentWeapon.timer or (currentWeapon.metadata.durability > 100 and currentWeapon.metadata.degrade and GetCloudTimeAsInt() >= currentWeapon.metadata.durability) then
 					DisablePlayerFiring(playerId, true)
 				elseif client.aimedfiring and not currentWeapon.melee and currentWeapon.group ~= `GROUP_PETROLCAN` and not IsPlayerFreeAiming(playerId) then
 					DisablePlayerFiring(playerId, true)
