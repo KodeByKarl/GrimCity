@@ -22,6 +22,7 @@ import ComServHud from "./cfx-keydi-comserv/ComServHud";
 import ComServMenu from "./cfx-keydi-comserv/ComServMenu";
 import LockMenu from "./cfx-keydi-lockscript/LockMenu";
 import InvoiceMenu, { InvoiceData } from "./cfx-keydi-invoice/InvoiceMenu";
+import Ipad, { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
 import { Toaster } from "sonner";
 import { AlertTriangle } from "lucide-react";
 
@@ -194,6 +195,9 @@ export default function App() {
   const [invoiceVisible, setInvoiceVisible] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
 
+  const [ipadVisible, setIpadVisible] = useState(false);
+  const [ipadData, setIpadData] = useState<IpadPlayerData | null>(null);
+
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState("");
   const [announcementSender, setAnnouncementSender] = useState("");
@@ -218,19 +222,16 @@ export default function App() {
       setWelcomeVisible(false);
       setBadgeVisible(false);
       setRadioHudVisible(false);
-      setFreeCarVisible(true);
-      setFreeCarData({
-        title: "FREE CAR",
-        spinDurationMs: 6500,
-        bonusVehicle: { model: "burrito", label: "Declasse Burrito" },
-        vehicles: [
-          { model: "sultan", label: "Karin Sultan", chance: 32.333, rarity: "common" },
-          { model: "kuruma", label: "Karin Kuruma", chance: 32.333, rarity: "common" },
-          { model: "sugoi", label: "Dinka Sugoi", chance: 32.334, rarity: "common" },
-          { model: "jugular", label: "Ocelot Jugular", chance: 2, rarity: "rare" },
-          { model: "neon", label: "Pfister Neon", chance: 1, rarity: "legendary" },
-        ],
+      setIpadVisible(true);
+      setIpadData({
+        firstName: "Karl",
+        lastName: "Dev",
+        cash: 2450,
+        bank: 128400,
+        job: "Unemployed",
+        gang: "None",
       });
+      setFreeCarVisible(false);
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -385,6 +386,14 @@ export default function App() {
         setInvoiceVisible(false);
       } else if (data.action === "cfx-keydi-invoice:update") {
         if (data.data) setInvoiceData(data.data);
+      }
+
+      // Apple iPad System
+      if (data.action === "cfx-keydi-ipad:open") {
+        if (data.data) setIpadData(data.data);
+        setIpadVisible(true);
+      } else if (data.action === "cfx-keydi-ipad:close") {
+        setIpadVisible(false);
       }
 
       // Police & Sheriff Badge UI Handlers
@@ -909,6 +918,9 @@ export default function App() {
 
       {/* Billing / Invoice System */}
       <InvoiceMenu visible={invoiceVisible} data={invoiceData || undefined} onClose={() => setInvoiceVisible(false)} />
+
+      {/* Apple iPad System */}
+      <Ipad visible={ipadVisible} data={ipadData} onClose={() => setIpadVisible(false)} />
 
       {announcementVisible && (
         <div 

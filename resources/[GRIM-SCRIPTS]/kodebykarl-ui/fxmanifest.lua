@@ -62,6 +62,7 @@ shared_scripts {
     'Module/cfx-keydi-lockscript/shared/config.lua',
     'Module/cfx-keydi-carlock/shared/config.lua',
     'Module/cfx-keydi-invoice/shared/config.lua',
+    'Module/cfx-keydi-ipad/shared/config.lua',
 }
 
 client_scripts {
@@ -96,6 +97,7 @@ client_scripts {
     'Module/cfx-keydi-lockscript/client/adapter_illenium.lua',
     'Module/cfx-keydi-carlock/client/main.lua',
     'Module/cfx-keydi-invoice/client/main.lua',
+    'Module/cfx-keydi-ipad/client/main.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 
