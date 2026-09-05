@@ -96,7 +96,6 @@ client_scripts {
     'Module/cfx-keydi-lockscript/client/adapter_illenium.lua',
     'Module/cfx-keydi-carlock/client/main.lua',
     'Module/cfx-keydi-invoice/client/main.lua',
-    'Module/cfx-keydi-chicken/chicken.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 
@@ -137,7 +136,6 @@ server_scripts {
     'Module/cfx-keydi-lockscript/server/main.lua',
     'Module/cfx-keydi-carlock/server/main.lua',
     'Module/cfx-keydi-invoice/server/main.lua',
-    'Module/cfx-keydi-chicken/chicken.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 
@@ -158,5 +156,4 @@ escrow_ignore {
     'Module/welcomebanner/data/*.json',
     'Module/cfx-keydi-welcome/sh_welcome.lua',
     'Module/cfx-keydi-raven/raven.lua',
-    'Module/cfx-keydi-chicken/chicken.lua',
 }

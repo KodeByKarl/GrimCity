@@ -255,7 +255,7 @@ export const MarketMenu: React.FC<MarketMenuProps> = ({
                 <Package className="w-12 h-12 text-[#35c7f2]/40 mb-2" />
                 <div className="text-sm font-bold text-white">No items found</div>
                 <div className="text-xs text-[#9cc3e6]/60">
-                  Grind autofarm, chicken, or raven — then sell here.
+                  Grind autofarm or raven — then sell here.
                 </div>
               </div>
             ) : (

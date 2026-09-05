@@ -178,6 +178,19 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
 
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, allowed = pcall(function()
+            return exports['kodebykarl-ui']:PlayerHasFunction(src, 'turfwar')
+        end)
+        if not ok or not allowed then
+            return TriggerClientEvent('ox_lib:notify', src, {
+                title = 'TURF WAR',
+                description = 'Turf War is only available on Region 3 or Region 4. Open Control Center (F5) → Regions.',
+                type = 'error',
+            })
+        end
+    end
+
     local data = Config.TurfWars[turfId]
     if not data then return end
 
@@ -247,6 +260,19 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
     local src = source
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
+
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, allowed = pcall(function()
+            return exports['kodebykarl-ui']:PlayerHasFunction(src, 'turfwar')
+        end)
+        if not ok or not allowed then
+            return TriggerClientEvent('ox_lib:notify', src, {
+                title = 'TURF WAR',
+                description = 'Turf War is only available on Region 3 or Region 4. Open Control Center (F5) → Regions.',
+                type = 'error',
+            })
+        end
+    end
 
     local data = Config.TurfWars[turfId]
     if not data then return end

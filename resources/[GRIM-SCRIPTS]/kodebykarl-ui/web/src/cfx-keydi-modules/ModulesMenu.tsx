@@ -79,39 +79,58 @@ export interface SideJobServer {
   functions?: string[];
 }
 
-// Public realms (Server #1 Main / Server #2 Grind)
+// Public realms (Region 1 Farm / Region 2 School / Region 3-4 Turf)
 const DEFAULT_PUBLIC_SERVERS: ServerRealm[] = [
   {
-    id: "server1",
-    name: "Server #1 · Main",
-    tag: "MAIN REALM",
-    description: "Main city RP. Jobs, housing, and social roleplay.",
+    id: "region1",
+    name: "Region 1 · All Farm",
+    tag: "FARM REALM",
+    description: "All farms available here — autofarm, hunting, weed, and orange picking.",
+    onlinePlayers: 0,
+    maxPlayers: 0,
+    ping: "16 ms",
+    status: "ONLINE",
+    functions: ["grind", "autofarm", "raven", "weedfarm", "job_orange"],
+  },
+  {
+    id: "region2",
+    name: "Region 2 · School",
+    tag: "SCHOOL REALM",
+    description: "School / city RP. Jobs, housing, and social roleplay.",
     onlinePlayers: 0,
     maxPlayers: 0,
     ping: "16 ms",
     status: "ONLINE",
     isCurrent: true,
-    functions: ["main", "jobs", "housing"],
+    functions: ["main", "jobs", "housing", "school"],
   },
   {
-    id: "server2",
-    name: "Server #2 · Grind",
-    tag: "GRIND REALM",
-    description: "Dedicated grinding instance. Farms, hunting, and gather jobs live here only.",
+    id: "region3",
+    name: "Region 3 · Turf War",
+    tag: "TURF REALM",
+    description: "Turf War instance. Gang wars only work here and on Region 4.",
     onlinePlayers: 0,
     maxPlayers: 0,
     ping: "18 ms",
     status: "ONLINE",
-    functions: ["grind", "autofarm", "chicken", "raven", "weedfarm"],
+    functions: ["turfwar"],
+  },
+  {
+    id: "region4",
+    name: "Region 4 · Turf War",
+    tag: "TURF REALM",
+    description: "Second Turf War instance. Isolated from Region 3 players.",
+    onlinePlayers: 0,
+    maxPlayers: 0,
+    ping: "18 ms",
+    status: "ONLINE",
+    functions: ["turfwar"],
   },
 ];
 
-// Side Job Instances (Max 30 Players Each)
+// Side Job Instances (Orange only)
 const DEFAULT_JOB_SERVERS: SideJobServer[] = [
-  { id: "job_crab", name: "Crab Hunting Instance", tag: "CRAB JOB", maxPlayers: 30, onlinePlayers: 22, description: "Grind crab harvesting without city lag." },
-  { id: "job_orange", name: "Orange Picking Instance", tag: "ORANGE JOB", maxPlayers: 30, onlinePlayers: 18, description: "Pick oranges in a dedicated orchard instance." },
-  { id: "job_fish", name: "Fishing Pier Instance", tag: "FISHING JOB", maxPlayers: 30, onlinePlayers: 26, description: "Dedicated oceanic fishing instance." },
-  { id: "job_recyc", name: "Recycling Center Instance", tag: "RECYCLING", maxPlayers: 30, onlinePlayers: 14, description: "Material recycling & scrap grinding." },
+  { id: "job_orange", name: "Orange Picking Instance", tag: "ORANGE JOB", maxPlayers: 30, onlinePlayers: 0, description: "Pick oranges in a dedicated orchard instance." },
 ];
 
 export default function ModulesMenu({ 
@@ -291,8 +310,8 @@ export default function ModulesMenu({
     },
     {
       id: "server",
-      name: "Server Locations",
-      desc: "Switch in-game between Main RP and Grind realms. Each location has its own functions.",
+      name: "Regions",
+      desc: "Switch in-game between Farm, School, and Turf War regions. Each region is isolated.",
       icon: <Server className="h-5 w-5 text-[#ff4d4d]" />,
       action: () => setCurrentView("server"),
       tag: "INSTANCING",
@@ -373,14 +392,14 @@ export default function ModulesMenu({
                   {currentView === "grid" && "MODULE MATRIX"}
                   {currentView === "patchnotes" && "SERVER DEVELOPMENTS"}
                   {currentView === "multijob" && "MULTI-JOB ROSTER"}
-                  {currentView === "server" && "SERVER LOCATIONS"}
+                  {currentView === "server" && "REGIONS"}
                   {currentView === "rockstar" && "ROCKSTAR RECORDING"}
                 </span>
                 <p className="text-[11px] text-[#a08890] mt-0.5">
                   {currentView === "grid" && "Select a module below to launch its configuration window."}
                   {currentView === "patchnotes" && "Read release notes and changelogs from the developers."}
                   {currentView === "multijob" && "Switch active job duty position on demand."}
-                  {currentView === "server" && "Switch in-game. Server #1 is Main RP. Server #2 is grind-only."}
+                  {currentView === "server" && "Switch regions in-game. Region 1 Farm · Region 2 School · Region 3–4 Turf."}
                   {currentView === "rockstar" && "Record clips in-game, save, photo, or open Single Player editor."}
                 </p>
               </div>
@@ -399,7 +418,7 @@ export default function ModulesMenu({
                 )}
               >
                 <Server className="h-3.5 w-3.5" />
-                <span>Server Locations</span>
+                <span>Regions</span>
               </button>
               <button 
                 type="button"
@@ -690,16 +709,16 @@ export default function ModulesMenu({
                     </div>
                     <ul className="grid grid-cols-2 gap-2 text-[10px] text-[#a08890] leading-relaxed">
                       <li className="flex items-center gap-1.5 bg-[#0d0d12]/60 p-2 rounded-lg border border-white/5">
-                        <span className="text-[#ff4d4d] font-black">1.</span> Open Server Locations in Control Center (F5).
+                        <span className="text-[#ff4d4d] font-black">1.</span> Open Regions in Control Center (F5).
                       </li>
                       <li className="flex items-center gap-1.5 bg-[#0d0d12]/60 p-2 rounded-lg border border-white/5">
-                        <span className="text-[#ff4d4d] font-black">2.</span> Join a side job instance from this tab.
+                        <span className="text-[#ff4d4d] font-black">2.</span> Join the Orange instance from this tab.
                       </li>
                       <li className="flex items-center gap-1.5 bg-[#0d0d12]/60 p-2 rounded-lg border border-white/5">
-                        <span className="text-[#ff4d4d] font-black">3.</span> Grind at that instance without Main city lag.
+                        <span className="text-[#ff4d4d] font-black">3.</span> Grind oranges without Farm-region lag.
                       </li>
                       <li className="flex items-center gap-1.5 bg-[#0d0d12]/60 p-2 rounded-lg border border-white/5">
-                        <span className="text-[#ff4d4d] font-black">4.</span> Switch back to Server #1 · Main when finished.
+                        <span className="text-[#ff4d4d] font-black">4.</span> Switch back to Region 1 · All Farm when finished.
                       </li>
                     </ul>
                   </div>
@@ -762,7 +781,7 @@ export default function ModulesMenu({
                     </div>
 
                     <p className="text-[11px] text-[#a08890] leading-relaxed">
-                      Server Locations split the city in-game (same character, same inventory). Server #1 is Main RP. Server #2 is the grind realm — autofarm, chicken, raven, and weed only work there. Switching stays in this session; it does not use the FiveM connect command.
+                      Regions split the city in-game (same character, same inventory). Region 1 = All Farm. Region 2 = School. Region 3 & 4 = Turf War. Players only see others in the same region. Your last region is saved and restored when you reconnect.
                     </p>
 
                     <div className="grid grid-cols-3 gap-3 pt-1">

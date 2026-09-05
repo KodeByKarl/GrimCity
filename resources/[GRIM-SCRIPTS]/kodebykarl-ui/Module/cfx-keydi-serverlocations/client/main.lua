@@ -23,7 +23,7 @@ local function ApplyClientLocation(location)
 end
 
 function ServerLocations.GetCurrentId()
-    return ConfigServerLocations.GetClientCurrentId() or ConfigServerLocations.DefaultId or "server1"
+    return ConfigServerLocations.GetClientCurrentId() or ConfigServerLocations.DefaultId or "region2"
 end
 
 function ServerLocations.GetCurrent()

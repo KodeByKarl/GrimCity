@@ -6,10 +6,73 @@ local playerLocations = {} -- [src] = locationId
 local previousPublicId = {} -- [src] = last public realm before a job instance
 local lastSwitchAt = {} -- [src] = os.time()
 
+local TABLE_READY = false
+
 local function DebugLog(msg)
     if ConfigServerLocations.Debug then
         print(("[ServerLocations] %s"):format(msg))
     end
+end
+
+local function EnsureRegionTable()
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `grim_player_regions` (
+            `identifier` VARCHAR(60) NOT NULL,
+            `region_id` VARCHAR(64) NOT NULL,
+            `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`identifier`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+    TABLE_READY = true
+end
+
+local function GetIdentifier(src)
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if xPlayer and xPlayer.identifier then
+        return xPlayer.identifier
+    end
+    return nil
+end
+
+local function SavePlayerRegion(src, regionId)
+    regionId = ConfigServerLocations.NormalizeId(regionId)
+    if not regionId or not ConfigServerLocations.GetById(regionId) then return end
+
+    local identifier = GetIdentifier(src)
+    if not identifier then return end
+
+    if not TABLE_READY then
+        EnsureRegionTable()
+    end
+
+    MySQL.insert.await([[
+        INSERT INTO `grim_player_regions` (`identifier`, `region_id`)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE `region_id` = VALUES(`region_id`)
+    ]], { identifier, regionId })
+end
+
+local function LoadPlayerRegionId(src)
+    local identifier = GetIdentifier(src)
+    if not identifier then
+        return ConfigServerLocations.DefaultId
+    end
+
+    if not TABLE_READY then
+        EnsureRegionTable()
+    end
+
+    local row = MySQL.single.await(
+        "SELECT `region_id` FROM `grim_player_regions` WHERE `identifier` = ? LIMIT 1",
+        { identifier }
+    )
+
+    local id = row and ConfigServerLocations.NormalizeId(row.region_id)
+    if id and ConfigServerLocations.GetById(id) then
+        return id
+    end
+
+    return ConfigServerLocations.DefaultId
 end
 
 local function Notify(src, msg, nType)
@@ -82,7 +145,8 @@ local function IsInSafezone(src)
 end
 
 function ServerLocations.GetPlayerId(src)
-    return playerLocations[src] or ConfigServerLocations.DefaultId or "server1"
+    local id = playerLocations[src] or ConfigServerLocations.DefaultId or "region2"
+    return ConfigServerLocations.NormalizeId(id) or "region2"
 end
 
 function ServerLocations.GetPlayerLocation(src)
@@ -194,6 +258,12 @@ local function ApplyLocation(src, loc, opts)
         TeleportPlayer(src, loc)
     end
 
+    if opts.persist ~= false and loc.type ~= "job" then
+        SavePlayerRegion(src, loc.id)
+    elseif opts.persist == true then
+        SavePlayerRegion(src, loc.id)
+    end
+
     TriggerClientEvent("cfx-keydi-serverlocations:client:applied", src, {
         id = loc.id,
         name = loc.name,
@@ -210,12 +280,12 @@ local function ValidateSwitch(src, locationId, opts)
     opts = opts or {}
     local loc, kind = ConfigServerLocations.GetById(locationId)
     if not loc then
-        return false, "Unknown server location."
+        return false, "Unknown region."
     end
 
     local currentId = ServerLocations.GetPlayerId(src)
     if not opts.allowSame and currentId == loc.id then
-        return false, "You are already on this server."
+        return false, "You are already in this region."
     end
 
     if not opts.skipCooldown then
@@ -227,17 +297,17 @@ local function ValidateSwitch(src, locationId, opts)
 
     local lockReason = GetLockReason(src)
     if lockReason then
-        return false, ("Server switching locked while %s."):format(lockReason)
+        return false, ("Region switching locked while %s."):format(lockReason)
     end
 
     if ConfigServerLocations.RequireSafezone and not opts.skipSafezone and not IsInSafezone(src) then
-        return false, "Server switching locked! You must be inside a Safezone."
+        return false, "Region switching locked! You must be inside a Safezone."
     end
 
     local online = CountPlayersInBucket(loc.bucket or 0)
     local maxPlayers = GetLocationMaxPlayers(loc, kind)
     if online >= maxPlayers then
-        return false, "That server is full."
+        return false, "That region is full."
     end
 
     return true, loc, kind
@@ -302,15 +372,27 @@ RegisterNetEvent("cfx-keydi-serverlocations:server:finishSwitch", function(locat
     ApplyLocation(src, locOrMsg, { teleport = ConfigServerLocations.TeleportOnSwitch })
 end)
 
-local function AssignDefault(src, teleport)
-    local loc = ConfigServerLocations.GetById(ConfigServerLocations.DefaultId)
+local function AssignSavedOrDefault(src, teleport)
+    local regionId = LoadPlayerRegionId(src)
+    local loc = ConfigServerLocations.GetById(regionId)
+    if not loc then
+        loc = ConfigServerLocations.GetById(ConfigServerLocations.DefaultId)
+    end
     if not loc then return end
+
     playerLocations[src] = loc.id
     previousPublicId[src] = loc.id
     ApplyRouting(src, loc)
+
     if teleport then
         TeleportPlayer(src, loc)
     end
+
+    -- Persist default for brand-new players so next login stays consistent
+    if loc.type ~= "job" then
+        SavePlayerRegion(src, loc.id)
+    end
+
     TriggerClientEvent("cfx-keydi-serverlocations:client:sync", src, {
         id = loc.id,
         name = loc.name,
@@ -323,15 +405,24 @@ end
 
 AddEventHandler("esx:playerLoaded", function(playerId)
     CreateThread(function()
-        Wait(500)
+        Wait(750)
         if GetPlayerName(playerId) then
-            AssignDefault(playerId, false)
+            AssignSavedOrDefault(playerId, false)
         end
     end)
 end)
 
 AddEventHandler("playerDropped", function()
     local src = source
+    local currentId = playerLocations[src]
+    if currentId then
+        local loc = ConfigServerLocations.GetById(currentId)
+        -- Save last public region (if they quit inside orange job, keep previous public)
+        if loc and loc.type == "job" then
+            currentId = previousPublicId[src] or ConfigServerLocations.DefaultId
+        end
+        SavePlayerRegion(src, currentId)
+    end
     playerLocations[src] = nil
     previousPublicId[src] = nil
     lastSwitchAt[src] = nil
@@ -340,12 +431,13 @@ end)
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
     CreateThread(function()
+        EnsureRegionTable()
         Wait(1000)
         local players = GetPlayers()
         for i = 1, #players do
             local id = tonumber(players[i])
             if id then
-                AssignDefault(id, false)
+                AssignSavedOrDefault(id, false)
             end
         end
     end)

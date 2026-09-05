@@ -1,18 +1,20 @@
 --[[
-    Server Locations — in-game instance switcher.
+    Regions — in-game instance switcher (routing buckets).
 
-    Each location is a routing bucket on THIS FiveM process (not a `connect`
-    command). Players stay in the same character/inventory. Functions such as
-    grind jobs only work on the locations that list them.
+    Each region is a separate routing bucket on THIS FiveM process (not a
+    `connect` command). Players keep the same character/inventory.
+    Players only see others in the SAME region (bucket isolation).
 
-    Server #1 = Main RP (default on join)
-    Server #2 = Grind realm (autofarm, chicken, raven, weed)
+    Region 1 = All Farm (autofarm, raven, weed, orange)
+    Region 2 = School (city / school RP — default for new players)
+    Region 3 = Turf War
+    Region 4 = Turf War
 ]]
 
 ConfigServerLocations = {}
 
 ConfigServerLocations.Debug = false
-ConfigServerLocations.DefaultId = "server1"
+ConfigServerLocations.DefaultId = "region2"
 -- Stay at current coords. Switching only changes routing bucket / functions.
 ConfigServerLocations.TeleportOnSwitch = false
 ConfigServerLocations.SwitchCooldown = 8 -- seconds between switches
@@ -24,50 +26,66 @@ ConfigServerLocations.RequireSafezone = true
 ConfigServerLocations.LockInJail = true
 ConfigServerLocations.LockInArena = true
 
-ConfigServerLocations.WrongServerNotify = "This is only available on %s. Open Control Center (F5) → Server Locations to switch."
+ConfigServerLocations.WrongServerNotify = "This is only available on %s. Open Control Center (F5) → Regions to switch."
+
+-- Legacy id remaps (old Server #1 / #2 → Regions)
+ConfigServerLocations.LegacyIdMap = {
+    server1 = "region2",
+    server2 = "region1",
+}
 
 -- Public location slots always follow sv_maxclients in server.cfg (not these numbers).
 -- Optional loc.maxPlayers is only used for side-job instances, and is still capped by sv_maxclients.
 
--- Public city / grind realms
 ConfigServerLocations.PublicServers = {
     {
-        id = "server1",
-        name = "Server #1 · Main",
-        tag = "MAIN REALM",
-        type = "main",
-        description = "Main city RP. Jobs, housing, and social roleplay.",
-        bucket = 0,
-        spawn = vec4(222.2027, -864.0162, 30.2922, 1.0),
-        functions = { "main", "jobs", "housing" },
+        id = "region1",
+        name = "Region 1 · All Farm",
+        tag = "FARM REALM",
+        type = "farm",
+        description = "All farms available here — autofarm, hunting, weed, and orange picking.",
+        bucket = 1,
+        spawn = vec4(2004.3286, 4902.1523, 42.7468, 58.4939),
+        functions = { "grind", "autofarm", "raven", "weedfarm", "job_orange" },
         status = "ONLINE",
     },
     {
-        id = "server2",
-        name = "Server #2 · Grind",
-        tag = "GRIND REALM",
-        type = "grind",
-        description = "Dedicated grinding instance. Farms, hunting, and gather jobs live here only.",
-        bucket = 1,
-        spawn = vec4(2004.3286, 4902.1523, 42.7468, 58.4939),
-        functions = { "grind", "autofarm", "chicken", "raven", "weedfarm" },
+        id = "region2",
+        name = "Region 2 · School",
+        tag = "SCHOOL REALM",
+        type = "school",
+        description = "School / city RP. Jobs, housing, and social roleplay.",
+        bucket = 0,
+        spawn = vec4(222.2027, -864.0162, 30.2922, 1.0),
+        functions = { "main", "jobs", "housing", "school" },
+        status = "ONLINE",
+    },
+    {
+        id = "region3",
+        name = "Region 3 · Turf War",
+        tag = "TURF REALM",
+        type = "turfwar",
+        description = "Turf War instance. Gang wars only work here and on Region 4.",
+        bucket = 2,
+        spawn = vec4(-2248.41, 269.54, 174.60, 0.0),
+        functions = { "turfwar" },
+        status = "ONLINE",
+    },
+    {
+        id = "region4",
+        name = "Region 4 · Turf War",
+        tag = "TURF REALM",
+        type = "turfwar",
+        description = "Second Turf War instance. Isolated from Region 3 players.",
+        bucket = 3,
+        spawn = vec4(2506.01, -383.29, 94.12, 0.0),
+        functions = { "turfwar" },
         status = "ONLINE",
     },
 }
 
--- Side job grinding instances (join from Server Locations → Side Jobs)
+-- Side job instances (Orange only)
 ConfigServerLocations.SideJobServers = {
-    {
-        id = "job_crab",
-        name = "Crab Hunting Instance",
-        tag = "CRAB JOB",
-        type = "job",
-        maxPlayers = 30,
-        bucket = 11,
-        spawn = vec4(-1593.21, 5193.04, 4.31, 295.0),
-        description = "Grind crab harvesting without city lag.",
-        functions = { "grind", "job_crab" },
-    },
     {
         id = "job_orange",
         name = "Orange Picking Instance",
@@ -79,31 +97,17 @@ ConfigServerLocations.SideJobServers = {
         description = "Pick oranges in a dedicated orchard instance.",
         functions = { "grind", "autofarm", "job_orange" },
     },
-    {
-        id = "job_fish",
-        name = "Fishing Pier Instance",
-        tag = "FISHING JOB",
-        type = "job",
-        maxPlayers = 30,
-        bucket = 13,
-        spawn = vec4(-1826.84, -1224.12, 13.02, 50.0),
-        description = "Dedicated oceanic fishing instance.",
-        functions = { "grind", "job_fish" },
-    },
-    {
-        id = "job_recyc",
-        name = "Recycling Center Instance",
-        tag = "RECYCLING",
-        type = "job",
-        maxPlayers = 30,
-        bucket = 14,
-        spawn = vec4(55.77, 6472.12, 31.43, 225.0),
-        description = "Material recycling & scrap grinding.",
-        functions = { "grind", "job_recyc" },
-    },
 }
 
+function ConfigServerLocations.NormalizeId(id)
+    if type(id) ~= "string" or id == "" then return nil end
+    local mapped = ConfigServerLocations.LegacyIdMap and ConfigServerLocations.LegacyIdMap[id]
+    if mapped then return mapped end
+    return id
+end
+
 function ConfigServerLocations.GetById(id)
+    id = ConfigServerLocations.NormalizeId(id)
     if type(id) ~= "string" or id == "" then return nil, nil end
 
     for i = 1, #ConfigServerLocations.PublicServers do
@@ -141,6 +145,7 @@ end
 
 --- Client cache so grind scripts see the new server immediately (state bags lag).
 function ConfigServerLocations.SetClientCurrentId(id)
+    id = ConfigServerLocations.NormalizeId(id)
     if type(id) == "string" and id ~= "" then
         ConfigServerLocations.ClientCurrentId = id
     end
@@ -148,10 +153,10 @@ end
 
 function ConfigServerLocations.GetClientCurrentId()
     if ConfigServerLocations.ClientCurrentId and ConfigServerLocations.ClientCurrentId ~= "" then
-        return ConfigServerLocations.ClientCurrentId
+        return ConfigServerLocations.NormalizeId(ConfigServerLocations.ClientCurrentId)
     end
     if LocalPlayer and LocalPlayer.state and LocalPlayer.state.grimServerId then
-        return LocalPlayer.state.grimServerId
+        return ConfigServerLocations.NormalizeId(LocalPlayer.state.grimServerId)
     end
     return ConfigServerLocations.DefaultId
 end
@@ -163,7 +168,7 @@ function ConfigServerLocations.CanUseFunction(fn, src)
         src = tonumber(src)
         if not src or src < 1 then return false end
         local state = Player(src).state
-        id = (state and state.grimServerId) or ConfigServerLocations.DefaultId
+        id = ConfigServerLocations.NormalizeId((state and state.grimServerId) or ConfigServerLocations.DefaultId)
     else
         id = ConfigServerLocations.GetClientCurrentId()
     end
@@ -199,6 +204,6 @@ end
 
 function ConfigServerLocations.WrongServerMessage(fn)
     local loc = ConfigServerLocations.FindLocationForFunction(fn)
-    local name = loc and loc.name or "the Grind server"
+    local name = loc and loc.name or "the correct Region"
     return (ConfigServerLocations.WrongServerNotify):format(name)
 end

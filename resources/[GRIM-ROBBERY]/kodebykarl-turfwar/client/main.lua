@@ -22,13 +22,23 @@ RegisterNetEvent('kodebykarl-turfwar:client:announce', function(msg, msgType)
     })
 end)
 
+local function CanUseTurfWar()
+    if GetResourceState('kodebykarl-ui') ~= 'started' then
+        return true
+    end
+    local ok, allowed = pcall(function()
+        return exports['kodebykarl-ui']:HasFunction('turfwar')
+    end)
+    return ok and allowed == true
+end
+
 -- Main Rendering Loop: White 3D Markers & Key Interaction
 CreateThread(function()
     while true do
         local sleep = 700
         local ped = PlayerPedId()
 
-        if DoesEntityExist(ped) and not IsEntityDead(ped) then
+        if DoesEntityExist(ped) and not IsEntityDead(ped) and CanUseTurfWar() then
             local pCoords = GetEntityCoords(ped)
             local nearestTurf = nil
             local nearestDist = 999.0
@@ -170,6 +180,9 @@ CreateThread(function()
                     currentTextUiTurf = nil
                 end
             end
+        elseif currentTextUiTurf then
+            lib.hideTextUI()
+            currentTextUiTurf = nil
         end
 
         Wait(sleep)
