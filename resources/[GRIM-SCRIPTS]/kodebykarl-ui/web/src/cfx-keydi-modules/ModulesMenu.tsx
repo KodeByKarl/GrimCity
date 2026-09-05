@@ -10,7 +10,6 @@ import {
   X,
   Server,
   Crown,
-  Skull,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import grimLogo from "@/assets/grim-city-logo.png";
@@ -26,7 +25,6 @@ interface ModulesMenuProps {
   onOpenRegions: () => void;
   onOpenRockstar: () => void;
   onOpenVip: () => void;
-  onOpenDeathScreen: () => void;
 }
 
 export default function ModulesMenu({
@@ -39,7 +37,6 @@ export default function ModulesMenu({
   onOpenRegions,
   onOpenRockstar,
   onOpenVip,
-  onOpenDeathScreen,
 }: ModulesMenuProps) {
   useEffect(() => {
     const handleLocalKeyDown = (e: KeyboardEvent) => {
@@ -113,14 +110,6 @@ export default function ModulesMenu({
       icon: <Crown className="h-5 w-5 text-[#ff4d4d]" />,
       action: onOpenVip,
       tag: "MEMBERSHIP",
-    },
-    {
-      id: "deathscreen",
-      name: "Death Recap",
-      desc: "Post-death killer profile, combat recap, and body-impact anatomy.",
-      icon: <Skull className="h-5 w-5 text-[#ff4d4d]" />,
-      action: onOpenDeathScreen,
-      tag: "COMBAT",
     },
   ];
 

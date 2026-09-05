@@ -841,12 +841,6 @@ export default function App() {
           onOpenRegions={() => openModulePage(() => setRegionsVisible(true))}
           onOpenRockstar={() => openModulePage(() => setRockstarVisible(true))}
           onOpenVip={() => openModulePage(() => setVipVisible(true))}
-          onOpenDeathScreen={() => {
-            openModulePage(() => {
-              setDeathScreenData(PREVIEW_DEATH);
-              setDeathScreenVisible(true);
-            });
-          }}
         />
       )}
 
