@@ -4,7 +4,7 @@ SetGameType("ESX Legacy")
 local oneSyncState = GetConvar("onesync", "off")
 local isEnhanced = false
 local newPlayer = "INSERT INTO `users` SET `accounts` = ?, `identifier` = ?, `ssn` = ?, `group` = ?"
-local loadPlayer = "SELECT `accounts`, `ssn`, `job`, `job_grade`, `group`, `position`, `inventory`, `skin`, `loadout`, `metadata`"
+local loadPlayer = "SELECT `accounts`, `ssn`, `job`, `job_grade`, `group`, `position`, `inventory`, `skin`, `loadout`, `metadata`, `gang`, `gang_grade`"
 
 if Config.Multichar then
     newPlayer = newPlayer .. ", `firstname` = ?, `lastname` = ?, `dateofbirth` = ?, `sex` = ?, `height` = ?"
@@ -321,6 +321,19 @@ function loadESXPlayer(identifier, playerId, isNew)
     -- Metadata
     userData.metadata = (result.metadata and result.metadata ~= "") and json.decode(result.metadata) or {}
 
+    local dbGangName = (result.gang and result.gang ~= "" and result.gang ~= "null") and result.gang or nil
+    local dbGangGrade = tonumber(result.gang_grade) or 0
+    if dbGangName and dbGangName ~= "none" then
+        if dbGangName:sub(1, 1) == "{" or dbGangName:sub(1, 1) == "[" then
+            local gData = json.decode(dbGangName)
+            if type(gData) == "table" and gData.name then
+                userData.metadata.gang = gData
+            end
+        else
+            userData.metadata.gang = { name = dbGangName, grade = dbGangGrade }
+        end
+    end
+
     -- xPlayer Creation
     local xPlayer = CreateExtendedPlayer(playerId, identifier, userData.ssn, userData.group, userData.accounts, userData.inventory, userData.weight, userData.job, userData.loadout, GetPlayerName(playerId), userData.coords, userData.metadata)
 
@@ -358,6 +371,7 @@ function loadESXPlayer(identifier, playerId, isNew)
     userData.money = xPlayer.getMoney()
     userData.maxWeight = xPlayer.getMaxWeight()
     userData.variables = xPlayer.variables or {}
+    userData.gang = xPlayer.gang
     xPlayer.triggerEvent("esx:playerLoaded", userData, isNew, userData.skin)
 
     if not Config.CustomInventory then

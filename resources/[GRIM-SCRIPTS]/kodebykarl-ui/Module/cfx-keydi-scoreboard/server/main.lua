@@ -5,35 +5,54 @@ local sessionStart = {}
 local playerAvatars = {}
 local playerKDA = {}
 
--- Function to fetch Discord Avatar URL using Discord Web API
-local function FetchDiscordAvatar(playerId, cb)
-    local discordId = nil
+local function GetDiscordBotToken()
+    if ConfigScoreboard.DiscordBotToken and ConfigScoreboard.DiscordBotToken ~= "" then
+        return ConfigScoreboard.DiscordBotToken
+    end
+    local convar = GetConvar("kodebykarl_discord_bot_token", "")
+    if convar ~= "" then
+        return convar
+    end
+    return nil
+end
+
+local function DefaultDiscordAvatar(discordId)
+    local last = tonumber(discordId:sub(-1)) or 0
+    return ("https://cdn.discordapp.com/embed/avatars/%d.png"):format(last % 5)
+end
+
+local function GetPlayerDiscordId(playerId)
     for _, id in ipairs(GetPlayerIdentifiers(playerId)) do
         if string.sub(id, 1, 8) == "discord:" then
-            discordId = string.sub(id, 9)
-            break
+            return string.sub(id, 9)
         end
     end
+    return nil
+end
 
+-- Discord CDN avatar (bot token optional — falls back to default Discord avatar)
+local function FetchDiscordAvatar(playerId, cb)
+    local discordId = GetPlayerDiscordId(playerId)
     if not discordId then
         return cb(nil)
     end
 
-    if not ConfigScoreboard.DiscordBotToken or ConfigScoreboard.DiscordBotToken == "" then
-        return cb(nil)
+    local token = GetDiscordBotToken()
+    if not token then
+        return cb(DefaultDiscordAvatar(discordId))
     end
 
-    PerformHttpRequest("https://discord.com/api/v10/users/" .. discordId, function(statusCode, response, headers)
+    PerformHttpRequest("https://discord.com/api/v10/users/" .. discordId, function(statusCode, response)
         if statusCode == 200 and response then
             local data = json.decode(response)
-            if data and data.avatar then
-                local avatarUrl = string.format("https://cdn.discordapp.com/avatars/%s/%s.png", discordId, data.avatar)
-                cb(avatarUrl)
+            if data and data.avatar and data.avatar ~= "" then
+                local ext = data.avatar:sub(1, 2) == "a_" and "gif" or "png"
+                cb(("https://cdn.discordapp.com/avatars/%s/%s.%s?size=128"):format(discordId, data.avatar, ext))
                 return
             end
         end
-        cb(nil)
-    end, "GET", "", { ["Authorization"] = "Bot " .. ConfigScoreboard.DiscordBotToken })
+        cb(DefaultDiscordAvatar(discordId))
+    end, "GET", "", { ["Authorization"] = "Bot " .. token })
 end
 
 RegisterNetEvent('esx:playerLoaded')

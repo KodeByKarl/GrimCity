@@ -248,6 +248,10 @@ ESX.SecureNetEvent("esx:setJob", function(Job)
     ESX.SetPlayerData("job", Job)
 end)
 
+ESX.SecureNetEvent("esx:setGang", function(Gang)
+    ESX.SetPlayerData("gang", Gang)
+end)
+
 ESX.SecureNetEvent("esx:setGroup", function(group)
     ESX.SetPlayerData("group", group)
 end)

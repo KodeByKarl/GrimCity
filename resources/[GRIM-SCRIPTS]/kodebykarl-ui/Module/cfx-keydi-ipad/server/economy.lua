@@ -27,6 +27,33 @@ local function isPoliceBoss(xPlayer)
     return (tonumber(xPlayer.job.grade) or 0) >= minGrade
 end
 
+local function resolveUniversityRole(xPlayer)
+    if not xPlayer or not xPlayer.job then return 'visitor' end
+    local jobName = xPlayer.job.name
+    local jobs = ConfigIpad.UniversityJobs or { school = true, student = true, teacher = true }
+    if not jobs[jobName] then
+        return 'visitor'
+    end
+
+    local gradeName = type(xPlayer.job.grade_name) == 'string' and xPlayer.job.grade_name:lower() or ''
+    local map = ConfigIpad.UniversityGradeRoles or {}
+    if map[gradeName] then
+        return map[gradeName]
+    end
+
+    if jobName == 'student' then return 'student' end
+    if jobName == 'teacher' then
+        local grade = tonumber(xPlayer.job.grade) or 0
+        return grade >= 1 and 'dean' or 'teacher'
+    end
+
+    -- school job fallback by numeric grade (install SQL: 0 student, 1 professor, 2 director)
+    local grade = tonumber(xPlayer.job.grade) or 0
+    if grade >= 2 then return 'director' end
+    if grade >= 1 then return 'teacher' end
+    return 'student'
+end
+
 local function serializeJobs()
     local now = GetGameTimer()
     if jobsCache and (now - jobsCacheAt) < JOBS_CACHE_MS then
@@ -91,6 +118,7 @@ lib.callback.register('cfx-keydi-ipad:session', function(source)
             canEditEconomy = false,
             canPoliceBoss = false,
             canPoliceMdt = false,
+            universityRole = 'visitor',
         }
     end
 
@@ -99,6 +127,7 @@ lib.callback.register('cfx-keydi-ipad:session', function(source)
         canEditEconomy = isOwnerDev(xPlayer),
         canPoliceBoss = isPoliceBoss(xPlayer),
         canPoliceMdt = isPoliceJob(jobName),
+        universityRole = resolveUniversityRole(xPlayer),
     }
 end)
 

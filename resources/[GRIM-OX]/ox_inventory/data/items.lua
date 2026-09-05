@@ -55,29 +55,12 @@ return {
 
 	['bandage'] = {
 		label = 'Bandage',
-		weight = 100,
-		description = 'Restores 50% health. Cannot revive.',
-		allowArmed = true,
+		weight = 115,
 		client = {
 			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 },
 			prop = { model = `prop_rolled_sock_02`, pos = vec3(-0.14, -0.14, -0.08), rot = vec3(-50.0, -50.0, 0.0) },
-			disable = { move = false, combat = false, car = false },
+			disable = { move = true, car = true, combat = true },
 			usetime = 2500,
-		},
-		server = {
-			export = 'ox_inventory.bandage'
-		}
-	},
-
-	['gauze'] = {
-		label = 'Medical Gauze',
-		weight = 50,
-		description = 'Sterile medical gauze wrap used to stop bleeding and dress wounds.',
-		allowArmed = true,
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 },
-			disable = { move = false, combat = false, car = false },
-			usetime = 2000,
 		}
 	},
 
@@ -153,12 +136,6 @@ return {
 	['lockpick'] = {
 		label = 'Lockpick',
 		weight = 160,
-		stack = true,
-		close = true,
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.lockpick'
-		}
 	},
 
 	['phone'] = {
@@ -227,16 +204,6 @@ return {
 		}
 	},
 
-	['police_vest'] = {
-		label = 'Police Tactical Vest',
-		weight = 3000,
-		stack = false,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 3500
-		}
-	},
-
 	['clothing'] = {
 		label = 'Clothing',
 		consume = 0,
@@ -254,571 +221,294 @@ return {
 	['scrapmetal'] = {
 		label = 'Scrap Metal',
 		weight = 80,
-		stack = true,
-		close = true,
-		description = 'Twisted metal pulled from chopped vehicles.',
 	},
 
-	['car_door'] = {
-		label = 'Car Door',
-		weight = 2500,
-		stack = true,
-		close = true,
-		description = 'A stripped vehicle door panel.',
-	},
-
-	['car_hood'] = {
-		label = 'Car Hood',
-		weight = 4000,
-		stack = true,
-		close = true,
-		description = 'A detached vehicle hood.',
-	},
-
-	['car_wheel'] = {
-		label = 'Car Wheel',
-		weight = 1800,
-		stack = true,
-		close = true,
-		description = 'A used tire and rim.',
-	},
-
-	['car_battery'] = {
-		label = 'Car Battery',
-		weight = 900,
-		stack = true,
-		close = true,
-		description = 'A 12V vehicle battery.',
-	},
-
-	['car_alternator'] = {
-		label = 'Alternator',
-		weight = 700,
-		stack = true,
-		close = true,
-		description = 'A salvaged vehicle alternator.',
-	},
-
-	['car_radiator'] = {
-		label = 'Radiator',
-		weight = 1200,
-		stack = true,
-		close = true,
-		description = 'A vehicle cooling radiator.',
-	},
-
-	['car_engine_part'] = {
-		label = 'Engine Part',
-		weight = 1500,
-		stack = true,
-		close = true,
-		description = 'A usable chunk of an engine block.',
-	},
-
-	['brake_pads'] = {
-		label = 'Brake Pads',
-		weight = 250,
-		stack = true,
-		close = true,
-		description = 'A pair of used brake pads.',
-	},
-
-	['spark_plugs'] = {
-		label = 'Spark Plugs',
-		weight = 80,
-		stack = true,
-		close = true,
-		description = 'Salvaged ignition spark plugs.',
-	},
-
-	["alive_chicken"] = {
-		label = "Living chicken",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["blowpipe"] = {
-		label = "Blowtorch",
-		weight = 2,
-		stack = true,
-		close = true,
-	},
-
-	["bread"] = {
-		label = "Bread",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["cannabis"] = {
-		label = "Cannabis",
-		weight = 3,
-		stack = true,
-		close = true,
-	},
-
-	["carokit"] = {
-		label = "Body Kit",
-		weight = 3,
-		stack = true,
-		close = true,
-	},
-
-	["carotool"] = {
-		label = "Tools",
-		weight = 2,
-		stack = true,
-		close = true,
-	},
-
-	["clothe"] = {
-		label = "Cloth",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["copper"] = {
-		label = "Copper",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["cutted_wood"] = {
-		label = "Cut wood",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["diamond"] = {
-		label = "Diamond",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["essence"] = {
-		label = "Gas",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["fabric"] = {
-		label = "Fabric",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["fish"] = {
-		label = "Fish",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["fixkit"] = {
-		label = "Repair Kit",
-		weight = 3,
-		stack = true,
-		close = true,
-	},
-
-	["fixtool"] = {
-		label = "Repair Tools",
-		weight = 2,
-		stack = true,
-		close = true,
-	},
-
-	["gazbottle"] = {
-		label = "Gas Bottle",
-		weight = 2,
-		stack = true,
-		close = true,
-	},
-
-	["gold"] = {
-		label = "Gold",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["iron"] = {
-		label = "Iron",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["marijuana"] = {
-		label = "Marijuana",
-		weight = 2,
-		stack = true,
-		close = true,
-	},
-
-	["medikit"] = {
-		label = "Medikit",
-		weight = 250,
-		stack = true,
-		close = true,
-		description = 'Use on a downed player with ox_target to revive them.',
-		server = {
-			export = 'ox_inventory.medikit'
-		}
-	},
-
-	["medkit"] = {
-		label = "Medkit",
-		weight = 250,
-		stack = true,
-		close = true,
-		description = 'Use on a downed player with ox_target to revive them.',
-		client = {
-			image = 'medikit.png'
-		},
-		server = {
-			export = 'ox_inventory.medikit'
-		}
-	},
-
-	["packaged_chicken"] = {
-		label = "Chicken fillet",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["packaged_plank"] = {
-		label = "Packaged wood",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["petrol"] = {
-		label = "Oil",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["petrol_raffin"] = {
-		label = "Processed oil",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["slaughtered_chicken"] = {
-		label = "Slaughtered chicken",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["stone"] = {
-		label = "Stone",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["washed_stone"] = {
-		label = "Washed stone",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["wood"] = {
-		label = "Wood",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	["wool"] = {
-		label = "Wool",
-		weight = 1,
-		stack = true,
-		close = true,
-	},
-
-	['weed_bud'] = {
-		label = 'Weed Bud',
-		weight = 20,
-		stack = true,
-		close = true,
-	},
-
-	['packaged_weed'] = {
-		label = 'Packaged Weed',
-		weight = 25,
-		stack = true,
-		close = true,
-	},
-
-	['zipper_bag'] = {
-		label = 'Zip-lock Bag',
-		weight = 5,
-		stack = true,
-		close = true,
-	},
-
-	['rolling_paper'] = {
-		label = 'Rolling Paper',
-		weight = 2,
-		stack = true,
-		close = true,
-	},
-
-	['joint'] = {
-		label = 'Joint',
-		weight = 5,
-		stack = true,
-		close = true,
-		consume = 1,
-		allowArmed = true,
-		client = {
-			usetime = 5000,
-			anim = { dict = 'amb@world_human_smoking@male@male_a@idle_a', clip = 'idle_a', flag = 49 },
-			notification = 'You smoked a joint'
-		},
-		server = {
-			export = 'ox_inventory.joint'
-		}
-	},
-
-
-	['item_free_car'] = {
-		label = 'New Player Vehicle',
-		weight = 160,
-		close = true,
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.item_free_car'
-		}
-	},
-
-	['item_beta_car'] = {
-		label = 'Beta Vehicle Token',
-		weight = 160,
-		close = true,
-		description = 'One-time beta reward vehicle (separate from new player free car).',
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.item_beta_car'
-		}
-	},
-
-	['welcome_kit'] = {
-		label = 'Welcome Kit',
-		weight = 1,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 },
-			usetime = 1500,
-		},
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.itemBoxes'
-		}
-	},
-
-	['betabox'] = {
-		label = 'Beta Box',
-		weight = 1,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 },
-			usetime = 1500,
-		},
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.itemBoxes'
-		}
-	},
-
-	['old_player_box'] = {
-		label = 'Compensation Box',
-		weight = 1,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 },
-			usetime = 1500,
-		},
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.itemBoxes'
-		}
-	},
-
-	['ayuda_box'] = {
-		label = 'Nightlife Box',
-		weight = 1,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 },
-			usetime = 1500,
-		},
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.itemBoxes'
-		}
-	},
-
-	['new_player_card'] = {
-		label = 'New Player Card',
-		degrade = 4320,
-		decay = true,
-		stack = false,
-	},
-
-	['reskin_card'] = {
-		label = 'Reskin Card',
-		stack = false,
-		close = true,
-		description = 'One-time card to fully change your ped, face, and appearance.',
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.reskin_card'
-		}
-	},
-
-	['ems_medikit'] = {
-		label = 'Medkit',
+	-- Autofarm & Tools
+	['orange'] = {
+		label = 'Orange',
 		weight = 100,
-		description = 'EMS only. Use on a downed player with ox_target to revive.',
-		server = {
-			export = 'ox_inventory.ems_medikit'
+		client = {
+			status = { hunger = 100000, thirst = 50000 },
+			anim = 'eating',
+			prop = 'burger',
+			usetime = 2500,
+			notification = 'You ate a fresh orange'
 		}
+	},
+
+	['trowel'] = {
+		label = 'Garden Trowel',
+		weight = 500,
+		stack = false,
+	},
+
+	['wood'] = {
+		label = 'Wood',
+		weight = 500,
 	},
 
 	['gauze'] = {
-		label = 'Gauze',
-		weight = 100,
-		description = 'Stops bleeding only.',
-		allowArmed = true,
+		label = 'Medical Gauze',
+		weight = 50,
 		client = {
 			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 },
-			prop = { model = `prop_rolled_sock_02`, pos = vec3(-0.14, -0.14, -0.08), rot = vec3(-50.0, -50.0, 0.0) },
 			usetime = 2500,
-		},
-		server = {
-			export = 'ox_inventory.gauze'
-		}
-	},
-
-	['stresstabs'] = {
-		label = 'Stresstabs',
-		weight = 150,
-		description = 'Reduces current stress by 50%.',
-		degrade = 4320,
-		decay = true,
-		stack = true,
-		consume = 1,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
-			usetime = 3000
-		},
-		server = {
-			export = 'ox_inventory.stresstabs'
+			notification = 'You used medical gauze'
 		}
 	},
 
 	['stresstab'] = {
-		label = 'Stresstab',
-		weight = 150,
-		description = 'Reduces current stress by 50%.',
-		degrade = 4320,
-		decay = true,
+		label = 'Stress Tablet',
+		weight = 20,
+		client = {
+			anim = { dict = 'mp_suicide', clip = 'pill' },
+			usetime = 2000,
+			notification = 'You took a stress tablet'
+		}
+	},
+
+	['repairkit'] = {
+		label = 'Repair Kit',
+		weight = 2500,
 		stack = true,
-		consume = 1,
-		allowArmed = true,
+		close = true,
+	},
+
+	-- Sell Market: Farming
+	['mango'] = {
+		label = 'Mango',
+		weight = 120,
 		client = {
-			image = 'stresstabs.png',
-			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
-			usetime = 3000
-		},
-		server = {
-			export = 'ox_inventory.stresstabs'
+			status = { hunger = 120000, thirst = 60000 },
+			anim = 'eating',
+			usetime = 2500,
 		}
 	},
 
-	['police_bandage'] = {
-		label = 'Police Bandage',
+	['apple'] = {
+		label = 'Apple',
 		weight = 100,
-		allowArmed = true,
 		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 },
+			status = { hunger = 100000, thirst = 40000 },
+			anim = 'eating',
 			usetime = 2500,
-		},
-		server = {
-			export = 'ox_inventory.police_bandage'
 		}
 	},
 
-	['police_gauze'] = {
-		label = 'Police Gauze',
+	['pumpkin'] = {
+		label = 'Pumpkin',
+		weight = 1500,
+	},
+
+	['arabica'] = {
+		label = 'Arabica Coffee Beans',
 		weight = 100,
-		allowArmed = true,
+	},
+
+	['lettuce'] = {
+		label = 'Lettuce',
+		weight = 80,
+	},
+
+	['tomato'] = {
+		label = 'Tomato',
+		weight = 80,
+	},
+
+	['potato'] = {
+		label = 'Potato',
+		weight = 120,
+	},
+
+	['carrot'] = {
+		label = 'Carrot',
+		weight = 80,
+	},
+
+	['honey'] = {
+		label = 'Honey',
+		weight = 250,
 		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 },
-			usetime = 2500,
-		},
-		server = {
-			export = 'ox_inventory.police_gauze'
+			status = { hunger = 50000 },
+			usetime = 2000,
 		}
 	},
 
-	['police_sting'] = {
-		label = 'Police Sting',
+	['cocoa'] = {
+		label = 'Cocoa Beans',
+		weight = 100,
+	},
+
+	['mushroom'] = {
+		label = 'Mushroom',
 		weight = 50,
-		allowArmed = true,
-		client = {
-			usetime = 1500,
-		},
-		server = {
-			export = 'ox_inventory.police_sting'
-		}
 	},
 
-	['police_kevlar'] = {
-		label = 'Police Kevlar',
-		weight = 2000,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 3500,
-		},
-		server = {
-			export = 'ox_inventory.police_kevlar'
-		}
+	['onion'] = {
+		label = 'Onion',
+		weight = 80,
 	},
 
-	['police_pill'] = {
-		label = 'Police Pill',
+	['crab'] = {
+		label = 'Crab',
+		weight = 400,
+	},
+
+	-- Hunting
+	['raw_chicken'] = {
+		label = 'Raw Chicken',
+		weight = 300,
+	},
+
+	['raw_meat'] = {
+		label = 'Raw Meat',
+		weight = 500,
+	},
+
+	-- Mining & Materials
+	['stone'] = {
+		label = 'Stone',
+		weight = 500,
+	},
+
+	['washed_rocks'] = {
+		label = 'Washed Stone',
+		weight = 400,
+	},
+
+	['copper'] = {
+		label = 'Copper Ingot',
+		weight = 600,
+	},
+
+	['iron'] = {
+		label = 'Iron Ingot',
+		weight = 800,
+	},
+
+	['aluminum'] = {
+		label = 'Aluminum Ingot',
+		weight = 400,
+	},
+
+	['steel'] = {
+		label = 'Steel Ingot',
+		weight = 900,
+	},
+
+	['titanium'] = {
+		label = 'Titanium Ingot',
+		weight = 1200,
+	},
+
+	['cloth'] = {
+		label = 'Cloth',
+		weight = 150,
+	},
+
+	['kevlar'] = {
+		label = 'Kevlar Sheet',
+		weight = 500,
+	},
+
+	['emerald'] = {
+		label = 'Emerald',
+		weight = 100,
+	},
+
+	['diamond'] = {
+		label = 'Diamond',
+		weight = 100,
+	},
+
+	-- Weed Farm
+	['weed_bud'] = {
+		label = 'Weed Bud',
 		weight = 50,
-		allowArmed = true,
+	},
+
+	['zipper_bag'] = {
+		label = 'Zip-lock Bag',
+		weight = 10,
+	},
+
+	['packaged_weed'] = {
+		label = 'Packaged Weed',
+		weight = 100,
+	},
+
+	['rolling_paper'] = {
+		label = 'Rolling Paper',
+		weight = 10,
+	},
+
+	['joint'] = {
+		label = 'Joint',
+		weight = 20,
 		client = {
-			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
-			usetime = 2500,
-		},
-		server = {
-			export = 'ox_inventory.police_pill'
+			anim = { dict = 'amb@world_human_smoking@male@male_a@base', clip = 'base' },
+			usetime = 3000,
+			notification = 'You smoked a joint'
 		}
+	},
+
+	-- Chop Shop
+	['car_door'] = {
+		label = 'Car Door',
+		weight = 4000,
+	},
+
+	['car_hood'] = {
+		label = 'Car Hood',
+		weight = 5000,
+	},
+
+	['car_wheel'] = {
+		label = 'Car Wheel',
+		weight = 4500,
+	},
+
+	['car_battery'] = {
+		label = 'Car Battery',
+		weight = 3000,
+	},
+
+	['car_alternator'] = {
+		label = 'Car Alternator',
+		weight = 2500,
+	},
+
+	['car_radiator'] = {
+		label = 'Car Radiator',
+		weight = 3000,
+	},
+
+	['car_engine_part'] = {
+		label = 'Engine Part',
+		weight = 3500,
+	},
+
+	['brake_pads'] = {
+		label = 'Brake Pads',
+		weight = 1200,
+	},
+
+	['spark_plugs'] = {
+		label = 'Spark Plugs',
+		weight = 500,
+	},
+
+	-- University & Starter
+	['student_id'] = {
+		label = 'Student ID Card',
+		weight = 10,
+		stack = false,
+	},
+
+	['item_free_car'] = {
+		label = 'Free Car Voucher',
+		weight = 10,
+		stack = false,
 	},
 
 	['police_vest'] = {
@@ -826,6 +516,7 @@ return {
 		weight = 3000,
 		allowArmed = true,
 		client = {
+			image = 'police_vest.png',
 			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
 			usetime = 3500,
 		},
@@ -869,372 +560,178 @@ return {
 		}
 	},
 
-	['bulletproof'] = {
-		label = 'Bulletproof Vest',
-		weight = 5000,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 5000,
-		},
-		server = {
-			export = 'ox_inventory.bulletproof'
-		}
-	},
-
-	['bulletproof_25'] = {
-		label = 'Bulletproof Vest (25%)',
-		weight = 2000,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 4000,
-		},
-		server = {
-			export = 'ox_inventory.bulletproof_25'
-		}
-	},
-
-	['bulletproof_50'] = {
-		label = 'Bulletproof Vest (50%)',
-		weight = 3000,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 4500,
-		},
-		server = {
-			export = 'ox_inventory.bulletproof_50'
-		}
-	},
-
-	['bulletproof_75'] = {
-		label = 'Bulletproof Vest (75%)',
-		weight = 4000,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 5000,
-		},
-		server = {
-			export = 'ox_inventory.bulletproof_75'
-		}
-	},
-
-	['bulletproof_100'] = {
-		label = 'Bulletproof Vest (100%)',
-		weight = 5000,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 5500,
-		},
-		server = {
-			export = 'ox_inventory.bulletproof_100'
-		}
-	},
-
-	['half_vest'] = {
-		label = 'Half Vest',
-		weight = 2500,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
-			usetime = 3500,
-		},
-		server = {
-			export = 'ox_inventory.half_vest'
-		}
-	},
-
-	['ammo-box1'] = {
-		label = 'Ammo Box 9mm',
-		weight = 200,
-		stack = true,
-		close = true,
-		description = 'Contains 200x 9mm rounds',
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.ammo_box1'
-		}
-	},
-
-	['ammo-box-smg'] = {
-		label = 'Ammo Box SMG',
-		weight = 200,
-		stack = true,
-		close = true,
-		description = 'Contains 300x 9mm rounds',
-		client = {
-			image = 'ammo-box1.png',
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.ammo_box_smg'
-		}
-	},
-
-	['ammo-box2'] = {
-		label = 'Ammo Box Rifle',
-		weight = 200,
-		stack = true,
-		close = true,
-		description = 'Contains 500x rifle rounds',
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.ammo_box2'
-		}
-	},
-
-	['ammo-box3'] = {
-		label = 'Ammo Box Rifle 2',
-		weight = 200,
-		stack = true,
-		close = true,
-		description = 'Contains 500x rifle2 rounds',
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.ammo_box3'
-		}
-	},
-
-	['ammo-box4'] = {
-		label = 'Ammo Box .50',
-		weight = 200,
-		stack = true,
-		close = true,
-		description = 'Contains 200x .50 rounds',
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.ammo_box4'
-		}
-	},
-
-	['ammo-box5'] = {
-		label = 'Ammo Box .45',
-		weight = 200,
-		stack = true,
-		close = true,
-		description = 'Contains 200x .45 rounds',
-		client = {
-			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
-			usetime = 2500
-		},
-		server = {
-			export = 'ox_inventory.ammo_box5'
-		}
-	},
-
-	['energy_drink'] = {
-		label = 'Energy Drink',
-		weight = 250,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
-			prop = { model = `prop_energy_drink`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
-			usetime = 3000,
-			notification = 'You feel a rush. Speed boosted for 5 seconds.'
-		},
-		server = {
-			export = 'ox_inventory.energy_drink'
-		}
-	},
-
-	['oxy'] = {
-		label = 'Oxy',
-		weight = 50,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
-			usetime = 3000,
-		},
-		server = {
-			export = 'ox_inventory.oxy'
-		}
-	},
-
-	['cocaine'] = {
-		label = 'Cocaine',
-		weight = 50,
-		stack = true,
-		allowArmed = true,
-		client = {
-			usetime = 4000,
-		},
-		server = {
-			export = 'ox_inventory.cocaine'
-		}
-	},
-
-	['ecstasy'] = {
-		label = 'Ecstasy',
-		weight = 50,
-		stack = true,
-		allowArmed = true,
-		client = {
-			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
-			usetime = 3000,
-		},
-		server = {
-			export = 'ox_inventory.ecstasy'
-		}
-	},
-
-	['handcuff'] = {
-		label = 'Handcuff',
-		weight = 50,
-		stack = true,
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.handcuff'
-		}
-	},
-
-	['handcuff_keys'] = {
-		label = 'Handcuff Keys',
-		weight = 50,
-		stack = true,
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.handcuff_keys'
-		}
-	},
-
-	['boombox'] = {
-		label = 'Boombox',
-		weight = 2000,
-		stack = false,
-		client = {
-			usetime = 1500,
-		},
-		server = {
-			export = 'ox_inventory.boombox'
-		}
-	},
-
-	['documents'] = {
-		label = 'Documents',
-		weight = 0,
+	-- Clothing items (kodebykarl-utils clothing menu / Keybind 'U')
+	['torso'] = {
+		label = 'Shirt / Top',
+		weight = 500,
 		stack = false,
 		close = true,
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.documents'
+		description = 'Your stored shirt / torso clothing.',
+		client = {
+			image = 'torso.png',
+			export = 'kodebykarl-utils.torso'
 		}
 	},
 
-	['stash_car'] = {
-		label = 'Stash Car',
-		weight = 50,
-		stack = true,
+	['pants'] = {
+		label = 'Pants',
+		weight = 500,
+		stack = false,
 		close = true,
-		server = {
-			exportRemove = true,
-			export = 'ox_inventory.stash_car'
+		description = 'Your stored pants / trousers.',
+		client = {
+			image = 'pants.png',
+			export = 'kodebykarl-utils.pants'
 		}
 	},
 
-	['hightable_box1'] = {
-		label = 'Hightable: Class 1',
-		weight = 1,
-		allowArmed = true,
-		client = { anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }, usetime = 1500 },
-		server = { exportRemove = true, export = 'ox_inventory.itemBoxes' }
-	},
-
-	['hightable_box2'] = {
-		label = 'Hightable: Class 2',
-		weight = 1,
-		allowArmed = true,
-		client = { anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }, usetime = 1500 },
-		server = { exportRemove = true, export = 'ox_inventory.itemBoxes' }
-	},
-
-	['hightable_box3'] = {
-		label = 'Hightable: Class 3',
-		weight = 1,
-		allowArmed = true,
-		client = { anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }, usetime = 1500 },
-		server = { exportRemove = true, export = 'ox_inventory.itemBoxes' }
-	},
-
-	['hightable_box4'] = {
-		label = 'Hightable: Robbery Package',
-		weight = 1,
-		allowArmed = true,
-		client = { anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }, usetime = 1500 },
-		server = { exportRemove = true, export = 'ox_inventory.itemBoxes' }
-	},
-
-	['mechanic_box'] = {
-		label = 'Mechanic Supply Box',
-		weight = 1000,
-		stack = true,
+	['shoes'] = {
+		label = 'Shoes',
+		weight = 500,
+		stack = false,
 		close = true,
-		allowArmed = true,
-		client = { anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }, usetime = 1500 },
-		server = { exportRemove = true, export = 'ox_inventory.itemBoxes' }
+		description = 'Your stored footwear.',
+		client = {
+			image = 'shoes.png',
+			export = 'kodebykarl-utils.shoes'
+		}
 	},
 
-	['orange'] = {
-		label = 'Orange',
+	['mask'] = {
+		label = 'Mask',
 		weight = 100,
-		stack = true,
+		stack = false,
 		close = true,
-		description = 'A fresh, juicy orange.',
+		description = 'Your stored face mask.',
 		client = {
-			status = { hunger = 100000, thirst = 50000 },
-			anim = 'eating',
-			prop = 'prop_food_orange',
-			usetime = 2500,
-			notification = 'You ate a delicious fresh orange'
+			image = 'mask.png',
+			export = 'kodebykarl-utils.mask'
 		}
 	},
 
-	['trowel'] = {
-		label = 'Garden Trowel',
+	['helmet'] = {
+		label = 'Hat / Helmet',
+		weight = 200,
+		stack = false,
+		close = true,
+		description = 'Your stored hat or helmet.',
+		client = {
+			image = 'helmet.png',
+			export = 'kodebykarl-utils.helmet'
+		}
+	},
+
+	['bag'] = {
+		label = 'Bag',
 		weight = 500,
 		stack = false,
 		close = true,
-		durability = 100,
-		description = 'A small hand tool used for digging and harvesting.'
+		description = 'Your stored backpack or bag.',
+		client = {
+			image = 'bag.png',
+			export = 'kodebykarl-utils.bag'
+		}
 	},
 
-	['wood'] = {
-		label = 'Wood',
-		weight = 500,
+	['chain'] = {
+		label = 'Chain',
+		weight = 100,
+		stack = false,
+		close = true,
+		description = 'Your stored chain / necklace.',
+		client = {
+			image = 'chain.png',
+			export = 'kodebykarl-utils.chain'
+		}
+	},
+
+	['glasses'] = {
+		label = 'Glasses',
+		weight = 50,
+		stack = false,
+		close = true,
+		description = 'Your stored eyewear / sunglasses.',
+		client = {
+			image = 'glasses.png',
+			export = 'kodebykarl-utils.glasses'
+		}
+	},
+
+	['ears'] = {
+		label = 'Ear Accessories',
+		weight = 50,
+		stack = false,
+		close = true,
+		description = 'Your stored ear accessories.',
+		client = {
+			image = 'ears.png',
+			export = 'kodebykarl-utils.ears'
+		}
+	},
+
+	['vest'] = {
+		label = 'Vest Carrier',
+		weight = 1000,
+		stack = false,
+		close = true,
+		description = 'Your stored tactical vest carrier.',
+		client = {
+			image = 'vest.png',
+			export = 'kodebykarl-utils.vest'
+		}
+	},
+
+	-- Other kodebykarl-utils items
+	['driver_license'] = {
+		label = 'Driver License',
+		weight = 10,
+		stack = false,
+		description = 'Official DMV driver license.',
+		client = {
+			image = 'card_id.png'
+		}
+	},
+
+	['reskin_card'] = {
+		label = 'Reskin Card',
+		weight = 10,
+		stack = false,
+		close = true,
+		description = 'One-time card to fully change your ped, face, and appearance.',
+		client = {
+			image = 'card_id.png',
+			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a' },
+			usetime = 2500
+		},
+		server = {
+			export = 'ox_inventory.reskin_card'
+		}
+	},
+
+	['new_player_card'] = {
+		label = 'New Player Card',
+		weight = 10,
+		degrade = 4320,
+		decay = true,
+		stack = false,
+		client = {
+			image = 'card_id.png'
+		}
+	},
+
+	['burgershot_food1'] = {
+		label = 'Heart Stopper Burger',
+		weight = 300,
 		stack = true,
 		close = true,
-		description = 'Raw wood log harvested from trees.'
-	},
-
-	['battleaxe'] = {
-		label = 'Battle Axe',
-		weight = 6500,
-		stack = false,
-		close = true,
-		durability = 100,
-		description = 'A heavy battle axe, ideal for chopping wood.'
+		description = 'A hearty burgershot meal that satisfies your hunger.',
+		client = {
+			image = 'burgershot_food1.png',
+			status = { hunger = 200000 },
+			anim = 'eating',
+			prop = 'prop_cs_burger_01',
+			usetime = 3500,
+			notification = 'You ate a hearty burger'
+		}
 	},
 }

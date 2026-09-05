@@ -25,6 +25,7 @@ ConfigServerLocations.FadeInMs = 700
 ConfigServerLocations.RequireSafezone = true
 ConfigServerLocations.LockInJail = true
 ConfigServerLocations.LockInArena = true
+ConfigServerLocations.LockInPvp = true
 
 ConfigServerLocations.WrongServerNotify = "This is only available on %s. Open Control Center (F5) → Regions to switch."
 

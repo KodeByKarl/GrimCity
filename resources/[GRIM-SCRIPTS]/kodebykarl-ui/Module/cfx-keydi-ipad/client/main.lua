@@ -91,6 +91,7 @@ local function BuildLocalPayload()
         canEditEconomy = false,
         canPoliceBoss = false,
         canPoliceMdt = false,
+        universityRole = 'visitor',
     }
 end
 
@@ -164,6 +165,52 @@ RegisterNUICallback('cfx-keydi-ipad:economy:setSalary', function(data, cb)
     end
     local result = lib.callback.await('cfx-keydi-ipad:economy:setSalary', false, data or {})
     cb(result or { ok = false })
+end)
+
+local function PvpResourceStarted()
+    return GetResourceState('kodebykarl-pvp') == 'started'
+end
+
+RegisterNUICallback('cfx-keydi-ipad:pvp:status', function(_, cb)
+    if not PvpResourceStarted() then
+        cb({ ok = false, inPvp = false, players = 0, maxPlayers = 32, name = 'Deathmatch Arena', tags = {} })
+        return
+    end
+    local result = lib.callback.await('kodebykarl-pvp:status', false)
+    cb(result or { ok = false, inPvp = false, players = 0, maxPlayers = 32 })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:pvp:join', function(_, cb)
+    CloseIpad()
+    cb({ ok = true })
+    if not PvpResourceStarted() then return end
+    CreateThread(function()
+        Wait(200)
+        TriggerEvent('kodebykarl-pvp:client:joinFromIpad')
+    end)
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:pvp:leave', function(_, cb)
+    CloseIpad()
+    cb({ ok = true })
+    if not PvpResourceStarted() then return end
+    CreateThread(function()
+        Wait(200)
+        TriggerEvent('kodebykarl-pvp:client:leaveFromIpad')
+    end)
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:leaderboard:pvp', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, rows = {} })
+        return
+    end
+    if not PvpResourceStarted() then
+        cb({ ok = false, rows = {}, mine = nil })
+        return
+    end
+    local result = lib.callback.await('kodebykarl-pvp:getLeaderboard', false)
+    cb(result or { ok = false, rows = {} })
 end)
 
 AddEventHandler('onResourceStop', function(res)

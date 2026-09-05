@@ -221,11 +221,13 @@ function Core.SavePlayer(xPlayer, cb)
         json.encode(xPlayer.getInventory(true)),
         json.encode(xPlayer.getLoadout(true)),
         json.encode(xPlayer.getMeta()),
+        xPlayer.gang and xPlayer.gang.name or "none",
+        xPlayer.gang and xPlayer.gang.grade or 0,
         xPlayer.identifier,
     }
 
     MySQL.prepare(
-        "UPDATE `users` SET `accounts` = ?, `job` = ?, `job_grade` = ?, `group` = ?, `position` = ?, `inventory` = ?, `loadout` = ?, `metadata` = ? WHERE `identifier` = ?",
+        "UPDATE `users` SET `accounts` = ?, `job` = ?, `job_grade` = ?, `group` = ?, `position` = ?, `inventory` = ?, `loadout` = ?, `metadata` = ?, `gang` = ?, `gang_grade` = ? WHERE `identifier` = ?",
         parameters,
         function(affectedRows)
             if affectedRows == 1 then
@@ -262,6 +264,8 @@ function Core.SavePlayers(cb)
                 json.encode(xPlayer.getInventory(true)),
                 json.encode(xPlayer.getLoadout(true)),
                 json.encode(xPlayer.getMeta()),
+                xPlayer.gang and xPlayer.gang.name or "none",
+                xPlayer.gang and xPlayer.gang.grade or 0,
                 xPlayer.identifier,
             }
         end
@@ -272,7 +276,7 @@ function Core.SavePlayers(cb)
     end
 
     MySQL.prepare(
-        "UPDATE `users` SET `accounts` = ?, `job` = ?, `job_grade` = ?, `group` = ?, `position` = ?, `inventory` = ?, `loadout` = ?, `metadata` = ? WHERE `identifier` = ?",
+        "UPDATE `users` SET `accounts` = ?, `job` = ?, `job_grade` = ?, `group` = ?, `position` = ?, `inventory` = ?, `loadout` = ?, `metadata` = ?, `gang` = ?, `gang_grade` = ? WHERE `identifier` = ?",
         parameters,
         function(results)
             if not results then
@@ -923,6 +927,84 @@ function ESX.DoesJobExist(job, grade)
     end
 
     return (ESX.Jobs[job] and ESX.Jobs[job].grades[tostring(grade)] ~= nil) or false
+end
+
+---@return nil
+function ESX.RefreshGangs()
+    Core.GangsLoaded = false
+
+    local Gangs = {}
+    for gangName, gangData in pairs(Config.Gangs or {}) do
+        local grades = {}
+        if gangData.grades then
+            for grade, gradeData in pairs(gangData.grades) do
+                grades[tostring(grade)] = gradeData
+            end
+        end
+        Gangs[gangName] = {
+            name = gangData.name or gangName,
+            label = gangData.label,
+            type = gangData.type,
+            grades = grades,
+        }
+    end
+
+    if not Gangs['none'] then
+        Gangs['none'] = {
+            name = 'none',
+            label = "No Gang",
+            grades = {
+                ['0'] = {
+                    grade = 0,
+                    name = 'none',
+                    label = 'No Gang',
+                    salary = 0,
+                    skin_male = {},
+                    skin_female = {},
+                },
+            },
+        }
+    end
+
+    ESX.Gangs = Gangs
+    TriggerEvent("esx:gangsRefreshed")
+    Core.GangsLoaded = true
+end
+
+---@param gang string
+---@param grade string|number
+---@return boolean
+function ESX.DoesGangExist(gang, grade)
+    while not Core.GangsLoaded do
+        Citizen.Wait(200)
+    end
+    return (ESX.Gangs[gang] and ESX.Gangs[gang].grades[tostring(grade)] ~= nil) or false
+end
+
+---@param gangType string|string[]?
+---@return table
+function ESX.GetGangs(gangType)
+    while not Core.GangsLoaded do
+        Citizen.Wait(200)
+    end
+
+    if not gangType then
+        return ESX.Gangs
+    end
+
+    gangType = type(gangType) == "string" and { gangType } or gangType
+    local gangTypeLookup = {}
+    for i = 1, #gangType do
+        gangTypeLookup[gangType[i]] = true
+    end
+
+    local filteredGangs = {}
+    for gangName, gangObject in pairs(ESX.Gangs) do
+        if gangTypeLookup[gangObject.type] then
+            filteredGangs[gangName] = gangObject
+        end
+    end
+    return filteredGangs
 end
 
 ---@param playerSrc number

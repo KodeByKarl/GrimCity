@@ -149,7 +149,7 @@ ConfigAutofarm.Farms = {
         item = "money",
         minAmount = 500,
         maxAmount = 1000,
-        job = "police",
+        job = { "police", "offpolice" },
         animDict = "combat@aim_variations@heavy@standing",
         animName = "aim",
         rewardCoins = { min = 2, max = 5 },

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    body {
+      display: none;
+      margin: 0;
+      padding: 0;
+      background: rgba(0, 0, 0, 0.85);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      background-color: transparent !important;
+      display: flex;
+      justify-content: center;
+    }
+
+    .centered-image {
+      height: 85%;
+      position: absolute;
+      margin-top: 2% !important;
+      margin-bottom: 2% !important;
+      border-radius: 5px;
+      border: 20px solid #1b1d21;
+    }
+
+    .paper {
+      position: absolute;
+      bottom: 0;
+      width: 100px;
+      height: 150px;
+      background-color: white;
+      border: 1px solid #ccc;
+      animation: printPaper 2s ease-in-out;
+      display: none;
+    }
+
+    @keyframes printPaper {
+      0% { transform: translateY(0); opacity: 0; }
+      100% { transform: translateY(-150px); opacity: 1; }
+    }
+
+    #question-ui {
+      text-align: center;
+      background: #1b1d21;
+      padding: 20px;
+      border-radius: 10px;
+      width: 400px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    #question-ui.hidden {
+      display: none;
+    }
+
+    #quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .quiz-btn {
+      background-color: #444;
+      color: #fff;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .quiz-btn:hover {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="printer-container">
+    <img src="" alt="" id="image" class="centered-image"
+         onerror="this.src='https://i.ibb.co/S3wBwWH/MENU-IMAGE-NOT-ADDED.png'">
+  </div>
+
+  <div class="paper" id="paper-animation"></div>
+
+  <!-- Quiz Question UI -->
+  <div id="question-ui" class="hidden">
+    <h2 id="question-text">Loading question...</h2>
+    <div id="quiz-options">
+      <button class="quiz-btn" data-option="A">Option A</button>
+      <button class="quiz-btn" data-option="B">Option B</button>
+      <button class="quiz-btn" data-option="C">Option C</button>
+      <button class="quiz-btn" data-option="D">Option D</button>
+    </div>
+  </div>
+
+  <audio id="printer-audio">
+    <source src="sounds/printer.ogg" type="audio/ogg">
+  </audio>
+
+  <audio id="bell-audio">
+    <source src="sounds/bell.ogg" type="audio/ogg">
+  </audio>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

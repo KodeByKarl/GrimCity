@@ -24,3 +24,28 @@ ConfigIpad.PoliceJobs = {
     offpolice = true,
 }
 ConfigIpad.PoliceBossMinGrade = 5
+
+ConfigIpad.Party = {
+    MaxMembers = 4,
+    MinNameLength = 3,
+    MaxNameLength = 24,
+    MaxPasswordLength = 16,
+}
+
+-- University Portal (iPad app) — job names that map into campus roles
+ConfigIpad.UniversityJobs = {
+    school = true,
+    student = true,
+    teacher = true,
+}
+
+-- grade_name (lowercase) → portal role
+ConfigIpad.UniversityGradeRoles = {
+    student = 'student',
+    professor = 'teacher',
+    teacher = 'teacher',
+    faculty = 'teacher',
+    dean = 'dean',
+    director = 'director',
+    boss = 'director',
+}

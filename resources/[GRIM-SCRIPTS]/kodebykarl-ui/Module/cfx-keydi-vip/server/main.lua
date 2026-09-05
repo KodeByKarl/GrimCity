@@ -227,17 +227,48 @@ local function BuildStatus(identifier)
     }
 end
 
-local function GrantVip(identifier, tier, days, autoRenew, grantedBy, playerName)
+local MAX_VIP_DAYS = 3650
+local MAX_VIP_MONTHS = 120
+
+local function ComputeExpiresSql(amount, unit)
+    amount = math.floor(tonumber(amount) or 0)
+    if unit == "months" then
+        if amount < 1 or amount > MAX_VIP_MONTHS then
+            return nil, ("Months must be 1-%s"):format(MAX_VIP_MONTHS)
+        end
+        local t = os.date("*t")
+        t.month = t.month + amount
+        t.isdst = nil
+        return os.date("%Y-%m-%d %H:%M:%S", os.time(t))
+    end
+    if amount < 1 or amount > MAX_VIP_DAYS then
+        return nil, ("Days must be 1-%s"):format(MAX_VIP_DAYS)
+    end
+    return os.date("%Y-%m-%d %H:%M:%S", os.time() + (amount * 86400))
+end
+
+local function FormatExpiresForSql(expiresAt)
+    if not expiresAt then return nil end
+    if type(expiresAt) == "number" then
+        return os.date("%Y-%m-%d %H:%M:%S", expiresAt)
+    end
+    local s = tostring(expiresAt):gsub("T", " "):gsub("Z$", "")
+    local y, m, d, H, M, S = s:match("^(%d+)%-(%d+)%-(%d+)[%s](%d+):(%d+):(%d+)")
+    if y then
+        return ("%s-%s-%s %s:%s:%s"):format(y, m, d, H, M, S)
+    end
+    return s
+end
+
+local function UpsertVip(identifier, tier, expires, autoRenew, grantedBy, playerName)
     identifier = NormalizeLicense(identifier)
-    if not identifier then return false end
+    if not identifier or not expires then return false end
 
     tier = tier or "vip1"
     if not ConfigVip.Tiers[tier] then
         tier = "vip1"
     end
-    days = math.max(1, tonumber(days) or 30)
     local meta = TierMeta(tier)
-    local expires = os.date("%Y-%m-%d %H:%M:%S", os.time() + (days * 86400))
 
     EnsureTable()
     MySQL.insert.await([[
@@ -260,6 +291,20 @@ local function GrantVip(identifier, tier, days, autoRenew, grantedBy, playerName
 
     SyncMulticharSlots(identifier, meta.characterSlots or 1, playerName, grantedBy or "vip-system")
     return true
+end
+
+local function GrantVipDuration(identifier, tier, amount, unit, autoRenew, grantedBy, playerName)
+    local expires, err = ComputeExpiresSql(amount, unit == "months" and "months" or "days")
+    if not expires then return false, err end
+    if not UpsertVip(identifier, tier, expires, autoRenew, grantedBy, playerName) then
+        return false, "Could not save VIP"
+    end
+    return true, expires
+end
+
+local function GrantVip(identifier, tier, days, autoRenew, grantedBy, playerName)
+    local ok = GrantVipDuration(identifier, tier, days or 30, "days", autoRenew, grantedBy, playerName)
+    return ok
 end
 
 local function RevokeVip(identifier)
@@ -300,10 +345,177 @@ exports("GetVipLicense", function(src)
 end)
 
 exports("GrantVip", GrantVip)
+exports("GrantVipDuration", GrantVipDuration)
 exports("RevokeVip", RevokeVip)
 
+local function CollectTiers()
+    local tiers = {}
+    for id, meta in pairs(ConfigVip.Tiers or {}) do
+        tiers[#tiers + 1] = {
+            id = id,
+            label = meta.label or id,
+            characterSlots = tonumber(meta.characterSlots) or 1,
+        }
+    end
+    table.sort(tiers, function(a, b)
+        return a.id < b.id
+    end)
+    return tiers
+end
+
+local function CollectOnlinePlayers()
+    local list = {}
+    for _, sid in ipairs(GetPlayers()) do
+        local id = tonumber(sid)
+        if id then
+            list[#list + 1] = {
+                id = id,
+                name = GetPlayerName(id) or ("ID " .. id),
+                vip = BuildStatus(LicenseFromSource(id)),
+            }
+        end
+    end
+    table.sort(list, function(a, b)
+        return a.id < b.id
+    end)
+    return list
+end
+
+local function StaffDenied()
+    return { ok = false, canManage = false, error = "No permission" }
+end
+
 lib.callback.register("cfx-keydi-vip:getStatus", function(source)
-    return { vip = BuildStatus(LicenseFromSource(source)) }
+    return {
+        vip = BuildStatus(LicenseFromSource(source)),
+        canManage = IsStaff(ESX.GetPlayerFromId(source)),
+    }
+end)
+
+lib.callback.register("cfx-keydi-vip:staffRoster", function(source)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+    return {
+        ok = true,
+        canManage = true,
+        tiers = CollectTiers(),
+        players = CollectOnlinePlayers(),
+    }
+end)
+
+lib.callback.register("cfx-keydi-vip:staffLookup", function(source, targetId)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+    targetId = tonumber(targetId)
+    if not targetId then
+        return { ok = false, error = "Enter a player ID" }
+    end
+    local target = ESX.GetPlayerFromId(targetId)
+    if not target then
+        return { ok = false, error = "Player offline" }
+    end
+    return {
+        ok = true,
+        player = {
+            id = targetId,
+            name = GetPlayerName(targetId) or ("ID " .. targetId),
+            vip = BuildStatus(LicenseFromSource(targetId)),
+        },
+    }
+end)
+
+lib.callback.register("cfx-keydi-vip:staffSet", function(source, data)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+
+    data = type(data) == "table" and data or {}
+    local targetId = tonumber(data.targetId)
+    if not targetId then
+        return { ok = false, error = "Enter a player ID" }
+    end
+
+    local target = ESX.GetPlayerFromId(targetId)
+    if not target then
+        return { ok = false, error = "Player offline" }
+    end
+
+    local tier = tostring(data.tier or "vip1")
+    if not ConfigVip.Tiers[tier] then
+        return { ok = false, error = "Invalid VIP tier" }
+    end
+
+    local license = LicenseFromSource(targetId)
+    local staffName = GetPlayerName(source) or "staff"
+    local playerName = GetPlayerName(targetId)
+    local autoRenew = data.autoRenew == true
+    local keepExpiry = data.keepExpiry == true
+    local meta = TierMeta(tier)
+
+    if keepExpiry then
+        local row = GetActiveVipRow(license)
+        if not row then
+            return { ok = false, error = "No VIP to edit. Use Set New and pick a duration." }
+        end
+        local expires = FormatExpiresForSql(row.expires_at)
+        if not UpsertVip(license, tier, expires, autoRenew, staffName, playerName) then
+            return { ok = false, error = "Could not update VIP" }
+        end
+        TriggerClientEvent("esx:showNotification", targetId, ("VIP updated · %s"):format(meta.label), "success")
+        TriggerClientEvent("esx:showNotification", source, ("Updated %s for ID %s"):format(meta.label, targetId), "success")
+    else
+        local unit = data.unit == "months" and "months" or "days"
+        local ok, expiresOrErr = GrantVipDuration(license, tier, data.amount, unit, autoRenew, staffName, playerName)
+        if not ok then
+            return { ok = false, error = expiresOrErr or "Could not save VIP" }
+        end
+        local amount = math.floor(tonumber(data.amount) or 0)
+        local unitLabel = amount == 1 and (unit == "months" and "month" or "day") or unit
+        TriggerClientEvent(
+            "esx:showNotification",
+            targetId,
+            ("%s · %s %s"):format(meta.label, amount, unitLabel),
+            "success"
+        )
+        TriggerClientEvent(
+            "esx:showNotification",
+            source,
+            ("Granted %s to ID %s · %s %s"):format(meta.label, targetId, amount, unitLabel),
+            "success"
+        )
+    end
+
+    return {
+        ok = true,
+        vip = BuildStatus(license),
+        players = CollectOnlinePlayers(),
+    }
+end)
+
+lib.callback.register("cfx-keydi-vip:staffRevoke", function(source, targetId)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+    targetId = tonumber(targetId)
+    if not targetId then
+        return { ok = false, error = "Enter a player ID" }
+    end
+    local target = ESX.GetPlayerFromId(targetId)
+    if not target then
+        return { ok = false, error = "Player offline" }
+    end
+
+    RevokeVip(LicenseFromSource(targetId))
+    TriggerClientEvent("esx:showNotification", targetId, "Your VIP was revoked", "error")
+    TriggerClientEvent("esx:showNotification", source, ("Revoked VIP for ID %s"):format(targetId), "success")
+
+    return {
+        ok = true,
+        vip = BuildStatus(LicenseFromSource(targetId)),
+        players = CollectOnlinePlayers(),
+    }
 end)
 
 lib.callback.register("cfx-keydi-vip:canPedMenu", function(source)

@@ -1,5 +1,6 @@
 ESX.Players = {}
 ESX.Jobs = {}
+ESX.Gangs = {}
 ESX.Items = {}
 
 RegisterNetEvent("esx:onPlayerSpawn", function()
@@ -33,11 +34,29 @@ MySQL.ready(function()
         )
     ]])
 
+    pcall(function()
+        MySQL.query.await("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `gang` VARCHAR(50) NULL DEFAULT 'none'")
+        MySQL.query.await("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `gang_grade` INT NULL DEFAULT 0")
+    end)
+
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `gang_members` (
+            `identifier` VARCHAR(100) NOT NULL,
+            `gang` VARCHAR(50) NOT NULL,
+            `grade` INT NOT NULL DEFAULT 0,
+            `name` VARCHAR(100) NOT NULL,
+            `joined_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `last_seen` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`identifier`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
+
     if not Config.CustomInventory then
         ESX.RefreshItems()
     end
 
     ESX.RefreshJobs()
+    ESX.RefreshGangs()
 
     print(("[^2INFO^7] ESX ^5Legacy %s^0 initialized!"):format(GetResourceMetadata(GetCurrentResourceName(), "version", 0)))
 

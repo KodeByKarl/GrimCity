@@ -27,5 +27,5 @@ ConfigScoreboard.WorldEvents = {
 -- Default refresh interval for scoreboard metrics on client (in ms)
 ConfigScoreboard.RefreshInterval = 5000
 
--- Discord integration
-ConfigScoreboard.DiscordBotToken = "" -- Add your Discord Bot Token here to enable profile picture sync
+-- Discord avatars (leave empty to use convar kodebykarl_discord_bot_token)
+ConfigScoreboard.DiscordBotToken = ""

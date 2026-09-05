@@ -99,33 +99,7 @@ Item('bandage', function(data, slot)
 	end)
 end)
 
-Item('gauze', function(data, slot)
-	ox_inventory:useItem(data, function(data)
-		if data then
-			TriggerEvent('cfx-keydi-ambulance:client:RemoveBleed')
-			if GetResourceState('cfx-keydi-ambulance') == 'started' then
-				pcall(function() exports['cfx-keydi-ambulance']:RemoveBleed() end)
-			end
-			local maxHealth = GetEntityMaxHealth(cache.ped)
-			local health = GetEntityHealth(cache.ped)
-			SetEntityHealth(cache.ped, math.min(maxHealth, math.floor(health + maxHealth / 20)))
-			lib.notify({ description = 'Bleeding stopped and wound dressed.' })
-		end
-	end)
-end)
-
 Item('armour', function(data, slot)
-	if GetPedArmour(cache.ped) < 100 then
-		ox_inventory:useItem(data, function(data)
-			if data then
-				SetPlayerMaxArmour(PlayerData.id, 100)
-				SetPedArmour(cache.ped, 100)
-			end
-		end)
-	end
-end)
-
-Item('police_vest', function(data, slot)
 	if GetPedArmour(cache.ped) < 100 then
 		ox_inventory:useItem(data, function(data)
 			if data then

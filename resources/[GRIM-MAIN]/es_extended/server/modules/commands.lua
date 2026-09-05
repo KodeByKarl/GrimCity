@@ -62,6 +62,37 @@ ESX.RegisterCommand(
     }
 )
 
+ESX.RegisterCommand(
+    "setgang",
+    FilterGroups(CommandPermissions.setgang),
+    function(xPlayer, args, showError)
+        if not ESX.DoesGangExist(args.gang, args.grade) then
+            return showError(TranslateCap("command_setgang_invalid"))
+        end
+
+        args.playerId.setGang(args.gang, args.grade)
+        if Config.AdminLogging then
+            ESX.DiscordLogFields("UserActions", "Set Gang /setgang Triggered!", "pink", {
+                { name = "Player", value = xPlayer and xPlayer.name or "Server Console", inline = true },
+                { name = "ID", value = xPlayer and xPlayer.source or "Unknown ID", inline = true },
+                { name = "Target", value = args.playerId.name, inline = true },
+                { name = "Gang", value = args.gang, inline = true },
+                { name = "Grade", value = args.grade, inline = true },
+            })
+        end
+    end,
+    true,
+    {
+        help = TranslateCap("command_setgang"),
+        validate = true,
+        arguments = {
+            { name = "playerId", help = TranslateCap("commandgeneric_playerid"), type = "player" },
+            { name = "gang", help = TranslateCap("command_setgang_gang"), type = "string" },
+            { name = "grade", help = TranslateCap("command_setgang_grade"), type = "number" },
+        },
+    }
+)
+
 local upgrades = Config.SpawnVehMaxUpgrades and {
     plate = "ADMINCAR",
     modEngine = 3,

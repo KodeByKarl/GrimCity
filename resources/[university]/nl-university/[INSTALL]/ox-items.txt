@@ -1,0 +1,71 @@
+['backpack'] = {
+    label = 'Student Backpack',
+    weight = 220,
+    stack = false,
+    consume = 0,
+    description = 'A spacious backpack used to store university materials.',
+    client = {
+        export = 'nl-university.openBackpack'
+    }
+},
+
+['student_id'] = {
+    label = 'Student ID Card',
+    weight = 50,
+    stack = false,
+    close = true,
+    description = 'Official university-issued identification card with photo and student info.'
+},
+
+['print_document'] = {
+    label = 'Printed Assignment',
+    weight = 25,
+    stack = true,
+    close = true,
+    description = 'A printed assignment or form. Don’t lose it!',
+    client = {
+        export = 'nl-university.useDocument'
+    }
+},
+
+['printer_paper'] = {
+    label = 'Blank Printer Paper',
+    weight = 5,
+    stack = true,
+    close = true,
+    description = 'Standard blank A4 paper used in printers.'
+},
+
+['whiteboard2'] = {
+    label = 'Wall Whiteboard',
+    weight = 5000,
+    stack = false,
+    description = 'A classic wall-mounted whiteboard used in classrooms.',
+    client = {
+        event = 'whiteboards:client:startPlacement'
+    }
+},
+
+-- optional
+
+['acetone'] = {
+    label = 'Acetone',
+    weight = 1,
+    stack = true,
+    close = true,
+    description = 'A flammable solvent.'
+},
+['hydrochloricacid'] = {
+    label = 'Hydrochloric Acid',
+    weight = 1,
+    stack = true,
+    close = true,
+    description = 'A dangerous chemical.'
+},
+['acid'] = {
+    label = 'Acid',
+    weight = 1,
+    stack = true,
+    close = true,
+    description = 'A dangerous chemical.'
+},

@@ -336,13 +336,20 @@ local function GrantReward(src, session)
             coinAmount = tonumber(farm.rewardCoins) or 1
         end
 
-        pcall(function()
-            if exports['kodebykarl-ui'] and exports['kodebykarl-ui'].AddCoins then
-                exports['kodebykarl-ui']:AddCoins(src, coinAmount, farm.zone or 'Activity')
+        local ok, err = pcall(function()
+            if type(AddCoins) == 'function' then
+                return AddCoins(src, coinAmount, farm.zone or 'Activity')
+            elseif type(AddPlaytimeCoins) == 'function' then
+                return AddPlaytimeCoins(src, coinAmount, farm.zone or 'Activity')
+            elseif exports['kodebykarl-ui'] and exports['kodebykarl-ui'].AddCoins then
+                return exports['kodebykarl-ui']:AddCoins(src, coinAmount, farm.zone or 'Activity')
             elseif exports['cfx-keydi-playtimeshop'] and exports['cfx-keydi-playtimeshop'].AddCoins then
-                exports['cfx-keydi-playtimeshop']:AddCoins(src, coinAmount, farm.zone or 'Activity')
+                return exports['cfx-keydi-playtimeshop']:AddCoins(src, coinAmount, farm.zone or 'Activity')
             end
         end)
+        if not ok then
+            print(('[Autofarm] Error awarding coins to player %s: %s'):format(src, tostring(err)))
+        end
     end
 end
 

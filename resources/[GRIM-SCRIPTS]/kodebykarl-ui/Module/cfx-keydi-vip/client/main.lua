@@ -44,6 +44,30 @@ RegisterNUICallback("cfx-keydi-vip:openWelcomeBanner", function(_, cb)
     cb({ ok = true })
 end)
 
+RegisterNUICallback("cfx-keydi-vip:staffRoster", function(_, cb)
+    lib.callback("cfx-keydi-vip:staffRoster", false, function(result)
+        cb(result or { ok = false, canManage = false })
+    end)
+end)
+
+RegisterNUICallback("cfx-keydi-vip:staffLookup", function(data, cb)
+    lib.callback("cfx-keydi-vip:staffLookup", false, function(result)
+        cb(result or { ok = false })
+    end, tonumber(data and data.targetId))
+end)
+
+RegisterNUICallback("cfx-keydi-vip:staffSet", function(data, cb)
+    lib.callback("cfx-keydi-vip:staffSet", false, function(result)
+        cb(result or { ok = false })
+    end, data)
+end)
+
+RegisterNUICallback("cfx-keydi-vip:staffRevoke", function(data, cb)
+    lib.callback("cfx-keydi-vip:staffRevoke", false, function(result)
+        cb(result or { ok = false })
+    end, tonumber(data and data.targetId))
+end)
+
 -- VIP players can also type /pedmenu; illenium admin ACE still works separately.
 RegisterCommand("vipped", function()
     OpenPedMenu()

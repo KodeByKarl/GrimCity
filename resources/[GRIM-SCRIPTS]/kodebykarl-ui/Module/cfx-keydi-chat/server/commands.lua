@@ -148,8 +148,8 @@ if ConfigChat.jobTemplate.enabled then
     end, false)
 end
 
--- GC (Gang Announcement Command) — uses assigned ESX gang only, never job
-if ConfigChat.gangTemplate.enabled then
+-- Gang announcement styling is enabled; the slash command is /gang only (kodebykarl-gangsystem).
+if ConfigChat.gangTemplate.enabled and type(ConfigChat.gangTemplate.command) == 'string' and ConfigChat.gangTemplate.command ~= '' and ConfigChat.gangTemplate.command ~= 'gang' then
     RegisterCommand(ConfigChat.gangTemplate.command, function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
         if not xPlayer then return end

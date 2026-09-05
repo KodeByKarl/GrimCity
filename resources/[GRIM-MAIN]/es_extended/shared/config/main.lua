@@ -74,6 +74,7 @@ Config.AdminGroups = {
 Config.CommandPermissions = {
     ["setcoords"]           = { "developer", "owner", "superadmin", "admin" }, -- /setcoords, /tp
     ["setjob"]              = { "developer", "owner", "superadmin", "admin" },
+    ["setgang"]             = { "developer", "owner", "superadmin", "admin" },
     ["car"]                 = { "developer", "owner", "superadmin", "admin" },
     ["cardel"]              = { "developer", "owner", "superadmin", "admin" }, -- /cardel, /dv
     ["fix"]                 = { "developer", "owner", "superadmin", "admin" }, -- /fix, /repair

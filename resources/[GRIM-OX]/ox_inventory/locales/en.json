@@ -43,7 +43,6 @@
   "weapon_registered": "%s (%s) is registered to %s",
   "weapon_broken": "This weapon is broken",
   "vehicle_locked": "Vehicle is locked",
-  "trunk_owner": "Only the vehicle owner can open this trunk",
   "nobody_nearby": "There is nobody nearby",
   "give_amount": "You must enter an amount to give",
   "buy_amount": "You must enter an amount to buy",

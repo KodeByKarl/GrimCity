@@ -367,7 +367,7 @@ RegisterCommand('givegrimcoins', function(src, args)
     end
 end, true)
 
-exports('AddCoins', function(target, amount, reason)
+function AddPlaytimeCoins(target, amount, reason)
     target = tonumber(target)
     amount = math.floor(tonumber(amount) or 0)
     if not target or amount < 1 then return false end
@@ -385,5 +385,9 @@ exports('AddCoins', function(target, amount, reason)
     })
     Notify(target, ('+%s Grim Coins (%s)'):format(amount, reason or 'Reward'), 'success')
     return true
-end)
+end
+
+AddCoins = AddPlaytimeCoins
+exports('AddCoins', AddPlaytimeCoins)
+
 

@@ -1,5 +1,6 @@
 local planeEnt, crateEnt, chuteEnt
 local smokeFx
+local smokeTried = false
 local blips = {}
 local targetOn = false
 local currentSeq = 0
@@ -81,6 +82,7 @@ local function clearSmoke()
         StopParticleFxLooped(smokeFx, false)
         smokeFx = nil
     end
+    smokeTried = false
 end
 
 local function removeTarget()
@@ -266,23 +268,60 @@ local function spawnCrateAt(coords, heading, withChute)
     return crateEnt
 end
 
+local function requestPtfx(dict, timeout)
+    if type(dict) ~= 'string' or dict == '' then return false end
+    if HasNamedPtfxAssetLoaded(dict) then return true end
+    RequestNamedPtfxAsset(dict)
+    local deadline = GetGameTimer() + (timeout or 5000)
+    while not HasNamedPtfxAssetLoaded(dict) do
+        if GetGameTimer() >= deadline then
+            return false
+        end
+        Wait(10)
+    end
+    return true
+end
+
 local function startSmoke()
     local smoke = Config.Crate.Smoke
     if not smoke or smoke.Enable == false then return end
     if not crateEnt or not DoesEntityExist(crateEnt) then return end
-    if smokeFx then return end
+    if smokeFx or smokeTried then return end
+    smokeTried = true
 
-    lib.requestNamedPtfxAsset(smoke.Dict, 3000)
-    UseParticleFxAssetNextCall(smoke.Dict)
-    local off = smoke.Offset or vec3(0.0, 0.0, 0.35)
-    smokeFx = StartParticleFxLoopedOnEntity(
-        smoke.Name,
-        crateEnt,
-        off.x, off.y, off.z,
-        0.0, 0.0, 0.0,
-        smoke.Scale or 1.0,
-        false, false, false
-    )
+    local candidates = {
+        { Dict = smoke.Dict, Name = smoke.Name },
+        { Dict = 'scr_oddjobtraffickingair', Name = 'scr_crate_drop_flare' },
+        { Dict = 'scr_oddjobtraffickingair', Name = 'scr_crate_drop_smoke' },
+        { Dict = 'core', Name = 'ent_amb_smoke_foundry' },
+    }
+
+    local seen = {}
+    CreateThread(function()
+        local off = smoke.Offset or vec3(0.0, 0.0, 0.35)
+        for i = 1, #candidates do
+            local fx = candidates[i]
+            local key = ('%s:%s'):format(fx.Dict or '', fx.Name or '')
+            if not seen[key] and fx.Dict and fx.Name then
+                seen[key] = true
+                if requestPtfx(fx.Dict, 5000) and crateEnt and DoesEntityExist(crateEnt) then
+                    UseParticleFxAssetNextCall(fx.Dict)
+                    local handle = StartParticleFxLoopedOnEntity(
+                        fx.Name,
+                        crateEnt,
+                        off.x, off.y, off.z,
+                        0.0, 0.0, 0.0,
+                        smoke.Scale or 1.0,
+                        false, false, false
+                    )
+                    if handle and handle ~= 0 then
+                        smokeFx = handle
+                        return
+                    end
+                end
+            end
+        end
+    end)
 end
 
 local function dropChute()

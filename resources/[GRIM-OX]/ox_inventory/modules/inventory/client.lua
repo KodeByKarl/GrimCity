@@ -51,41 +51,8 @@ local Utils = require 'modules.utils.client'
 local Vehicles = lib.load('data.vehicles')
 local backDoorIds = { 2, 3 }
 
-local trunkOwnerCache = {}
-local trunkOwnerPending = {}
-
-local function normalizePlate(plate)
-    if not plate or plate == '' then return '' end
-    return (string.gsub(tostring(plate), '^%s*(.-)%s*$', '%1')):upper()
-end
-
---- Owner-only trunks. Unregistered plates stay usable (world/spawned cars).
-function Inventory.IsOwnedTrunk(entity)
-    if not entity or entity == 0 or not DoesEntityExist(entity) then return false end
-
-    local plate = normalizePlate(GetVehicleNumberPlateText(entity))
-    if plate == '' then return true end
-
-    local cached = trunkOwnerCache[plate]
-    if cached and cached.expires > GetGameTimer() then
-        return cached.ok
-    end
-
-    if not trunkOwnerPending[plate] then
-        trunkOwnerPending[plate] = true
-        CreateThread(function()
-            local ok = lib.callback.await('ox_inventory:isVehicleOwner', false, plate)
-            trunkOwnerCache[plate] = { ok = ok == true, expires = GetGameTimer() + 8000 }
-            trunkOwnerPending[plate] = nil
-        end)
-    end
-
-    return cached and cached.ok == true
-end
-
 function Inventory.CanAccessTrunk(entity)
     if cache.vehicle or not NetworkGetEntityIsNetworked(entity) then return end
-    if not Inventory.IsOwnedTrunk(entity) then return end
 
     if IsEntityDead(entity) then return end
 

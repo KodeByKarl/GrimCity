@@ -72,7 +72,6 @@ return {
 		}
 	},
 
---[[
 	Ammunation = {
 		name = 'Ammunation',
 		blip = {
@@ -104,14 +103,11 @@ return {
 			{ loc = vec3(841.05, -1034.76, 28.31), length = 0.6, width = 0.5, heading = 360.0, minZ = 28.2, maxZ = 28.6, distance = 2.0 }
 		}
 	},
---]]
 
 	PoliceArmoury = {
 		name = 'Police Armoury',
 		groups = shared.police,
-		blip = {
-			id = 110, colour = 84, scale = 0.8
-		}, inventory = {
+		inventory = {
 			{ name = 'police_vitamins', price = 50 },
 			{ name = 'police_drink', price = 50 },
 			{ name = 'police_vest', price = 100 },
@@ -119,6 +115,7 @@ return {
 			{ name = 'WEAPON_STUNGUN', price = 500, metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_BZGAS', price = 250 },
 			{ name = 'WEAPON_HEAVYPISTOL', price = 750, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_PISTOL_MK2', price = 800, metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_SMG', price = 1000, metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_SMG_MK2', price = 1200, metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_COMBATPDW', price = 1100, metadata = { registered = true, serial = 'POL' } },
@@ -157,12 +154,8 @@ return {
 		blip = {
 			id = 403, colour = 69, scale = 0.8
 		}, inventory = {
-			{ name = 'medkit', price = 25 },
-			{ name = 'medikit', price = 25 },
-			{ name = 'bandage', price = 5 },
-			{ name = 'gauze', price = 5 },
-			{ name = 'stresstab', price = 10 },
-			{ name = 'stresstabs', price = 10 }
+			{ name = 'medikit', price = 26 },
+			{ name = 'bandage', price = 5 }
 		}, locations = {
 			vec3(306.3687, -601.5139, 43.28406)
 		}, targets = {

@@ -30,7 +30,10 @@ import ComServHud from "./cfx-keydi-comserv/ComServHud";
 import ComServMenu from "./cfx-keydi-comserv/ComServMenu";
 import LockMenu from "./cfx-keydi-lockscript/LockMenu";
 import InvoiceMenu, { InvoiceData } from "./cfx-keydi-invoice/InvoiceMenu";
+import RegistrarMenu, { type RegistrarData } from "./cfx-keydi-university/RegistrarMenu";
 import type { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
+import type { UniversityRole } from "./cfx-keydi-ipad/universityTypes";
+import PartyHud from "./cfx-keydi-ipad/PartyHud";
 import PlaytimeShop, { PlaytimeShopData } from "./cfx-keydi-playtimeshop/PlaytimeShop";
 import { Toaster } from "sonner";
 import { AlertTriangle } from "lucide-react";
@@ -214,6 +217,8 @@ export default function App() {
 
   const [invoiceVisible, setInvoiceVisible] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+  const [registrarVisible, setRegistrarVisible] = useState(false);
+  const [registrarData, setRegistrarData] = useState<RegistrarData | null>(null);
 
   const [ipadVisible, setIpadVisible] = useState(false);
   const [ipadData, setIpadData] = useState<IpadPlayerData | null>(null);
@@ -246,22 +251,103 @@ export default function App() {
       setRadioHudVisible(false);
       setIpadVisible(true);
       // Prod-default: citizen iPad. Preview staff apps with ?preview=police|boss|owner
+      // University: ?preview=university|student|teacher|dean|director|registrar
       // Playtime shop: ?preview=shop | Autofarm: ?preview=autofarm | Modules: ?preview=modules | Death: ?preview=deathscreen
+      // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip
       const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
+      if (preview === "registrar") {
+        setIpadVisible(false);
+        setRegistrarVisible(true);
+        setRegistrarData({
+          ok: true,
+          brand: "Keydi.dev",
+          label: "ULS Registrar",
+          citizenName: "Karl Dev",
+          alreadyStudent: false,
+          application: null,
+          programs: [
+            { id: "aes", code: "AES", label: "Aesthetic Services (Beauty Care)" },
+            { id: "aut", code: "AUT", label: "Automotive" },
+            { id: "cjps", code: "CJPS", label: "Criminal Justice and Public Safety" },
+            { id: "fab", code: "FAB", label: "Food and Beverage" },
+            { id: "hcs", code: "HCS", label: "Health Care Services" },
+            { id: "bsit", code: "BSIT", label: "Information Technology" },
+          ],
+        });
+      }
       const isOwner = preview === "owner";
       const isBoss = preview === "boss" || isOwner;
       const isPolice = preview === "police" || isBoss;
-      setIpadData({
+      const universityRole =
+        preview === "director" || preview === "university"
+          ? "director"
+          : preview === "dean"
+            ? "dean"
+            : preview === "teacher"
+              ? "teacher"
+              : preview === "student"
+                ? "student"
+                : "visitor";
+      if (preview !== "registrar") setIpadData({
         firstName: "Karl",
         lastName: "Dev",
         cash: 2450,
         bank: 128400,
-        job: isPolice ? "Police" : "Unemployed",
+        job:
+          universityRole === "visitor"
+            ? isPolice
+              ? "Police"
+              : "Unemployed"
+            : universityRole === "director"
+              ? "University Director"
+              : universityRole === "dean"
+                ? "Dean"
+                : universityRole === "teacher"
+                  ? "Professor"
+                  : "Student",
         gang: "None",
         canEditEconomy: isOwner,
         canPoliceBoss: isBoss,
         canPoliceMdt: isPolice,
+        universityRole: universityRole as UniversityRole,
       });
+      if (preview === "scoreboard") {
+        setIpadVisible(false);
+        setScoreboardVisible(true);
+        setScoreboardData({
+          toggleKey: "F10",
+          serverName: "Grim City",
+          enablePriorityStatus: true,
+          playerName: "Karl Dev",
+          playerId: 12,
+          ping: 28,
+          avatarUrl: "https://cdn.discordapp.com/embed/avatars/1.png",
+          stats: {
+            playTime: "12h",
+            rank: "—",
+            kills: 0,
+            kd: "0.00",
+            health: 100,
+            armor: 0,
+          },
+          population: { current: 42, max: 128 },
+          jobs: [
+            { name: "LS EMS", online: 2 },
+            { name: "LS Police", online: 5 },
+            { name: "Mechanic", online: 1 },
+          ],
+          priorities: [
+            { name: "LS Police", status: "Safe" },
+            { name: "Paleto Sheriff", status: "Hold" },
+          ],
+          worldEvents: [
+            { name: "Airdrop", location: "Sandy Shores", status: "INACTIVE", timeLeft: "45:00" },
+            { name: "Traphouse", location: "Unknown", status: "INACTIVE" },
+            { name: "Turf Wars", location: "Unknown", status: "INACTIVE" },
+          ],
+          robberies: [],
+        });
+      }
       if (preview === "shop") {
         setIpadVisible(false);
         setPlaytimeVisible(true);
@@ -301,6 +387,10 @@ export default function App() {
             recentKills: [],
           },
         });
+      }
+      if (preview === "vip") {
+        setIpadVisible(false);
+        setVipVisible(true);
       }
       if (preview === "modules") {
         setIpadVisible(false);
@@ -549,6 +639,14 @@ export default function App() {
         setInvoiceVisible(false);
       } else if (data.action === "cfx-keydi-invoice:update") {
         if (data.data) setInvoiceData(data.data);
+      }
+
+      // ULS Registrar
+      if (data.action === "cfx-keydi-university:registrar:show") {
+        if (data.data) setRegistrarData(data.data);
+        setRegistrarVisible(true);
+      } else if (data.action === "cfx-keydi-university:registrar:hide") {
+        setRegistrarVisible(false);
       }
 
       // Apple iPad System
@@ -1144,6 +1242,9 @@ export default function App() {
       {/* Community Service HUD */}
       <ComServHud />
 
+      {/* 4-man Party HUD (center-right) */}
+      <PartyHud />
+
       {/* Grind Sell Market UI */}
       <MarketMenu visible={marketVisible} data={marketData || undefined} onClose={() => setMarketVisible(false)} />
 
@@ -1152,6 +1253,13 @@ export default function App() {
 
       {/* Billing / Invoice System */}
       <InvoiceMenu visible={invoiceVisible} data={invoiceData || undefined} onClose={() => setInvoiceVisible(false)} />
+
+      {/* ULS Registrar NPC menu */}
+      <RegistrarMenu
+        visible={registrarVisible}
+        data={registrarData}
+        onClose={() => setRegistrarVisible(false)}
+      />
 
       {/* Playtime Shop */}
       <PlaytimeShop

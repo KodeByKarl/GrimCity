@@ -28,6 +28,8 @@ files {
     'Module/cfx-keydi-invoice/sql/*.sql',
     'Module/cfx-keydi-playtimeshop/sql/*.sql',
     'Module/cfx-keydi-vip/sql/*.sql',
+    'Module/cfx-keydi-ipad/sql/*.sql',
+    'Module/cfx-keydi-university/sql/*.sql',
     'Module/cfx-keydi-market/phone/**/*',
 }
 
@@ -65,6 +67,7 @@ shared_scripts {
     'Module/cfx-keydi-ipad/shared/config.lua',
     'Module/cfx-keydi-playtimeshop/shared/config.lua',
     'Module/cfx-keydi-vip/shared/config.lua',
+    'Module/cfx-keydi-university/shared/config.lua',
 }
 
 client_scripts {
@@ -100,8 +103,10 @@ client_scripts {
     'Module/cfx-keydi-carlock/client/main.lua',
     'Module/cfx-keydi-invoice/client/main.lua',
     'Module/cfx-keydi-ipad/client/main.lua',
+    'Module/cfx-keydi-ipad/client/party.lua',
     'Module/cfx-keydi-playtimeshop/client/main.lua',
     'Module/cfx-keydi-vip/client/main.lua',
+    'Module/cfx-keydi-university/client/main.lua',
     'Module/cfx-keydi-deathscreen/client/main.lua',
     'Module/cfx-keydi-spawn/client/main.lua',
     'Module/cfx-keydi-raven/raven.lua',
@@ -129,6 +134,7 @@ server_scripts {
     'Module/cfx-keydi-banking/server/logs.lua',
     'Module/cfx-keydi-banking/server/main.lua',
     'Module/cfx-keydi-impound/server/main.lua',
+    'Module/cfx-keydi-playtimeshop/server/main.lua',
     'Module/cfx-keydi-autofarm/server/main.lua',
     'Module/cfx-keydi-market/server/main.lua',
     'Module/cfx-keydi-weedfarm/server/main.lua',
@@ -145,8 +151,9 @@ server_scripts {
     'Module/cfx-keydi-carlock/server/main.lua',
     'Module/cfx-keydi-invoice/server/main.lua',
     'Module/cfx-keydi-ipad/server/economy.lua',
-    'Module/cfx-keydi-playtimeshop/server/main.lua',
+    'Module/cfx-keydi-ipad/server/party.lua',
     'Module/cfx-keydi-vip/server/main.lua',
+    'Module/cfx-keydi-university/server/main.lua',
     'Module/cfx-keydi-deathscreen/server/main.lua',
     'Module/cfx-keydi-spawn/server/main.lua',
     'Module/cfx-keydi-raven/raven.lua',

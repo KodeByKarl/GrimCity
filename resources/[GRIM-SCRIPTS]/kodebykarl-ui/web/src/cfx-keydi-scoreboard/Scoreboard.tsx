@@ -1,18 +1,20 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
-  User,
   Activity,
-  Shield,
-  Wrench,
-  MapPin,
-  Wifi,
-  AlertTriangle,
-  Sparkles,
-  Lock,
-  Unlock,
   Clock,
+  Flame,
+  Heart,
+  Lock,
+  MapPin,
+  Shield,
+  Sparkles,
+  Trophy,
+  Unlock,
+  Users,
+  Wrench,
   Zap,
 } from "lucide-react";
+import grimLogo from "@/assets/grim-city-logo.png";
 
 interface PopulationData {
   current: number;
@@ -71,10 +73,11 @@ const MOCK_DATA: ScoreboardData = {
   enablePriorityStatus: true,
   playerName: "Player",
   playerId: 1,
-  ping: 13,
+  ping: 28,
+  avatarUrl: "https://cdn.discordapp.com/embed/avatars/0.png",
   stats: {
-    playTime: "0m",
-    rank: "Student (Freshman)",
+    playTime: "12h",
+    rank: "—",
     kills: 0,
     kd: "0.00",
     health: 100,
@@ -94,70 +97,131 @@ const MOCK_DATA: ScoreboardData = {
     { name: "Paleto Sheriff", status: "Safe" },
   ],
   worldEvents: [
-    { name: "Airdrop", location: "—", status: "INACTIVE", timeLeft: "45:00" },
-    { name: "Traphouse", location: "Mirror Park TrapHouse", status: "ACTIVE", timeLeft: "12:30" },
-    { name: "Turf Wars", location: "—", status: "INACTIVE", timeLeft: "28:00" },
+    { name: "Airdrop", location: "Sandy Shores", status: "INACTIVE", timeLeft: "45:00" },
+    { name: "Traphouse", location: "Unknown", status: "INACTIVE", timeLeft: "12:30" },
+    { name: "Turf Wars", location: "Unknown", status: "INACTIVE", timeLeft: "28:00" },
   ],
   robberies: [],
 };
 
-const getJobIcon = (name: string) => {
+const ACCENT = "#ff3a3a";
+
+function getJobIcon(name: string) {
   const lower = name.toLowerCase();
   if (lower.includes("ems") || lower.includes("medical") || lower.includes("ambulance")) {
-    return <Activity className="h-3.5 w-3.5 text-[#ff8080]" />;
+    return <Activity className="h-4 w-4 text-white" strokeWidth={2.2} />;
   }
   if (lower.includes("mechanic")) {
-    return <Wrench className="h-3.5 w-3.5 text-[#ff8080]" />;
+    return <Wrench className="h-4 w-4 text-white" strokeWidth={2.2} />;
   }
-  return <Shield className="h-3.5 w-3.5 text-[#ff8080]" />;
-};
+  return <Shield className="h-4 w-4 text-white" strokeWidth={2.2} />;
+}
 
-function PanelShell({
-  transform,
-  header,
-  footer,
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: ACCENT }}>
+      {children}
+    </p>
+  );
+}
+
+function InnerCard({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-[14px] px-3.5 py-3 ${className}`}
+      style={{
+        backgroundColor: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function EmptyBox({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="rounded-[14px] px-3.5 py-5 text-center text-[12px] text-white/35"
+      style={{
+        backgroundColor: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Pill({
   children,
-  heightClass = "h-[min(520px,76vh)]",
+  tone,
 }: {
-  transform: string;
-  header: ReactNode;
-  footer: ReactNode;
   children: ReactNode;
-  heightClass?: string;
+  tone: "green" | "red" | "amber" | "muted" | "orange";
 }) {
-  const panelBase: CSSProperties = {
-    backgroundColor: "rgba(14, 12, 16, 0.97)",
-    borderColor: "rgba(255, 58, 58, 0.85)",
-    boxShadow: "0 14px 40px rgba(0, 0, 0, 0.88), 0 0 22px rgba(255, 58, 58, 0.1)",
-    transform,
-    transformStyle: "preserve-3d",
-    backfaceVisibility: "hidden",
+  const styles = {
+    green: "bg-emerald-500/18 text-emerald-300",
+    red: "bg-rose-500/18 text-rose-300",
+    amber: "bg-amber-500/18 text-amber-300",
+    orange: "bg-orange-500/18 text-orange-300",
+    muted: "bg-white/8 text-white/45",
   };
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${styles[tone]}`}>
+      {children}
+    </span>
+  );
+}
 
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
   return (
     <section
-      className={`relative flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 ${heightClass}`}
-      style={panelBase}
+      className="relative flex min-h-0 flex-col overflow-hidden rounded-[22px]"
+      style={{
+        height: "min(620px, 82vh)",
+        backgroundColor: "rgba(10, 8, 10, 0.82)",
+        border: "1px solid rgba(255,58,58,0.45)",
+      }}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-20 panel-grid" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.22] panel-grid" />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse at 50% 0%, rgba(255,58,58,0.10), transparent 55%)",
+        }}
+      />
 
-      {/* Header — fixed */}
-      <div className="relative z-20 shrink-0 border-b border-[#ff3a3a]/35 px-4 pb-2.5 pt-3.5">
-        {header}
-      </div>
+      <header className="relative z-10 flex shrink-0 items-center gap-3 px-5 pb-1 pt-5">
+        <img
+          src={grimLogo}
+          alt=""
+          className="h-10 w-10 rounded-full object-cover ring-1 ring-[#ff3a3a]/40"
+        />
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-black uppercase leading-none tracking-[0.04em] text-white">
+            {title}
+          </h2>
+          <p className="mt-1.5 text-[11px] font-medium text-white/40">{subtitle}</p>
+        </div>
+      </header>
 
-      {/* Body — scrolls inside panel, never under footer */}
-      <div className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-3 custom-scrollbar">
+      <div className="relative z-10 min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4 custom-scrollbar">
         {children}
       </div>
 
-      {/* Footer — solid bar so content cannot overlap */}
-      <div
-        className="relative z-20 shrink-0 border-t border-[#ff3a3a]/35 px-4 py-2.5 text-[10px] text-[#8a8086]"
-        style={{ backgroundColor: "rgba(10, 8, 10, 0.98)" }}
-      >
-        {footer}
-      </div>
+      <footer className="relative z-10 flex shrink-0 items-center justify-center gap-1.5 pb-3.5 pt-1 text-[10px] font-semibold tracking-[0.14em] text-white/25">
+        <img src={grimLogo} alt="" className="h-3.5 w-3.5 rounded-full opacity-70" />
+        grim.city
+      </footer>
     </section>
   );
 }
@@ -186,421 +250,278 @@ export default function Scoreboard({ data = {} }: ScoreboardProps) {
 
   const popPercentage = Math.min((merged.population.current / Math.max(1, merged.population.max)) * 100, 100);
   const brand = merged.serverName || "Grim City";
+  const pingGood = merged.ping < 80;
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[99930] flex items-center justify-center bg-transparent px-4 py-5 font-sans select-none">
-      {/* Per-panel heights — Profile & Crime taller first; Server Status next */}
-      <div
-        className="grid w-full max-w-[1120px] grid-cols-3 items-center gap-4"
-        style={{ perspective: "1600px", transformStyle: "preserve-3d" }}
-      >
-        {/* PANEL 1 — YOUR PROFILE */}
-        <PanelShell
-          heightClass="h-[min(600px,84vh)]"
-          transform="perspective(1600px) rotateY(9deg)"
-          header={
-            <div className="flex items-center gap-2.5">
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ff3a3a]/60"
-                style={{ backgroundColor: "rgba(255, 58, 58, 0.2)" }}
-              >
-                <span className="text-base font-black text-[#ff3a3a]">G</span>
-              </div>
-              <div>
-                <h2 className="text-[18px] font-black uppercase leading-none tracking-wide text-white">
-                  Your Profile
-                </h2>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#ff3a3a]">
-                  Player card
-                </p>
-              </div>
+    <div className="pointer-events-auto fixed inset-0 z-[99930] flex flex-col items-center justify-center bg-transparent px-5 py-6 font-sans select-none">
+      <div className="grid w-full max-w-[1180px] grid-cols-3 items-stretch gap-3.5">
+        {/* LEFT — YOUR PROFILE */}
+        <Panel title="Your Profile" subtitle="Player card">
+          <div className="flex items-center gap-3.5">
+            <div className="h-[68px] w-[68px] shrink-0 overflow-hidden rounded-[16px] ring-1 ring-white/10">
+              {merged.avatarUrl ? (
+                <img src={merged.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-white/5">
+                  <Users className="h-7 w-7 text-white/35" />
+                </div>
+              )}
             </div>
-          }
-          footer={
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-[#ff4d4d]" /> Scoreboard
-              </span>
-              <span className="font-black uppercase tracking-[0.16em] text-white/80">{brand}</span>
-            </div>
-          }
-        >
-          <div
-            className="flex items-center gap-3 rounded-xl border border-[#ff3a3a]/45 px-3 py-2.5"
-            style={{ backgroundColor: "rgba(8, 8, 10, 0.95)" }}
-          >
-            {merged.avatarUrl ? (
-              <img
-                src={merged.avatarUrl}
-                alt="avatar"
-                className="h-12 w-12 rounded-xl border border-[#ff3a3a]/50 object-cover"
-              />
-            ) : (
-              <div
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#ff3a3a]/50"
-                style={{ backgroundColor: "rgba(255, 58, 58, 0.18)" }}
-              >
-                <User className="h-6 w-6 text-[#ff8080]" />
-              </div>
-            )}
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-[15px] font-black uppercase tracking-wide text-white">
+              <h3 className="truncate text-[18px] font-bold leading-tight text-white">
                 {merged.playerName}
               </h3>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span
-                  className="rounded-md border border-[#ff3a3a]/50 px-1.5 py-0.5 text-[9px] font-black text-[#ffb0b0]"
-                  style={{ backgroundColor: "rgba(255, 58, 58, 0.22)" }}
-                >
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-[11px] font-semibold text-white/55">
                   ID {merged.playerId}
                 </span>
                 <span
-                  className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-black text-emerald-300"
-                  style={{ backgroundColor: "rgba(16, 185, 129, 0.18)" }}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                    pingGood ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"
+                  }`}
                 >
-                  <Wifi className="h-2.5 w-2.5" /> {merged.ping}ms
+                  <span className={`h-1.5 w-1.5 rounded-full ${pingGood ? "bg-emerald-400" : "bg-amber-400"}`} />
+                  {merged.ping}ms
                 </span>
               </div>
             </div>
           </div>
 
           <div>
-            <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-              Global Stats
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { icon: Clock, label: "Play Time", value: merged.stats.playTime },
-                { icon: Sparkles, label: "Rank", value: merged.stats.rank },
-                { icon: Zap, label: "Kills", value: merged.stats.kills },
-                { icon: Activity, label: "K/D", value: merged.stats.kd },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-xl border border-[#ff3a3a]/40 px-2.5 py-2"
-                  style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
-                >
-                  <span className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-[0.14em] text-[#ff4d4d]">
-                    <stat.icon className="h-3 w-3" /> {stat.label}
-                  </span>
-                  <p className="mt-0.5 truncate text-[13px] font-black uppercase tracking-wide text-white">
-                    {stat.value}
-                  </p>
-                </div>
+            <SectionLabel>Global Stats</SectionLabel>
+            <div className="grid grid-cols-2 gap-2.5">
+              {(
+                [
+                  { icon: Clock, label: "Play Time", value: merged.stats.playTime },
+                  { icon: Trophy, label: "Rank", value: merged.stats.rank || "—" },
+                  { icon: Flame, label: "Kills", value: merged.stats.kills },
+                  { icon: Activity, label: "K/D", value: merged.stats.kd },
+                ] as const
+              ).map((stat) => (
+                <InnerCard key={stat.label}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="flex h-7 w-7 items-center justify-center rounded-lg"
+                      style={{ background: "rgba(255,58,58,0.16)" }}
+                    >
+                      <stat.icon className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+                    </div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
+                      {stat.label}
+                    </span>
+                  </div>
+                  <p className="mt-2 truncate text-[16px] font-bold text-white">{stat.value}</p>
+                </InnerCard>
               ))}
             </div>
           </div>
 
-          <div
-            className="space-y-2.5 rounded-xl border border-[#ff3a3a]/40 px-3 py-2.5"
-            style={{ backgroundColor: "rgba(8, 8, 10, 0.95)" }}
-          >
-            <div>
-              <div className="mb-1 flex justify-between text-[9px] font-bold">
-                <span className="uppercase tracking-wider text-[#ff7ab5]">Health</span>
-                <span className="text-white">{merged.stats.health}%</span>
+          <div className="grid grid-cols-2 gap-2.5">
+            <InnerCard>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ff4d6d]/18">
+                  <Heart className="h-3.5 w-3.5 text-[#ff7aa0]" fill="#ff7aa0" />
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">Health</span>
+                <span className="ml-auto text-[11px] font-bold text-white">{merged.stats.health}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+              <div className="h-[6px] overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full"
                   style={{
                     width: `${merged.stats.health}%`,
-                    background: "linear-gradient(90deg, #ff3a3a, #ff8080)",
+                    background: "linear-gradient(90deg, #ff3a5c, #ff8aa8)",
+                    boxShadow: "0 0 10px rgba(255,58,92,0.55)",
                   }}
                 />
               </div>
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-[9px] font-bold">
-                <span className="uppercase tracking-wider text-[#c8c0c4]">Armor</span>
-                <span className="text-white">{merged.stats.armor}%</span>
+            </InnerCard>
+            <InnerCard>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/8">
+                  <Shield className="h-3.5 w-3.5 text-white/70" />
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">Armor</span>
+                <span className="ml-auto text-[11px] font-bold text-white">{merged.stats.armor}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+              <div className="h-[6px] overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${merged.stats.armor}%`,
-                    background: "linear-gradient(90deg, #94a3b8, #e2e8f0)",
-                  }}
+                  className="h-full rounded-full bg-slate-300"
+                  style={{ width: `${merged.stats.armor}%` }}
                 />
               </div>
-            </div>
+            </InnerCard>
           </div>
 
           <div>
-            <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-              Achievements
-            </p>
-            <div
-              className="rounded-xl border border-dashed border-white/25 px-3 py-3 text-center text-[11px] text-[#8a8086]"
-              style={{ backgroundColor: "rgba(8, 8, 10, 0.9)" }}
-            >
-              No badges yet
-            </div>
+            <SectionLabel>Achievements</SectionLabel>
+            <EmptyBox>No badges yet.</EmptyBox>
           </div>
-        </PanelShell>
+        </Panel>
 
-        {/* PANEL 2 — SERVER STATUS (same height as sides — no inner scroll) */}
-        <PanelShell
-          heightClass="h-[min(600px,84vh)]"
-          transform="perspective(1600px) rotateY(0deg)"
-          header={
-            <div className="flex items-center gap-2.5">
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ff3a3a]/60"
-                style={{ backgroundColor: "rgba(255, 58, 58, 0.2)" }}
-              >
-                <span className="text-base font-black text-[#ff3a3a]">S</span>
+        {/* MIDDLE — SERVER STATUS */}
+        <Panel title="Server Status" subtitle={brand}>
+          <InnerCard>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-lg"
+                  style={{ background: "rgba(255,58,58,0.16)" }}
+                >
+                  <Users className="h-4 w-4" style={{ color: ACCENT }} />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  Population
+                </span>
               </div>
-              <div>
-                <h2 className="text-[18px] font-black uppercase leading-none tracking-wide text-white">
-                  Server Status
-                </h2>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#ff3a3a]">
-                  {brand}
-                </p>
-              </div>
-            </div>
-          }
-          footer={
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-[#ff4d4d]" /> Live session
-              </span>
-              <span className="font-black uppercase tracking-[0.16em] text-white/80">{brand}</span>
-            </div>
-          }
-        >
-          <div
-            className="rounded-xl border border-[#ff3a3a]/45 px-3 py-2.5"
-            style={{ backgroundColor: "rgba(8, 8, 10, 0.95)" }}
-          >
-            <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-              Population
-            </span>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-[28px] font-black leading-none text-white">
+              <p className="text-[22px] font-black leading-none text-white">
                 {merged.population.current}
-              </span>
-              <span className="text-[13px] font-bold text-[#8a8086]">/ {merged.population.max}</span>
+                <span className="text-[13px] font-semibold text-white/35">
+                  {" "}
+                  / {merged.population.max}
+                </span>
+              </p>
             </div>
-            <div
-              className="mt-2.5 h-2.5 overflow-hidden rounded-full border border-white/10"
-              style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-            >
+            <div className="mt-3 h-[5px] overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full"
                 style={{
                   width: `${popPercentage}%`,
-                  backgroundColor: "#ff3a3a",
-                  boxShadow: "0 0 12px rgba(255, 58, 58, 0.7)",
+                  background: ACCENT,
+                  boxShadow: "0 0 12px rgba(255,58,58,0.7)",
                 }}
               />
             </div>
-          </div>
+          </InnerCard>
 
           <div>
-            <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-              Jobs Online
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {merged.jobs.map((job, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded-xl border border-[#ff3a3a]/35 px-2.5 py-2"
-                  style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#ff3a3a]/45"
-                      style={{ backgroundColor: "rgba(255, 58, 58, 0.16)" }}
-                    >
-                      {getJobIcon(job.name)}
+            <SectionLabel>Jobs Online</SectionLabel>
+            <div className="flex flex-col gap-2">
+              {merged.jobs.map((job) => (
+                <InnerCard key={job.name} className="!py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="flex h-9 w-9 items-center justify-center rounded-[10px]"
+                        style={{ background: "rgba(255,58,58,0.22)" }}
+                      >
+                        {getJobIcon(job.name)}
+                      </div>
+                      <span className="text-[13px] font-semibold text-white">{job.name}</span>
                     </div>
-                    <span className="text-[12px] font-bold text-white">{job.name}</span>
+                    <span className="text-[12px] font-semibold text-white/45">{job.online} online</span>
                   </div>
-                  <span className="text-[13px] font-black text-white">
-                    {job.online}{" "}
-                    <span className="text-[9px] font-semibold text-[#8a8086]">online</span>
-                  </span>
-                </div>
+                </InnerCard>
               ))}
             </div>
           </div>
 
           {merged.enablePriorityStatus && (
             <div>
-              <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-                Priority Status
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {merged.priorities.map((prio, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded-xl border border-[#ff3a3a]/35 px-2.5 py-2"
-                    style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
-                  >
-                    <div>
-                      <span className="block text-[12px] font-bold text-white">{prio.name}</span>
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-[#8a8086]">
-                        View only
-                      </span>
-                    </div>
-                    {prio.status === "Safe" ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/45 px-2 py-0.5 text-[10px] font-black text-emerald-300"
-                        style={{ backgroundColor: "rgba(16, 185, 129, 0.18)" }}
-                      >
+              <SectionLabel>Priority Status</SectionLabel>
+              <div className="flex flex-col gap-2">
+                {merged.priorities.map((prio) => {
+                  const status = String(prio.status || "");
+                  const lower = status.toLowerCase();
+                  let pill: ReactNode;
+                  if (lower === "safe") {
+                    pill = (
+                      <Pill tone="green">
                         <Unlock className="h-3 w-3" /> Safe
-                      </span>
-                    ) : prio.status === "In Progress" ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-md border border-orange-500/45 px-2 py-0.5 text-[10px] font-black text-orange-300"
-                        style={{ backgroundColor: "rgba(249, 115, 22, 0.18)" }}
-                      >
+                      </Pill>
+                    );
+                  } else if (lower === "in progress") {
+                    pill = (
+                      <Pill tone="orange">
                         <Zap className="h-3 w-3" /> In Progress
-                      </span>
-                    ) : typeof prio.status === "string" && prio.status.startsWith("Cooldown") ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-md border border-amber-500/45 px-2 py-0.5 text-[10px] font-black text-amber-300"
-                        style={{ backgroundColor: "rgba(245, 158, 11, 0.18)" }}
-                      >
-                        <Clock className="h-3 w-3" /> {prio.status}
-                      </span>
-                    ) : (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-md border border-rose-500/45 px-2 py-0.5 text-[10px] font-black text-rose-300"
-                        style={{ backgroundColor: "rgba(244, 63, 94, 0.18)" }}
-                      >
-                        <Lock className="h-3 w-3" /> Hold
-                      </span>
-                    )}
-                  </div>
-                ))}
+                      </Pill>
+                    );
+                  } else if (lower.startsWith("cooldown")) {
+                    pill = (
+                      <Pill tone="amber">
+                        <Clock className="h-3 w-3" /> {status}
+                      </Pill>
+                    );
+                  } else {
+                    pill = (
+                      <Pill tone="red">
+                        <Lock className="h-3 w-3" /> {status || "Hold"}
+                      </Pill>
+                    );
+                  }
+                  return (
+                    <InnerCard key={prio.name} className="!py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[13px] font-semibold text-white">{prio.name}</span>
+                        {pill}
+                      </div>
+                    </InnerCard>
+                  );
+                })}
               </div>
             </div>
           )}
-        </PanelShell>
+        </Panel>
 
-        {/* PANEL 3 — CRIME STATUS */}
-        <PanelShell
-          heightClass="h-[min(600px,84vh)]"
-          transform="perspective(1600px) rotateY(-9deg)"
-          header={
-            <div className="flex items-center gap-2.5">
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ff3a3a]/60"
-                style={{ backgroundColor: "rgba(255, 58, 58, 0.2)" }}
-              >
-                <span className="text-base font-black text-[#ff3a3a]">C</span>
-              </div>
-              <div>
-                <h2 className="text-[18px] font-black uppercase leading-none tracking-wide text-white">
-                  Crime Status
-                </h2>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#ff3a3a]">
-                  Live activity
-                </p>
-              </div>
-            </div>
-          }
-          footer={
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#ff3a3a]">
-                <Zap className="h-3 w-3 animate-bounce" />
-                Press {merged.toggleKey?.toUpperCase() || "F10"} to toggle
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-[#ff4d4d]" /> Server rules apply
-                </span>
-                <span className="font-black uppercase tracking-[0.16em] text-white/80">{brand}</span>
-              </div>
-            </div>
-          }
-        >
+        {/* RIGHT — CRIME STATUS */}
+        <Panel title="Crime Status" subtitle="Live activity">
           <div>
-            <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-              World Events
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {merged.worldEvents.map((event, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded-xl border border-[#ff3a3a]/35 px-2.5 py-2"
-                  style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
-                >
-                  <div>
-                    <span className="block text-[12px] font-bold text-white">{event.name}</span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-[#8a8086]">
-                      {event.status === "ACTIVE" ? (
-                        <>
-                          <MapPin className="h-2.5 w-2.5 text-[#ff4d4d]" /> {event.location}
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-2.5 w-2.5 text-[#ff4d4d]" />{" "}
-                          {event.timeLeft || event.location || "Waiting"}
-                        </>
-                      )}
-                    </span>
+            <SectionLabel>World Events</SectionLabel>
+            <div className="flex flex-col gap-2">
+              {merged.worldEvents.map((event) => (
+                <InnerCard key={event.name} className="!py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold text-white">{event.name}</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/35">
+                        {event.status === "ACTIVE" ? (
+                          <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
+                        ) : (
+                          <Clock className="h-3 w-3" style={{ color: ACCENT }} />
+                        )}
+                        {event.status === "ACTIVE"
+                          ? event.location
+                          : event.timeLeft || event.location || "Waiting"}
+                      </p>
+                    </div>
+                    {event.status === "ACTIVE" ? (
+                      <Pill tone="amber">Active</Pill>
+                    ) : (
+                      <Pill tone="muted">Inactive</Pill>
+                    )}
                   </div>
-                  {event.status === "ACTIVE" ? (
-                    <span
-                      className="rounded-md border border-amber-500/45 px-1.5 py-0.5 text-[9px] font-black tracking-wider text-amber-300"
-                      style={{ backgroundColor: "rgba(245, 158, 11, 0.18)" }}
-                    >
-                      ACTIVE
-                    </span>
-                  ) : (
-                    <span
-                      className="rounded-md border border-white/20 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-[#8a8086]"
-                      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-                    >
-                      INACTIVE
-                    </span>
-                  )}
-                </div>
+                </InnerCard>
               ))}
             </div>
           </div>
 
           <div>
-            <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
-              Active Robberies
-            </p>
+            <SectionLabel>Active Robberies</SectionLabel>
             {merged.robberies.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
-                {merged.robberies.map((rob, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded-xl border border-rose-500/40 px-2.5 py-2"
-                    style={{ backgroundColor: "rgba(244, 63, 94, 0.12)" }}
-                  >
-                    <div>
-                      <span className="block text-[12px] font-bold text-rose-200">{rob.name}</span>
-                      <span className="text-[10px] font-semibold text-rose-300/80">{rob.location}</span>
+              <div className="flex flex-col gap-2">
+                {merged.robberies.map((rob) => (
+                  <InnerCard key={`${rob.name}-${rob.location}`} className="!py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-semibold text-white">{rob.name}</p>
+                        <p className="mt-0.5 text-[11px] text-white/35">{rob.location}</p>
+                      </div>
+                      <Pill tone="red">{rob.timeLeft}</Pill>
                     </div>
-                    <span
-                      className="rounded-md border border-rose-400/40 px-1.5 py-0.5 text-[10px] font-black text-rose-300"
-                      style={{ backgroundColor: "rgba(244, 63, 94, 0.2)" }}
-                    >
-                      {rob.timeLeft}
-                    </span>
-                  </div>
+                  </InnerCard>
                 ))}
               </div>
             ) : (
-              <div
-                className="rounded-xl border border-dashed border-white/25 px-3 py-4 text-center text-[11px] text-[#8a8086]"
-                style={{ backgroundColor: "rgba(8, 8, 10, 0.9)" }}
-              >
-                No active robberies
-              </div>
+              <EmptyBox>No active robberies.</EmptyBox>
             )}
           </div>
-        </PanelShell>
+        </Panel>
       </div>
+
+      <p className="mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/45">
+        <Sparkles className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+        Press {merged.toggleKey?.toUpperCase() || "F10"} to toggle
+      </p>
     </div>
   );
 }

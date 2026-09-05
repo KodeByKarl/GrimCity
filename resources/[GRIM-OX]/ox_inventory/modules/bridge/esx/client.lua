@@ -15,7 +15,9 @@ end
 
 ---@diagnostic disable-next-line: duplicate-set-field
 function client.setPlayerStatus(values)
-	-- Status is applied server-side via es_extended:SecureApplyItemStatus
+	for name, value in pairs(values) do
+		if value > 0 then TriggerEvent('esx_status:add', name, value) else TriggerEvent('esx_status:remove', name, -value) end
+	end
 end
 
 RegisterNetEvent('esx:onPlayerLogout', client.onLogout)

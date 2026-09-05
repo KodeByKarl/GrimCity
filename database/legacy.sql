@@ -174,6 +174,8 @@ CREATE TABLE `users` (
   `inventory` longtext DEFAULT NULL,
   `job` varchar(20) DEFAULT 'unemployed',
   `job_grade` int(11) DEFAULT 0,
+  `gang` varchar(50) DEFAULT 'none',
+  `gang_grade` int(11) DEFAULT 0,
   `loadout` longtext DEFAULT NULL,
   `metadata` LONGTEXT NULL DEFAULT NULL,
   `position` longtext NULL DEFAULT NULL,
@@ -529,6 +531,16 @@ ALTER TABLE `user_licenses`
 CREATE TABLE IF NOT EXISTS `multicharacter_slots` (
   `identifier` varchar(60) NOT NULL,
   `slots` int(11) NOT NULL,
+  PRIMARY KEY (`identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `pvp_stats` (
+  `identifier` varchar(60) NOT NULL,
+  `name` varchar(100) NOT NULL DEFAULT '',
+  `kills` int(11) NOT NULL DEFAULT 0,
+  `deaths` int(11) NOT NULL DEFAULT 0,
+  `th` int(11) NOT NULL DEFAULT 0,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`identifier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

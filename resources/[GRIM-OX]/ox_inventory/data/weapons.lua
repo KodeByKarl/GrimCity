@@ -73,24 +73,18 @@ return {
 			label = 'Bat',
 			weight = 1134,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_BATTLEAXE'] = {
 			label = 'Battle Axe',
 			weight = 6500,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_BOTTLE'] = {
 			label = 'Bottle',
 			weight = 350,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_BULLPUPRIFLE'] = {
@@ -201,16 +195,12 @@ return {
 			label = 'Crowbar',
 			weight = 2500,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_DAGGER'] = {
 			label = 'Dagger',
 			weight = 800,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_DBSHOTGUN'] = {
@@ -270,8 +260,6 @@ return {
 			label = 'Golf Club',
 			weight = 330,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_GRENADE'] = {
@@ -298,16 +286,12 @@ return {
 			label = 'Hammer',
 			weight = 1200,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_HATCHET'] = {
 			label = 'Hatchet',
 			weight = 1000,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_HEAVYRIFLE'] = {
@@ -371,24 +355,18 @@ return {
 			label = 'Knife',
 			weight = 300,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_KNUCKLE'] = {
 			label = 'Knuckle Dusters',
 			weight = 300,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_MACHETE'] = {
 			label = 'Machete',
 			weight = 1000,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_MACHINEPISTOL'] = {
@@ -478,8 +456,6 @@ return {
 			label = 'Nightstick',
 			weight = 1000,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_PETROLCAN'] = {
@@ -525,16 +501,12 @@ return {
 			label = 'Pool Cue',
 			weight = 146,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_CANDYCANE'] = {
 			label = 'Candy Cane',
 			weight = 85,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_PROXMINE'] = {
@@ -683,8 +655,6 @@ return {
 			label = 'Stone Hatchet',
 			weight = 800,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_STUNGUN'] = {
@@ -704,8 +674,6 @@ return {
 			label = 'Switchblade',
 			weight = 300,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 			anim = { 'anim@melee@switchblade@holster', 'unholster', 200, 'anim@melee@switchblade@holster', 'holster', 600 },
 		},
 
@@ -727,8 +695,6 @@ return {
 			label = 'Wrench',
 			weight = 2500,
 			durability = 0.1,
-			degrade = 4320,
-			decay = true,
 		},
 
 		['WEAPON_PRECISIONRIFLE'] = {

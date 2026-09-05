@@ -77,7 +77,7 @@ function JobTemplateWithoutID(jobName, message)
     })
 end
 
---- Post a gang announcement as a player (same look as /gc)
+--- Post a gang announcement as a player (same look as /gang)
 ---@param source number
 ---@param message string
 ---@return boolean success, string|nil error

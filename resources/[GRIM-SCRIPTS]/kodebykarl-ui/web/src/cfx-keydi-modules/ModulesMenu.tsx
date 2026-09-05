@@ -106,7 +106,7 @@ export default function ModulesMenu({
     {
       id: "vip",
       name: "VIP Status",
-      desc: "View your active VIP, days left before renewal, and revoke date.",
+      desc: "View your VIP plan. Staff can Set and Edit VIP here.",
       icon: <Crown className="h-5 w-5 text-[#ff4d4d]" />,
       action: onOpenVip,
       tag: "MEMBERSHIP",

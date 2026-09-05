@@ -3,14 +3,14 @@ ConfigChat = {
     suggestionLimit = 4,
     cooldownSeconds = 2,
 
-    -- Personal OOC text chat is disabled. Only /commands are accepted (e.g. /wl, /gc, /me).
+    -- Personal OOC text chat is disabled. Only /commands are accepted (e.g. /wl, /gang, /me).
     allowPersonalChat = false,
     personalChatBlockedMessage = '[SYSTEM] Personal chat is disabled. Use commands only (example: /wl message).',
 
     -- Hide staff-only clutter from chat autocomplete (e.g. /Gv give-item).
-    hiddenSuggestions = { '/gv', '/Gv' },
+    hiddenSuggestions = { '/gv', '/Gv', '/gc' },
 
-    -- Shown in chat like job /wl — gangs use /gc (free text) and /gang (preset templates).
+    -- Shown in chat like job /wl — gangs use /gang only (Freestyle).
     commandSuggestions = {
         { name = '/wl', help = 'Job announcement (no message opens Auto Templates)', params = {{ name = 'message', help = 'Your announcement (optional)' }} },
         { name = '/ems', help = 'EMS announcement (no message opens EMS Templates)', params = {{ name = 'message', help = 'Your announcement (optional)' }} },
@@ -18,8 +18,7 @@ ConfigChat = {
         { name = '/police', help = 'Police announcement (no message opens Police Templates)', params = {{ name = 'message', help = 'Your announcement (optional)' }} },
         { name = '/mech', help = 'Mechanic announcement (no message opens Mechanic Templates)', params = {{ name = 'message', help = 'Your announcement (optional)' }} },
         { name = '/jobtp', help = 'Open job announcement templates menu' },
-        { name = '/gc', help = 'Gang announcement (same as /wl for jobs)', params = {{ name = 'message', help = 'Your announcement' }} },
-        { name = '/gang', help = 'Open gang announcement templates' },
+        { name = '/gang', help = 'Gang announcement (Freestyle)', params = {{ name = 'message', help = 'Your announcement (optional)' }} },
     },
 
     -- Auto Templates: /wl, /ems, /pd, /mech with no message opens a categorized picker for jobs listed below.
@@ -700,8 +699,9 @@ ConfigChat = {
     
     gangTemplate = {
         enabled = true,
-        command = "gc",
-        -- Any assigned ESX gang can /gc and /gang templates.
+        -- Slash command is registered by kodebykarl-gangsystem as /gang only. Do not set this to gc/gang.
+        command = false,
+        -- Any assigned ESX gang can /gang (Freestyle).
         -- Custom gif/colors below override this free default.
         allowAnyGang = true,
         default = {
@@ -711,133 +711,14 @@ ConfigChat = {
             headerColor = "#cfcfcf",
         },
         -- Optional custom banners. Keys MUST match es_extended gang names.
-        -- /gc uses assigned gang only — job is ignored.
+        -- /gang uses assigned gang only — job is ignored.
         gangs = {
-            ["ktg"] = {
-                label = "Smokin Aces",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/SATEMPLATE.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["dcf"] = {
-                label = "Dilar Cartel Familia",
+            ["grimgang"] = {
+                label = "GrimGang",
                 gif = nil,
-                background = "#8B0000",
+                background = "#1a0a0a",
                 color = "#ffffff",
-                headerColor = "#ffd6d6",
-            },
-            ["sis"] = {
-                label = "Sonder in Sanity",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/Untitled617_20260628191541.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["ljh"] = {
-                label = "Love Joy Hope",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/ljh_template.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["nb"] = {
-                label = "Naughty Boys",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/naughty.png",
-                background = "#ffffffff",
-                color = "#ffffff",
-                headerColor = "#cfcfcf",
-            },
-            ["rbm"] = {
-                label = "Royal Blood Mafia",
-                gif = "https://r2.fivemanage.com/7qoUgFxV85h3Czm85xGbV/rbm.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["taylor"] = {
-                label = "TAYLOR GANG",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/TAYLOR_TEMPLATE.png",
-                background = nil,
-                color = "#ffffff",
-                headerColor = "#d7ffd9",
-            },
-            ["sindicaterz"] = {
-                label = "Sindicaterz",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/sindicaterz_template.jpg",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["mms"] = {
-                label = "Ming Ming Syndicate",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/BAMING.png",
-                background = nil,
-                color = "#ffffff",
-                headerColor = "#cfcfcf",
-            },
-            ["ruthless"] = {
-                label = "Ruthless",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/RUTHLESS_TEMP.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["dayones"] = {
-                label = "The Day Ones",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/TDO_TEMPLATE.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["mayores"] = {
-                label = "Mayores",
-                gif = nil,
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["veryrare"] = {
-                label = "Very Rare",
-                gif = "https://r2.fivemanage.com/7qoUgFxV85h3Czm85xGbV/20260819_122811.jpg",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["laufuente"] = {
-                label = "La Fuente",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/076C0152-1BDA-43A3-AC00-8B5D2477EB6C.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["marlboro"] = {
-                label = "Marlboro Syndicate",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/MRLBR_bANDW_Temp.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["anino"] = {
-                label = "Anino Syndicate",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/lv_0_20260823125939.jpg",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["slime"] = {
-                label = "Slime",
-                gif = "https://r2.fivemanage.com/7qoUgFxV85h3Czm85xGbV/image.png",
-                background = nil,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
-            },
-            ["eff"] = {
-                label = "El Fuerte Familia",
-                gif = "https://r2.fivemanage.com/7qoUgFxV85h3Czm85xGbV/882a4a4c-3eb5-4d3b-826f-147557bbfa22.png",
-                background = nil    ,
-                color = "#ffffffff",
-                headerColor = "#ffffffff",
+                headerColor = "#e8b4b4",
             },
         }
     },

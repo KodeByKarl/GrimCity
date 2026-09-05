@@ -372,9 +372,10 @@ local function AutoStuck(ped)
 end
 
 onDeath = function(data)
-    -- Ignore death events fired while / during revive (esx death-monitor race) or while in PvP
+    -- Ignore death events fired while / during revive (esx death-monitor race)
     if Vars.isReviving then return end
-    if LocalPlayer.state.inPvp then return end
+
+    local inPvp = LocalPlayer.state.inPvp or LocalPlayer.state.isInPvp
 
     if Vars.isDead then
         client.StartDeathPose()
@@ -396,7 +397,9 @@ onDeath = function(data)
         Vars.lastHitBoneAt = GetGameTimer()
     end
 
-    AutoStuck(ped)
+    if not inPvp then
+        AutoStuck(ped)
+    end
     Vars.isDead = true
     client.StartDeathPose()
     client.SetDeathHearing(false)
@@ -434,8 +437,13 @@ onDeath = function(data)
         Vars.Status.area = 'BODY'
     end
     Vars.Status.pulse = ((Vars.Status.health / 4 + 20) * Vars.Status.multiplier) + math.random(0, 4)
-    client.blurIn()
 
+    -- Arena PvP: stay dead for the deathscreen recap, skip ambulance spawn timer UI
+    if inPvp then
+        return
+    end
+
+    client.blurIn()
     DeathTimer()
 end
 

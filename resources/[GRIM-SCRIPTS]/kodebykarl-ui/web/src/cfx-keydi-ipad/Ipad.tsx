@@ -16,7 +16,10 @@ import {
   ClipboardList,
   UsersRound,
   Zap,
+  GraduationCap,
 } from "lucide-react";
+import type { UniversityRole } from "./universityTypes";
+export type { UniversityRole } from "./universityTypes";
 
 const LeaderboardApp = lazy(() => import("./LeaderboardApp"));
 const EconomyApp = lazy(() => import("./EconomyApp"));
@@ -24,6 +27,7 @@ const PoliceBossApp = lazy(() => import("./PoliceBossApp"));
 const PoliceMdtApp = lazy(() => import("./PoliceMdtApp"));
 const PartyApp = lazy(() => import("./PartyApp"));
 const PvpApp = lazy(() => import("./PvpApp"));
+const UniversityPortalApp = lazy(() => import("./UniversityPortalApp"));
 
 type IpadView = "lock" | "home" | "app";
 
@@ -38,6 +42,8 @@ export interface IpadPlayerData {
   canEditEconomy?: boolean;
   canPoliceBoss?: boolean;
   canPoliceMdt?: boolean;
+  /** University portal role — visitor if unset */
+  universityRole?: UniversityRole;
 }
 
 interface IpadProps {
@@ -61,11 +67,12 @@ const APPS: AppDef[] = [
   { id: "economy", label: "Economy", icon: CircleDollarSign, color: "#2e7d32" },
   { id: "policeboss", label: "PD Boss", icon: Shield, color: "#1d4ed8" },
   { id: "policemdt", label: "Police MDT", icon: ClipboardList, color: "#1e3a8a" },
-  { id: "party", label: "Party", icon: UsersRound, color: "#14b8a6" },
+  { id: "party", label: "Squad", icon: UsersRound, color: "#8b0000" },
   { id: "pvp", label: "PvP", icon: Zap, color: "#f97316" },
+  { id: "university", label: "ULS Portal", icon: GraduationCap, color: "#9a7b4f" },
 ];
 
-const HOME_APPS = ["party", "pvp", "leaderboard"] as const;
+const HOME_APPS = ["university", "party", "pvp", "leaderboard"] as const;
 const HOME_APPS_OWNER = ["economy"] as const;
 const HOME_APPS_POLICE_BOSS = ["policeboss"] as const;
 const HOME_APPS_POLICE_MDT = ["policemdt"] as const;
@@ -524,6 +531,13 @@ function AppScreen({
     return (
       <Suspense fallback={fallback}>
         <PvpApp player={player} />
+      </Suspense>
+    );
+  }
+  if (appId === "university") {
+    return (
+      <Suspense fallback={fallback}>
+        <UniversityPortalApp player={player} />
       </Suspense>
     );
   }

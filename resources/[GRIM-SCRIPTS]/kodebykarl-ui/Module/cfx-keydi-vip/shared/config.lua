@@ -69,7 +69,7 @@ ConfigVip.Tiers = {
     },
 }
 
--- Staff groups that can /setvip and /revokevip
+-- Staff groups that can Set / Edit / Revoke VIP from Control Center
 ConfigVip.StaffGroups = {
     owner = true,
     developer = true,

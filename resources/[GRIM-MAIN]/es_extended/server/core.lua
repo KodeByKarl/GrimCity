@@ -8,6 +8,7 @@ Core.PlayerFunctionOverrides = {}
 Core.DatabaseConnected = false
 Core.playersByIdentifier = {}
 Core.JobsLoaded = false
+Core.GangsLoaded = false
 
 ---@type table<string, CVehicleData>
 Core.vehicles = {}

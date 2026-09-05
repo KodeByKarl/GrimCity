@@ -33,6 +33,20 @@ export const EMPTY_VIP: VipMembership = {
   welcomeBanner: false,
 };
 
+export type VipDurationUnit = "days" | "months";
+
+export interface VipTierOption {
+  id: string;
+  label: string;
+  characterSlots: number;
+}
+
+export interface VipPlayerRow {
+  id: number;
+  name: string;
+  vip: VipMembership;
+}
+
 export const PREVIEW_VIP: VipMembership = {
   active: true,
   tier: "vip3",

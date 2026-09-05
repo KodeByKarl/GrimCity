@@ -1,13 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { BatteryFull, Signal, Trophy, Wifi } from "lucide-react";
+import { fetchNui } from "@/lib/nui";
+import { BatteryFull, Loader2, Signal, Trophy, Wifi } from "lucide-react";
 import type { IpadPlayerData } from "./Ipad";
 
-type TabId = "turfwar" | "traphouse" | "party" | "topplayer";
+type TabId = "turfwar" | "traphouse" | "pvp" | "party" | "topplayer";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "turfwar", label: "Turfwar" },
   { id: "traphouse", label: "Traphouse" },
+  { id: "pvp", label: "PvP" },
   { id: "party", label: "Party" },
   { id: "topplayer", label: "Top Player" },
 ];
@@ -20,7 +22,15 @@ interface RankRow {
   subtitle?: string;
 }
 
-const MOCK: Record<TabId, RankRow[]> = {
+interface PvpRow {
+  rank?: number | null;
+  name: string;
+  kills: number;
+  deaths: number;
+  kd: number;
+}
+
+const MOCK: Record<Exclude<TabId, "pvp">, RankRow[]> = {
   turfwar: [
     { rank: 1, name: "Ballas", gang: "South Side", score: "42 captures", subtitle: "Hot streak" },
     { rank: 2, name: "Families", gang: "Grove", score: "37 captures", subtitle: "Rising" },
@@ -76,6 +86,12 @@ const TAB_META: Record<TabId, { title: string; blurb: string; glow: string; chip
     glow: "rgba(52,199,89,0.18)",
     chip: "bg-[#15803d] text-white shadow-[0_4px_16px_rgba(21,128,61,0.4)]",
   },
+  pvp: {
+    title: "PvP",
+    blurb: "Deathmatch standings by kills.",
+    glow: "rgba(249,115,22,0.22)",
+    chip: "bg-[#ea580c] text-white shadow-[0_4px_16px_rgba(234,88,12,0.4)]",
+  },
   party: {
     title: "Party",
     blurb: "Most active party hosts across Los Santos.",
@@ -86,9 +102,19 @@ const TAB_META: Record<TabId, { title: string; blurb: string; glow: string; chip
     title: "Top Player",
     blurb: "Overall standings across Grim City systems.",
     glow: "rgba(255,159,10,0.2)",
-    chip: "bg-[#ea580c] text-white shadow-[0_4px_16px_rgba(234,88,12,0.4)]",
+    chip: "bg-[#ca8a04] text-white shadow-[0_4px_16px_rgba(202,138,4,0.4)]",
   },
 };
+
+function pvpToRow(row: PvpRow, fallbackRank: number): RankRow {
+  const rank = row.rank ?? fallbackRank;
+  return {
+    rank,
+    name: row.name,
+    score: `${row.kills} K / ${row.deaths} D`,
+    subtitle: `KD ${row.kd}`,
+  };
+}
 
 function StatusBar() {
   const [now, setNow] = useState(() => new Date());
@@ -136,7 +162,27 @@ export default function LeaderboardApp({
   player?: IpadPlayerData | null;
 }) {
   const [tab, setTab] = useState<TabId>("turfwar");
-  const rows = MOCK[tab];
+  const [pvpRows, setPvpRows] = useState<RankRow[]>([]);
+  const [pvpMine, setPvpMine] = useState<PvpRow | null>(null);
+  const [pvpLoading, setPvpLoading] = useState(false);
+
+  const loadPvp = useCallback(async () => {
+    setPvpLoading(true);
+    const result = await fetchNui<{ ok?: boolean; rows?: PvpRow[]; mine?: PvpRow | null }>(
+      "cfx-keydi-ipad:leaderboard:pvp",
+    );
+    const list = result?.rows || [];
+    setPvpRows(list.map((row, i) => pvpToRow(row, i + 1)));
+    setPvpMine(result?.mine || null);
+    setPvpLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (tab !== "pvp") return;
+    void loadPvp();
+  }, [tab, loadPvp]);
+
+  const rows = tab === "pvp" ? pvpRows : MOCK[tab];
   const meta = TAB_META[tab];
   const you = useMemo(() => {
     const n = [player?.firstName, player?.lastName].filter(Boolean).join(" ");
@@ -194,32 +240,54 @@ export default function LeaderboardApp({
             <p className="mt-3 rounded-xl bg-black/35 px-3 py-2 text-[13px] text-white/80">
               Signed in as <span className="font-semibold text-white">{you}</span>
               {player?.gang ? ` · ${player.gang}` : ""}
+              {tab === "pvp" && pvpMine ? (
+                <span className="mt-1 block text-white/55">
+                  {pvpMine.rank ? `Rank #${pvpMine.rank}` : "Unranked"} · {pvpMine.kills} K /{" "}
+                  {pvpMine.deaths} D · KD {pvpMine.kd}
+                </span>
+              ) : null}
             </p>
           ) : null}
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-white/8 bg-[#141010]">
-          {rows.map((row, i) => (
-            <div
-              key={`${tab}-${row.rank}-${row.name}`}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3.5",
-                i < rows.length - 1 && "border-b border-white/6",
-                row.rank === 1 && "bg-[#e10600]/10",
-              )}
-            >
-              <RankBadge rank={row.rank} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[16px] font-semibold text-white">{row.name}</p>
-                <p className="truncate text-[13px] text-white/40">
-                  {row.gang ? `${row.gang}` : ""}
-                  {row.gang && row.subtitle ? " · " : ""}
-                  {row.subtitle || ""}
+          {tab === "pvp" && pvpLoading ? (
+            <div className="flex items-center justify-center gap-2 px-4 py-10 text-[13px] text-white/45">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading standings…
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="px-4 py-10 text-center text-[13px] text-white/40">No records yet.</div>
+          ) : (
+            rows.map((row, i) => (
+              <div
+                key={`${tab}-${row.rank}-${row.name}`}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3.5",
+                  i < rows.length - 1 && "border-b border-white/6",
+                  row.rank === 1 && (tab === "pvp" ? "bg-[#ea580c]/12" : "bg-[#e10600]/10"),
+                )}
+              >
+                <RankBadge rank={row.rank} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[16px] font-semibold text-white">{row.name}</p>
+                  <p className="truncate text-[13px] text-white/40">
+                    {row.gang ? `${row.gang}` : ""}
+                    {row.gang && row.subtitle ? " · " : ""}
+                    {row.subtitle || ""}
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    "shrink-0 text-right text-[13px] font-semibold",
+                    tab === "pvp" ? "text-[#fdba74]" : "text-[#fca5a5]",
+                  )}
+                >
+                  {row.score}
                 </p>
               </div>
-              <p className="shrink-0 text-right text-[13px] font-semibold text-[#fca5a5]">{row.score}</p>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ if not lib then return end
 
 require 'modules.bridge.client'
 require 'modules.interface.client'
+require 'modules.custom_items.client'
 
 local Utils = require 'modules.utils.client'
 local Weapon = require 'modules.weapon.client'
@@ -123,10 +124,6 @@ local CraftingBenches = require 'modules.crafting.client'
 local Vehicles = lib.load('data.vehicles')
 local Inventory = require 'modules.inventory.client'
 
-exports('IsOwnedTrunk', function(entity)
-    return Inventory.IsOwnedTrunk(entity)
-end)
-
 ---@param inv string?
 ---@param data any?
 ---@return boolean?
@@ -241,9 +238,9 @@ function client.openInventory(inv, data)
     elseif invOpen ~= nil then
         if inv == 'policeevidence' then
             if not data then
-                local input = lib.inputDialog(locale('police_evidence'), {
-                    { label = locale('locker_number'), type = 'number', required = true, icon = 'calculator' }
-                }) --[[@as number[]? ]]
+                local input = lib.inputDialog(locale('police_evidence') or 'Police Evidence Locker', {
+                    { label = 'Evidence Locker Code', description = 'Enter case code or locker number', type = 'input', required = true, icon = 'lock' }
+                })
 
                 if not input then return end
 
@@ -255,8 +252,7 @@ function client.openInventory(inv, data)
     end
 
     if accessError then
-        lib.notify({ id = accessError, type = 'error', description = locale(accessError) })
-        return false
+        return lib.notify({ id = accessError, type = 'error', description = locale(accessError) })
     end
 
     -- Stash does not exist
@@ -1493,7 +1489,7 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 				DisableControlAction(0, 80, true)
 				DisableControlAction(0, 140, true)
 
-				if currentWeapon.metadata.durability <= 0 or not currentWeapon.timer or (currentWeapon.metadata.durability > 100 and currentWeapon.metadata.degrade and GetCloudTimeAsInt() >= currentWeapon.metadata.durability) then
+				if currentWeapon.metadata.durability <= 0 or not currentWeapon.timer then
 					DisablePlayerFiring(playerId, true)
 				elseif client.aimedfiring and not currentWeapon.melee and currentWeapon.group ~= `GROUP_PETROLCAN` and not IsPlayerFreeAiming(playerId) then
 					DisablePlayerFiring(playerId, true)
@@ -1937,5 +1933,3 @@ lib.callback.register('ox_inventory:getVehicleData', function(netid)
 		return GetEntityModel(entity), GetVehicleClass(entity)
 	end
 end)
-
-require 'modules.custom_items.client'

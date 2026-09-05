@@ -160,10 +160,20 @@ toggleFreecam = function()
         NetworkSetFriendlyFireOption(false)
 
         CreateThread(freecamThread)
-        ESX.Notify('FREECAM', 'Freecam enabled', 'success', 3000)
+        lib.notify({
+            title = 'FREECAM',
+            description = 'Freecam enabled',
+            type = 'success',
+            duration = 3000,
+        })
     else
         restorePlayer()
-        ESX.Notify('FREECAM', 'Freecam disabled', 'error', 3000)
+        lib.notify({
+            title = 'FREECAM',
+            description = 'Freecam disabled',
+            type = 'error',
+            duration = 3000,
+        })
     end
 end
 

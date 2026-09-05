@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>University portal</title>
+  <style>
+    :root {
+      --bg0: #070b12;
+      --bg1: #0c1220;
+      --panel: rgba(18, 26, 42, 0.92);
+      --panel-border: rgba(94, 140, 255, 0.22);
+      --text: #e8edf7;
+      --muted: #8b9ab5;
+      --accent: #5e8cff;
+      --accent-soft: rgba(94, 140, 255, 0.14);
+      --success: #3ecf8e;
+      --radius: 12px;
+      --font: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 1024px;
+      height: 512px;
+      overflow: hidden;
+      font-family: var(--font);
+      color: var(--text);
+      background: radial-gradient(120% 100% at 10% 0%, #152042 0%, var(--bg0) 45%, #04060a 100%);
+    }
+
+    /* Subtle “glass” laptop panel */
+    .laptop {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 14px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .laptop::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      pointer-events: none;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        0 24px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(22, 32, 52, 0.95), rgba(14, 20, 34, 0.88));
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: -0.04em;
+      color: #0a1020;
+      background: linear-gradient(145deg, #9ec5ff 0%, var(--accent) 55%, #3d6fd9 100%);
+      box-shadow: 0 4px 14px rgba(62, 120, 255, 0.35);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(94, 140, 255, 0.25);
+      font-size: 11px;
+      font-weight: 600;
+      color: #c8d9ff;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px rgba(62, 207, 142, 0.7);
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px 4px 4px;
+    }
+
+    .lede {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #b7c4df;
+      max-width: 72ch;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .card {
+      appearance: none;
+      margin: 0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius);
+      padding: 14px 14px 12px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text);
+      background: linear-gradient(165deg, rgba(30, 42, 68, 0.9) 0%, rgba(16, 22, 38, 0.92) 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s, background 0.15s;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .card:hover {
+      border-color: rgba(94, 140, 255, 0.55);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(94, 140, 255, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .card:active {
+      transform: translateY(0);
+    }
+
+    .card:focus { outline: none; }
+
+    .card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-soft);
+      border: 1px solid rgba(94, 140, 255, 0.28);
+      color: #b8d0ff;
+    }
+
+    .card-icon svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    .card-tag {
+      margin-top: auto;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7a8fb8;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted);
+      padding: 8px 2px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* nl-lockers laptop parity: #dui-cursor from Lua SendReplaceMessage */
+    #dui-cursor {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+      z-index: 2147483647;
+      display: none;
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
+    }
+
+    #dui-cursor.visible {
+      display: block;
+    }
+
+    #dui-cursor svg {
+      display: block;
+      transform: translate(0, 0);
+    }
+  </style>
+</head>
+<body tabindex="-1">
+  <div id="dui-cursor" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+      <path d="M3 2 L3 22 L9.5 15.5 L14 26 L17 24.5 L12.5 14 L22 14 Z"
+            fill="#f6f8fa"
+            stroke="#1a2744"
+            stroke-width="1.25"
+            stroke-linejoin="round" />
+      <path d="M5 5 L5 18 L10.5 13 L14.5 22 L15.5 21.5 L11.5 12.5 L19 12.5 Z"
+            fill="#ffffff"
+            opacity="0.35" />
+    </svg>
+  </div>
+
+  <div class="laptop">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark">QU</span>
+        <div class="brand-text">
+          <span class="brand-title">University portal</span>
+          <span class="brand-sub">Director console · campus intranet</span>
+        </div>
+      </div>
+      <div class="status">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Session linked</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <p class="lede">
+        Register students, open staff tools, or post announcements from this terminal.
+        Input is mirrored from the in-world screen (Lua ray / mouse).
+      </p>
+
+      <div class="cards" role="toolbar" aria-label="Campus actions">
+        <button type="button" class="card" id="btn-staff">
+          <span class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          <span class="card-title">Staff &amp; registry</span>
+          <span class="card-desc">Student roster, faculty tools, and records workflows.</span>
+          <span class="card-tag">Director</span>
+        </button>
+
+        <button type="button" class="card" id="btn-announce">
+          <span class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 11v3a1 1 0 0 0 1 1h2l4 4V6L7 10H5a1 1 0 0 0-1 1z" />
+              <path d="M16 8.5a5 5 0 0 1 0 7" />
+              <path d="M19 5a9 9 0 0 1 0 14" />
+            </svg>
+          </span>
+          <span class="card-title">Campus announcements</span>
+          <span class="card-desc">Broadcast messages to classes or the whole campus.</span>
+          <span class="card-tag">Comms</span>
+        </button>
+
+        <button type="button" class="card" id="btn-close">
+          <span class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </span>
+          <span class="card-title">End session</span>
+          <span class="card-desc">Lock the terminal and return control to the city.</span>
+          <span class="card-tag">Safe exit</span>
+        </button>
+      </div>
+
+      <p class="hint">
+        Controls: mouse from game · Shift fine aim · arrow keys nudge · Tab cycles tiles · Enter or Space activates.
+      </p>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var duiCursor = document.getElementById('dui-cursor');
+
+      function parsePayload(data) {
+        if (data == null) return null;
+        if (typeof data === 'string') {
+          try { return JSON.parse(data); } catch (e) { return null; }
+        }
+        return data;
+      }
+
+      function applyCursor(x, y) {
+        if (!duiCursor) return;
+        duiCursor.classList.add('visible');
+        duiCursor.style.left = x + 'px';
+        duiCursor.style.top = y + 'px';
+        var el = document.elementFromPoint(x, y);
+        if (el) {
+          el.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
+        }
+      }
+
+      window.addEventListener('message', function (e) {
+        var d = parsePayload(e.data);
+        if (!d || !d.type) return;
+
+        if (d.type === 'cursor' && typeof d.x === 'number' && typeof d.y === 'number') {
+          applyCursor(d.x, d.y);
+          return;
+        }
+
+        if (d.type === 'click' && typeof d.x === 'number' && typeof d.y === 'number') {
+          applyCursor(d.x, d.y);
+          var el = document.elementFromPoint(d.x, d.y);
+          if (!el) return;
+          var pressed = d.pressed === true;
+          if (pressed) {
+            el.dispatchEvent(new MouseEvent('mousedown', { clientX: d.x, clientY: d.y, bubbles: true, button: d.button || 0 }));
+          } else {
+            el.dispatchEvent(new MouseEvent('mouseup', { clientX: d.x, clientY: d.y, bubbles: true, button: d.button || 0 }));
+            if ((d.button || 0) === 0) {
+              el.dispatchEvent(new MouseEvent('click', { clientX: d.x, clientY: d.y, bubbles: true, button: 0 }));
+              var btn = el.closest ? el.closest('button') : null;
+              if (btn) btn.focus();
+              else if (el.tagName === 'INPUT' || el.tagName === 'BUTTON') el.focus();
+            }
+          }
+          return;
+        }
+
+        if (d.type === 'scroll' && typeof d.x === 'number' && typeof d.y === 'number') {
+          var dy = d.dy || 0;
+          if (dy === 0) return;
+          var t = document.elementFromPoint(d.x, d.y);
+          if (!t) return;
+          while (t && t !== document.body) {
+            var o = window.getComputedStyle(t).overflowY;
+            if ((o === 'auto' || o === 'scroll' || o === 'overlay') && t.scrollHeight > t.clientHeight) {
+              t.scrollTop -= dy * 40;
+              break;
+            }
+            t = t.parentElement;
+          }
+          return;
+        }
+
+        if (d.type === 'close') {
+          if (duiCursor) duiCursor.classList.remove('visible');
+        }
+      });
+
+      function post(name, data) {
+        try {
+          fetch('https://' + (window.GetParentResourceName ? GetParentResourceName() : 'nl-university') + '/' + name, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+            body: JSON.stringify(data || {})
+          }).catch(function () {});
+        } catch (err) {}
+      }
+
+      function toolbarButtons() {
+        return Array.prototype.slice.call(document.querySelectorAll('.cards .card'));
+      }
+
+      document.addEventListener('keydown', function (ev) {
+        var buttons = toolbarButtons();
+        if (buttons.length === 0) return;
+        var ae = document.activeElement;
+        var idx = buttons.indexOf(ae);
+        if (ev.key === 'Tab') {
+          ev.preventDefault();
+          var next = ev.shiftKey
+            ? (idx <= 0 ? buttons.length - 1 : idx - 1)
+            : (idx < 0 || idx >= buttons.length - 1 ? 0 : idx + 1);
+          buttons[next].focus();
+          return;
+        }
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          if (ae && ae.tagName === 'BUTTON') {
+            ev.preventDefault();
+            ae.click();
+          }
+        }
+      });
+
+      document.getElementById('btn-staff').addEventListener('click', function () {
+        post('bossmenuDuiStub', { action: 'staff' });
+      });
+      document.getElementById('btn-announce').addEventListener('click', function () {
+        post('bossmenuDuiStub', { action: 'announce' });
+      });
+      document.getElementById('btn-close').addEventListener('click', function () {
+        post('bossmenuDuiStub', { action: 'close' });
+      });
+    })();
+  </script>
+</body>
+</html>

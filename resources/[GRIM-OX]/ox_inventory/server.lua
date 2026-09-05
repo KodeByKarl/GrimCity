@@ -4,7 +4,7 @@ require 'modules.bridge.server'
 require 'modules.crafting.server'
 require 'modules.shops.server'
 require 'modules.pefcl.server'
-require 'modules.hooks.restrictions'
+require 'modules.custom_items.server'
 
 if GetConvar('inventory:versioncheck', 'true') == 'true' then
     lib.versionCheck('overextended/ox_inventory')
@@ -15,31 +15,6 @@ local db = require 'modules.mysql.server'
 local Items = require 'modules.items.server'
 local Inventory = require 'modules.inventory.server'
 local Utils = require 'modules.utils.server'
-
-local function normalizePlate(plate)
-    if not plate or plate == '' then return '' end
-    return (string.gsub(tostring(plate), '^%s*(.-)%s*$', '%1')):upper()
-end
-
---- Registered cars: owner only. Unregistered plates stay usable (world/spawned).
-local function canOpenOwnedTrunk(src, plate)
-    plate = normalizePlate(plate)
-    if plate == '' then return true end
-
-    local row = MySQL.single.await(
-        'SELECT owner FROM owned_vehicles WHERE UPPER(TRIM(plate)) = ? LIMIT 1',
-        { plate }
-    )
-    if not row then return true end
-
-    local ESX = exports.es_extended:getSharedObject()
-    local xPlayer = ESX and ESX.GetPlayerFromId(src)
-    return xPlayer and xPlayer.identifier == row.owner or false
-end
-
-lib.callback.register('ox_inventory:isVehicleOwner', function(source, plate)
-    return canOpenOwnedTrunk(source, plate)
-end)
 
 ---@param player table
 ---@param data table?
@@ -208,10 +183,6 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
 
                 if plate then
                     if server.trimplate then plate = string.strtrim(plate) end
-
-                    if invType == 'trunk' and not ignoreSecurityChecks and not canOpenOwnedTrunk(source, plate) then
-                        return false, false, 'trunk_owner'
-                    end
 
                     data.id = (invType == 'glovebox' and 'glove' or 'trunk') .. plate
                 end
@@ -457,7 +428,7 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
         local consume = item.consume
         local label = data.metadata.label or item.label
 
-        if durability then
+        if durability and consume then
             if durability > 100 then
                 local ostime = os.time()
 
@@ -465,7 +436,7 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
                     Items.UpdateDurability(inventory, data, item, 0)
                     return TriggerClientEvent('ox_lib:notify', source,
                         { type = 'error', description = locale('no_durability', label) })
-                elseif consume and consume ~= 0 and consume < 1 then
+                elseif consume ~= 0 and consume < 1 then
                     local degrade = (data.metadata.degrade or item.degrade) * 60
                     local percentage = ((durability - ostime) * 100) / degrade
 
@@ -477,12 +448,12 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
             elseif durability <= 0 then
                 return TriggerClientEvent('ox_lib:notify', source,
                     { type = 'error', description = locale('no_durability', label) })
-            elseif consume and consume ~= 0 and consume < 1 and durability < consume * 100 then
+            elseif consume ~= 0 and consume < 1 and durability < consume * 100 then
                 return TriggerClientEvent('ox_lib:notify', source,
                     { type = 'error', description = locale('not_enough_durability', label) })
             end
 
-            if consume and data.count > 1 and consume < 1 and consume > 0 and not Inventory.GetEmptySlot(inventory) then
+            if data.count > 1 and consume < 1 and consume > 0 and not Inventory.GetEmptySlot(inventory) then
                 return TriggerClientEvent('ox_lib:notify', source,
                     { type = 'error', description = locale('cannot_use', label) })
             end
@@ -604,13 +575,6 @@ lib.callback.register('ox_inventory:useItem', function(source, itemName, slot, m
                 if item?.cb then
                     item.cb('usedItem', item, inventory, data.slot)
                 end
-            end
-
-            -- Apply hunger/thirst/stress via ESX secure status (0-100)
-            if item.status and GetResourceState('es_extended') == 'started' then
-                pcall(function()
-                    exports['es_extended']:SecureApplyItemStatus(source, item.status)
-                end)
             end
 
             return true
@@ -818,5 +782,3 @@ lib.registerHook('ox_lib:setPlayerState', nil, {
 lib.registerHook('ox_lib:setPlayerState', nil, {
     key = 'canSteal'
 })
-
-require 'modules.custom_items.server'

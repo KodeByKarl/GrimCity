@@ -128,6 +128,9 @@ local function GetLockReason(src)
     if ConfigServerLocations.LockInArena and state.inArena then
         return "Inside Arena Instance"
     end
+    if ConfigServerLocations.LockInPvp ~= false and (state.inPvp or state.isInPvp) then
+        return "Inside Deathmatch Arena"
+    end
     return nil
 end
 

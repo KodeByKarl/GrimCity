@@ -7,6 +7,106 @@ export function isBrowserEnv() {
   );
 }
 
+const mockVipTiers = [
+  { id: "vip1", label: "VIP 1", characterSlots: 1 },
+  { id: "vip2", label: "VIP 2", characterSlots: 2 },
+  { id: "vip3", label: "VIP 3", characterSlots: 3 },
+  { id: "vip4", label: "VIP 4", characterSlots: 3 },
+  { id: "vip5", label: "VIP 5", characterSlots: 3 },
+];
+
+function mockBuildVip(
+  tier: string,
+  amount: number,
+  unit: "days" | "months",
+  autoRenew: boolean,
+  keepExpiresAt: string | null
+) {
+  const expires = keepExpiresAt ? new Date(keepExpiresAt) : new Date();
+  if (!keepExpiresAt) {
+    if (unit === "months") expires.setMonth(expires.getMonth() + amount);
+    else expires.setDate(expires.getDate() + amount);
+  }
+  const iso = expires.toISOString();
+  const diff = Math.max(0, expires.getTime() - Date.now());
+  const daysRemaining = Math.floor(diff / 86400000);
+  const hoursRemaining = Math.floor((diff % 86400000) / 3600000);
+  const slots = mockVipTiers.find((t) => t.id === tier)?.characterSlots ?? 1;
+  const labels: Record<string, string> = {
+    vip1: "VIP 1",
+    vip2: "VIP 2",
+    vip3: "VIP 3",
+    vip4: "VIP 4",
+    vip5: "VIP 5",
+  };
+  return {
+    active: true,
+    tier,
+    label: labels[tier] || tier,
+    daysRemaining,
+    hoursRemaining,
+    renewsAt: iso,
+    expiresAt: iso,
+    autoRenew,
+    perks: ["VIP chat tag"],
+    characterSlots: slots,
+    pedMenu: tier !== "vip1",
+    welcomeBanner: true,
+  };
+}
+
+const mockVipRoster: {
+  players: {
+    id: number;
+    name: string;
+    vip: ReturnType<typeof mockBuildVip> | {
+      active: false;
+      tier: string;
+      label: string;
+      daysRemaining: number;
+      hoursRemaining: number;
+      renewsAt: null;
+      expiresAt: null;
+      autoRenew: boolean;
+      perks: string[];
+      characterSlots: number;
+      pedMenu: boolean;
+      welcomeBanner: boolean;
+    };
+  }[];
+} = {
+  players: [
+    {
+      id: 1,
+      name: "Karl Dev",
+      vip: mockBuildVip("vip3", 12, "days", true, "2026-09-17T18:00:00.000Z"),
+    },
+    {
+      id: 12,
+      name: "Alex Rivera",
+      vip: {
+        active: false,
+        tier: "none",
+        label: "No VIP",
+        daysRemaining: 0,
+        hoursRemaining: 0,
+        renewsAt: null,
+        expiresAt: null,
+        autoRenew: false,
+        perks: [],
+        characterSlots: 1,
+        pedMenu: false,
+        welcomeBanner: false,
+      },
+    },
+    {
+      id: 24,
+      name: "Mia Cruz",
+      vip: mockBuildVip("vip2", 45, "days", false, null),
+    },
+  ],
+};
+
 export async function fetchNui<T = unknown>(eventName: string, data?: unknown): Promise<T> {
   if (isBrowserEnv()) {
     if (eventName === "cfx-keydi-modules:getPatchNotes") {
@@ -69,31 +169,178 @@ export async function fetchNui<T = unknown>(eventName: string, data?: unknown): 
       return { ok: true } as T;
     }
     if (eventName === "cfx-keydi-vip:getStatus") {
+      const self = mockVipRoster.players.find((p) => p.id === 1)?.vip;
       return {
-        vip: {
-          active: true,
-          tier: "vip3",
-          label: "VIP 3",
-          daysRemaining: 12,
-          hoursRemaining: 8,
-          renewsAt: "2026-09-17T18:00:00Z",
-          expiresAt: "2026-09-17T18:00:00Z",
-          autoRenew: true,
-          pedMenu: true,
-          welcomeBanner: true,
-          perks: [
-            "Priority queue",
-            "Ped Menu (/pedmenu)",
-            "3 character slots (MultiVIP)",
-            "Edit own welcome banner",
-            "VIP chat tag",
-          ],
-          characterSlots: 3,
-        },
+        vip: self,
+        canManage: true,
       } as T;
     }
     if (eventName === "cfx-keydi-vip:openPedMenu" || eventName === "cfx-keydi-vip:openWelcomeBanner") {
       return { ok: true } as T;
+    }
+    if (eventName === "cfx-keydi-vip:staffRoster") {
+      return {
+        ok: true,
+        canManage: true,
+        tiers: mockVipTiers,
+        players: mockVipRoster.players,
+      } as T;
+    }
+    if (eventName === "cfx-keydi-vip:staffLookup") {
+      const targetId = Number((data as { targetId?: number } | undefined)?.targetId);
+      const player = mockVipRoster.players.find((p) => p.id === targetId);
+      if (!player) return { ok: false, error: "Player offline" } as T;
+      return { ok: true, player } as T;
+    }
+    if (eventName === "cfx-keydi-vip:staffSet") {
+      const body = data as {
+        targetId?: number;
+        tier?: string;
+        amount?: number;
+        unit?: "days" | "months";
+        autoRenew?: boolean;
+        keepExpiry?: boolean;
+      };
+      const idx = mockVipRoster.players.findIndex((p) => p.id === body.targetId);
+      if (idx < 0) return { ok: false, error: "Player offline" } as T;
+      const current = mockVipRoster.players[idx];
+      const nextVip = mockBuildVip(
+        body.tier || "vip1",
+        Number(body.amount) || 1,
+        body.unit === "months" ? "months" : "days",
+        !!body.autoRenew,
+        body.keepExpiry && current.vip.active ? current.vip.expiresAt : null
+      );
+      mockVipRoster.players[idx] = { ...current, vip: nextVip };
+      return { ok: true, vip: nextVip, players: mockVipRoster.players } as T;
+    }
+    if (eventName === "cfx-keydi-vip:staffRevoke") {
+      const targetId = Number((data as { targetId?: number } | undefined)?.targetId);
+      const idx = mockVipRoster.players.findIndex((p) => p.id === targetId);
+      if (idx < 0) return { ok: false, error: "Player offline" } as T;
+      const empty = {
+        active: false,
+        tier: "none",
+        label: "No VIP",
+        daysRemaining: 0,
+        hoursRemaining: 0,
+        renewsAt: null,
+        expiresAt: null,
+        autoRenew: false,
+        perks: [],
+        characterSlots: 1,
+        pedMenu: false,
+        welcomeBanner: false,
+      };
+      mockVipRoster.players[idx] = { ...mockVipRoster.players[idx], vip: empty };
+      return { ok: true, vip: empty, players: mockVipRoster.players } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:pvp:status") {
+      return {
+        ok: true,
+        inPvp: false,
+        players: 4,
+        maxPlayers: 32,
+        name: "Deathmatch Arena",
+        tags: ["Pistols", "Safe zone", "Public"],
+      } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:pvp:join" || eventName === "cfx-keydi-ipad:pvp:leave") {
+      return { ok: true } as T;
+    }
+    if (eventName.startsWith("cfx-keydi-ipad:party:")) {
+      const you = { identifier: "char1:dev", name: "Karl Dev", leader: true, online: true, serverId: 1, you: true };
+      const mine = {
+        id: 1,
+        name: "Night Crew",
+        locked: true,
+        count: 1,
+        max: 4,
+        youLeader: true,
+        members: [you],
+      };
+      if (eventName === "cfx-keydi-ipad:party:state") {
+        return {
+          ok: true,
+          max: 4,
+          list: [
+            { id: 1, name: "Night Crew", leader: "Karl Dev", count: 1, online: 1, max: 4, locked: true, full: false },
+            { id: 2, name: "Grove Block", leader: "Ace Walker", count: 3, online: 2, max: 4, locked: false, full: false },
+          ],
+          mine: null,
+        } as T;
+      }
+      if (eventName === "cfx-keydi-ipad:party:create" || eventName === "cfx-keydi-ipad:party:join") {
+        return { ok: true, mine, list: [{ id: 1, name: mine.name, leader: you.name, count: 1, online: 1, max: 4, locked: true, full: false }] } as T;
+      }
+      return { ok: true, mine: null, list: [] } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:leaderboard:pvp") {
+      return {
+        ok: true,
+        rows: [
+          { rank: 1, name: "Ace Walker", kills: 48, deaths: 12, kd: 4.0 },
+          { rank: 2, name: "Nova Cruz", kills: 41, deaths: 15, kd: 2.7 },
+          { rank: 3, name: "Rico Vale", kills: 33, deaths: 19, kd: 1.7 },
+          { rank: 4, name: "Karl Dev", kills: 21, deaths: 18, kd: 1.2 },
+          { rank: 5, name: "Mia Storm", kills: 17, deaths: 22, kd: 0.8 },
+        ],
+        mine: { rank: 4, name: "Karl Dev", kills: 21, deaths: 18, kd: 1.2 },
+      } as T;
+    }
+    if (eventName.startsWith("cfx-keydi-ipad:party:")) {
+      const mock = (window as unknown as { __partyMock?: {
+        list: unknown[];
+        mine: unknown;
+      } }).__partyMock || { list: [], mine: null };
+      (window as unknown as { __partyMock: typeof mock }).__partyMock = mock;
+      if (eventName === "cfx-keydi-ipad:party:state") {
+        return { ok: true, max: 4, list: mock.list, mine: mock.mine } as T;
+      }
+      if (eventName === "cfx-keydi-ipad:party:create") {
+        const body = (data || {}) as { name?: string; password?: string };
+        mock.mine = {
+          id: 1,
+          name: body.name || "Karl's Team",
+          locked: Boolean(body.password),
+          count: 1,
+          max: 4,
+          youLeader: true,
+          members: [{ identifier: "you", name: "Karl Dev", leader: true, online: true, you: true, serverId: 1 }],
+        };
+        mock.list = [{
+          id: 1,
+          name: body.name || "Karl's Team",
+          leader: "Karl Dev",
+          count: 1,
+          online: 1,
+          max: 4,
+          locked: Boolean(body.password),
+          full: false,
+        }];
+        window.dispatchEvent(new MessageEvent("message", {
+          data: {
+            action: "cfx-keydi-ipad:party:hud",
+            data: {
+              visible: true,
+              name: body.name || "Karl's Team",
+              count: 1,
+              max: 4,
+              members: [{ slot: 1, name: "Karl Dev", leader: true, online: true, health: 100, armor: 40 }],
+            },
+          },
+        }));
+        return { ok: true, mine: mock.mine, list: mock.list } as T;
+      }
+      if (eventName === "cfx-keydi-ipad:party:leave" || eventName === "cfx-keydi-ipad:party:disband") {
+        mock.mine = null;
+        mock.list = [];
+        window.dispatchEvent(new MessageEvent("message", {
+          data: { action: "cfx-keydi-ipad:party:hud", data: { visible: false, members: [] } },
+        }));
+        return { ok: true, mine: null, list: [] } as T;
+      }
+      return { ok: true, mine: mock.mine, list: mock.list } as T;
     }
     return {} as T;
   }

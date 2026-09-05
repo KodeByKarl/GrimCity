@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import ModulePageShell from "@/cfx-keydi-modules/ModulePageShell";
 import { fetchNui } from "@/lib/nui";
 import { EMPTY_VIP, type VipMembership } from "./types";
+import VipStaffPanel from "./VipStaffPanel";
 
 interface VipStatusProps {
   onClose: () => void;
@@ -31,16 +32,21 @@ function remainingLabel(days: number, hours: number) {
 
 export default function VipStatus({ onClose }: VipStatusProps) {
   const [vip, setVip] = useState<VipMembership>(EMPTY_VIP);
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
     setLoading(true);
-    fetchNui<{ vip?: VipMembership }>("cfx-keydi-vip:getStatus", {})
+    fetchNui<{ vip?: VipMembership; canManage?: boolean }>("cfx-keydi-vip:getStatus", {})
       .then((res) => {
         if (res?.vip) setVip(res.vip);
         else setVip(EMPTY_VIP);
+        setCanManage(!!res?.canManage);
       })
-      .catch(() => setVip(EMPTY_VIP))
+      .catch(() => {
+        setVip(EMPTY_VIP);
+        setCanManage(false);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -56,7 +62,11 @@ export default function VipStatus({ onClose }: VipStatusProps) {
       title="VIP Status"
       eyebrow="VIP MEMBERSHIP"
       subtitle="Active plan, days left until renewal, and revoke date."
-      sidebarHint="Track your VIP tier and when access ends."
+      sidebarHint={
+        canManage
+          ? "View your plan, or Set / Edit VIP for online players."
+          : "Track your VIP tier and when access ends."
+      }
       onClose={onClose}
     >
       <div className="flex flex-1 flex-col justify-between overflow-hidden">
@@ -230,6 +240,8 @@ export default function VipStatus({ onClose }: VipStatusProps) {
               )}
             </>
           )}
+
+          {canManage && <VipStaffPanel onOwnStatusChanged={load} />}
         </div>
 
         <div className="mt-2 flex justify-end border-t border-[#ff3a3a]/25 pt-3.5">

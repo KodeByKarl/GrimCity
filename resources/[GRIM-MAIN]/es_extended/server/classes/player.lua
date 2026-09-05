@@ -187,6 +187,29 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     end
     job.onDuty = self.metadata.jobDuty
 
+    -- Gang (from es_extended/shared/config/gang.lua)
+    if not self.metadata.gang then
+        self.metadata.gang = { name = "none", grade = 0, label = "No Gang", grade_label = "No Grade", salary = 0, skin_male = {}, skin_female = {} }
+    elseif not ESX.DoesGangExist(self.metadata.gang.name, tostring(self.metadata.gang.grade)) then
+        self.metadata.gang = { name = "none", grade = 0, label = "No Gang", grade_label = "No Grade", salary = 0, skin_male = {}, skin_female = {} }
+    end
+
+    local gangObject = ESX.Gangs[self.metadata.gang.name] or ESX.Gangs["none"]
+    local gradeObject = gangObject and gangObject.grades[tostring(self.metadata.gang.grade)] or gangObject and gangObject.grades["0"]
+    gradeObject = gradeObject or { name = "none", label = "No Grade", salary = 0, skin_male = {}, skin_female = {} }
+
+    self.gang = {
+        name = gangObject.name or "none",
+        label = gangObject.label or "No Gang",
+        grade = tonumber(self.metadata.gang.grade) or 0,
+        grade_name = gradeObject.name,
+        grade_label = gradeObject.label,
+        grade_salary = gradeObject.salary,
+        skin_male = {},
+        skin_female = {},
+        onDuty = false,
+    }
+
     if self.license then
         ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, self.group))
     end
@@ -197,6 +220,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     stateBag:set("job", self.job, true)
     stateBag:set("group", self.group, true)
     stateBag:set("name", self.name, true)
+    stateBag:set("gang", self.gang, true)
 
     function self.triggerEvent(eventName, ...)
         assert(type(eventName) == "string", "eventName should be string!")
@@ -363,6 +387,10 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
     function self.getJob()
         return self.job
+    end
+
+    function self.getGang()
+        return self.gang
     end
 
     function self.getLoadout(minimal)
@@ -625,6 +653,52 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         TriggerEvent("esx:setJob", self.source, self.job, lastJob)
         self.triggerEvent("esx:setJob", self.job, lastJob)
         Player(self.source).state:set("job", self.job, true)
+    end
+
+    function self.setGang(newGang, grade)
+        grade = tostring(grade)
+        local lastGang = self.gang
+
+        if not ESX.DoesGangExist(newGang, grade) then
+            return print(("[ESX] [^3WARNING^7] Ignoring invalid ^5.setGang()^7 usage for ID: ^5%s^7, Gang: ^5%s^7"):format(self.source, newGang))
+        end
+
+        local gradeNum = tonumber(grade) or 0
+        self.metadata.gang = { name = newGang, grade = gradeNum }
+
+        local gangObject = ESX.Gangs[newGang] or ESX.Gangs["none"]
+        local gradeObject = gangObject and gangObject.grades[tostring(self.metadata.gang.grade)] or gangObject and gangObject.grades["0"]
+        gradeObject = gradeObject or { name = "none", label = "No Grade", salary = 0, skin_male = {}, skin_female = {} }
+
+        self.gang = {
+            name = gangObject.name or "none",
+            label = gangObject.label or "No Gang",
+            grade = gradeNum,
+            grade_name = gradeObject.name,
+            grade_label = gradeObject.label,
+            grade_salary = gradeObject.salary,
+            skin_male = {},
+            skin_female = {},
+            onDuty = false,
+        }
+
+        TriggerEvent("esx:setGang", self.source, self.gang, lastGang)
+        self.triggerEvent("esx:setGang", self.gang, lastGang)
+        Player(self.source).state:set("gang", self.gang, true)
+
+        if self.identifier then
+            MySQL.update('UPDATE `users` SET `gang` = ?, `gang_grade` = ? WHERE `identifier` = ?', { newGang, gradeNum, self.identifier })
+
+            if newGang ~= 'none' then
+                MySQL.query([[
+                    INSERT INTO `gang_members` (`identifier`, `gang`, `grade`, `name`, `joined_at`, `last_seen`)
+                    VALUES (?, ?, ?, ?, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE `gang` = ?, `grade` = ?, `name` = ?, `last_seen` = NOW()
+                ]], { self.identifier, newGang, gradeNum, self.name or 'Unknown', newGang, gradeNum, self.name or 'Unknown' })
+            else
+                MySQL.query('DELETE FROM `gang_members` WHERE `identifier` = ?', { self.identifier })
+            end
+        end
     end
 
     function self.addWeapon(weaponName, ammo)
