@@ -22,6 +22,12 @@ ConfigAutofarm.Farming = {
     toolUses = 100,         -- pickups before required tools break (-1 durability per gather cycle)
 }
 
+--[[
+  Optional per-farm fields (HUD):
+    zone   = "Orange Grove"   -- defaults to blip.label
+    rarity = "common"|"uncommon"|"rare"|"epic"  -- auto: rare if drops include diamond/emerald/kevlar/titanium
+]]
+
 -- Server security / anti-cheat tolerances
 ConfigAutofarm.Security = {
     maxDistanceGrace = 2.0,   -- extra meters beyond interactionDistance for latency
@@ -59,6 +65,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 2,
         },
+        zone = "Mango Grove",
+        rarity = "common",
         locations = {
             vec4(2326.0691, 4761.2773, 35.9651, 47.1926),
             vec4(2327.6001, 4770.3359, 36.0531, 359.6024),
@@ -79,6 +87,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 1,
         },
+        zone = "Apple Orchard",
+        rarity = "common",
         locations = {
             vec4(2350.1160, 4734.4121, 34.8094, 216.4595),
             vec4(2364.3943, 4729.6758, 34.1978, 245.2126),
@@ -99,6 +109,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 5,
         },
+        zone = "Honey Apiary",
+        rarity = "common",
         locations = {
             vec4(2404.6506, 4703.5264, 33.3854, 17.1392),
             vec4(2413.1804, 4707.0264, 33.0073, 64.2971),
@@ -121,6 +133,8 @@ ConfigAutofarm.Farms = {
             sprite = 68,
             color = 3,
         },
+        zone = "Crab Shore",
+        rarity = "uncommon",
         locations = {
             vec4(-284.5971, 6603.2383, 1.0985, 128.3568),
             vec4(-287.0456, 6601.3682, 1.1880, 128.1027),
@@ -143,6 +157,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 31,
         },
+        zone = "Cocoa Fields",
+        rarity = "common",
         locations = {
             vec4(2050.5632, 4928.3115, 41.1247, 226.2420),
             vec4(2046.3123, 4932.3276, 41.0930, 43.9851),
@@ -171,6 +187,8 @@ ConfigAutofarm.Farms = {
             sprite = 318,
             color = 39,
         },
+        zone = "Scrap Yard",
+        rarity = "rare",
         drops = {
             { item = "scrapmetal", chance = 35 },
             { item = "cloth",      chance = 25 },
@@ -201,6 +219,8 @@ ConfigAutofarm.Farms = {
             sprite = 618,
             color = 47,
         },
+        zone = "Quarry Dig",
+        rarity = "uncommon",
         locations = {
             vec4(2997.7546, 2750.3755, 44.4822, 219.3032),
             vec4(3002.8601, 2759.3132, 43.1052, 235.9231),
@@ -223,6 +243,8 @@ ConfigAutofarm.Farms = {
             sprite = 78,
             color = 3,
         },
+        zone = "Rock Wash",
+        rarity = "uncommon",
         locations = {
             vec4(-178.5307, 796.4457, 196.7460, 161.8333),
             vec4(-174.1920, 793.7794, 196.6152, 241.5947),
@@ -242,6 +264,8 @@ ConfigAutofarm.Farms = {
             sprite = 436,
             color = 1,
         },
+        zone = "Smelter Run",
+        rarity = "rare",
         drops = {
             { item = "copper",    chance = 28 },
             { item = "iron",      chance = 22 },
@@ -270,6 +294,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 2,
         },
+        zone = "Vegetable Crate",
+        rarity = "common",
         drops = {
             { item = "potato",   chance = 34 },
             { item = "onion",    chance = 33 },
@@ -292,6 +318,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 25,
         },
+        zone = "Leafy Greens",
+        rarity = "common",
         drops = {
             { item = "lettuce",  chance = 50 },
             { item = "cabbage",  chance = 50 },
@@ -312,6 +340,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 47,
         },
+        zone = "Pumpkin Patch",
+        rarity = "common",
         locations = {},
     },
     {
@@ -328,6 +358,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 31,
         },
+        zone = "Arabica Rows",
+        rarity = "uncommon",
         locations = {},
     },
     {
@@ -344,6 +376,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 1,
         },
+        zone = "Tomato Vines",
+        rarity = "common",
         locations = {},
     },
     {
@@ -360,6 +394,8 @@ ConfigAutofarm.Farms = {
             sprite = 478,
             color = 47,
         },
+        zone = "Carrot Beds",
+        rarity = "common",
         locations = {},
     },
 }

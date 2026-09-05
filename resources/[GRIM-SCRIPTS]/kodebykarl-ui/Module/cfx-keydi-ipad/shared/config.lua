@@ -11,3 +11,16 @@ ConfigIpad.Prop = {
     dict = 'amb@code_human_in_bus_passenger_idles@female@tablet@idle_a',
     anim = 'idle_a',
 }
+
+-- Economy app (owner / developer only)
+ConfigIpad.EconomyGroups = {
+    owner = true,
+    developer = true,
+}
+
+-- Police MDT / Boss access
+ConfigIpad.PoliceJobs = {
+    police = true,
+    offpolice = true,
+}
+ConfigIpad.PoliceBossMinGrade = 5

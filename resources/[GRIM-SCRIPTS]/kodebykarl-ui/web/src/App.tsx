@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Scoreboard from "./cfx-keydi-scoreboard/Scoreboard";
 import IndicatorConfig from "./cfx-keydi-indicator/IndicatorConfig";
 import DamageOverlay from "./cfx-keydi-indicator/DamageOverlay";
@@ -22,9 +22,12 @@ import ComServHud from "./cfx-keydi-comserv/ComServHud";
 import ComServMenu from "./cfx-keydi-comserv/ComServMenu";
 import LockMenu from "./cfx-keydi-lockscript/LockMenu";
 import InvoiceMenu, { InvoiceData } from "./cfx-keydi-invoice/InvoiceMenu";
-import Ipad, { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
+import type { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
+import PlaytimeShop, { PlaytimeShopData } from "./cfx-keydi-playtimeshop/PlaytimeShop";
 import { Toaster } from "sonner";
 import { AlertTriangle } from "lucide-react";
+
+const Ipad = lazy(() => import("./cfx-keydi-ipad/Ipad"));
 
 interface IndicatorSettings {
   deadText: string;
@@ -197,6 +200,8 @@ export default function App() {
 
   const [ipadVisible, setIpadVisible] = useState(false);
   const [ipadData, setIpadData] = useState<IpadPlayerData | null>(null);
+  const [playtimeVisible, setPlaytimeVisible] = useState(false);
+  const [playtimeData, setPlaytimeData] = useState<PlaytimeShopData | null>(null);
 
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState("");
@@ -223,14 +228,31 @@ export default function App() {
       setBadgeVisible(false);
       setRadioHudVisible(false);
       setIpadVisible(true);
+      // Prod-default: citizen iPad. Preview staff apps with ?preview=police|boss|owner
+      // Playtime shop: ?preview=shop
+      const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
+      const isOwner = preview === "owner";
+      const isBoss = preview === "boss" || isOwner;
+      const isPolice = preview === "police" || isBoss;
       setIpadData({
         firstName: "Karl",
         lastName: "Dev",
         cash: 2450,
         bank: 128400,
-        job: "Unemployed",
+        job: isPolice ? "Police" : "Unemployed",
         gang: "None",
+        canEditEconomy: isOwner,
+        canPoliceBoss: isBoss,
+        canPoliceMdt: isPolice,
       });
+      if (preview === "shop") {
+        setIpadVisible(false);
+        setPlaytimeVisible(true);
+        setPlaytimeData(null);
+      }
+      if (preview === "autofarm") {
+        setIpadVisible(false);
+      }
       setFreeCarVisible(false);
     }
 
@@ -392,8 +414,24 @@ export default function App() {
       if (data.action === "cfx-keydi-ipad:open") {
         if (data.data) setIpadData(data.data);
         setIpadVisible(true);
+      } else if (data.action === "cfx-keydi-ipad:session") {
+        if (data.data) {
+          setIpadData((prev) => ({ ...(prev || {}), ...data.data }));
+        }
       } else if (data.action === "cfx-keydi-ipad:close") {
         setIpadVisible(false);
+      }
+
+      // Playtime Shop
+      if (data.action === "cfx-keydi-playtimeshop:open") {
+        if (data.data) setPlaytimeData(data.data);
+        setPlaytimeVisible(true);
+      } else if (data.action === "cfx-keydi-playtimeshop:update") {
+        if (data.data) {
+          setPlaytimeData((prev) => ({ ...(prev || {}), ...data.data }));
+        }
+      } else if (data.action === "cfx-keydi-playtimeshop:close") {
+        setPlaytimeVisible(false);
       }
 
       // Police & Sheriff Badge UI Handlers
@@ -919,8 +957,19 @@ export default function App() {
       {/* Billing / Invoice System */}
       <InvoiceMenu visible={invoiceVisible} data={invoiceData || undefined} onClose={() => setInvoiceVisible(false)} />
 
-      {/* Apple iPad System */}
-      <Ipad visible={ipadVisible} data={ipadData} onClose={() => setIpadVisible(false)} />
+      {/* Playtime Shop */}
+      <PlaytimeShop
+        visible={playtimeVisible}
+        data={playtimeData}
+        onClose={() => setPlaytimeVisible(false)}
+      />
+
+      {/* Apple iPad System — mount only while open (0 timers when closed) */}
+      {ipadVisible ? (
+        <Suspense fallback={null}>
+          <Ipad visible={ipadVisible} data={ipadData} onClose={() => setIpadVisible(false)} />
+        </Suspense>
+      ) : null}
 
       {announcementVisible && (
         <div 

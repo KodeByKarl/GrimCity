@@ -1,22 +1,47 @@
 local ESX = exports['es_extended']:getSharedObject()
 local isOpen = false
 local tabletProp = nil
+local opening = false
 
-local function PlayAnim()
-    if not ConfigIpad.UseProp then return end
-    local ped = PlayerPedId()
-    if IsPedInAnyVehicle(ped, false) then return end
-
-    local dict = ConfigIpad.Prop.dict
-    RequestAnimDict(dict)
-    while not HasAnimDictLoaded(dict) do Wait(10) end
-    TaskPlayAnim(ped, dict, ConfigIpad.Prop.anim, 2.0, 2.0, -1, 49, 0.0, false, false, false)
-
-    local model = ConfigIpad.Prop.model
+--- Non-blocking model/anim load — never spins the client when iPad is closed.
+local function LoadModel(model, timeoutMs)
+    if HasModelLoaded(model) then return true end
     RequestModel(model)
-    while not HasModelLoaded(model) do Wait(10) end
+    local deadline = GetGameTimer() + (timeoutMs or 2500)
+    while not HasModelLoaded(model) do
+        if GetGameTimer() > deadline then return false end
+        Wait(50)
+    end
+    return true
+end
 
-    if not DoesEntityExist(tabletProp) then
+local function LoadAnim(dict, timeoutMs)
+    if HasAnimDictLoaded(dict) then return true end
+    RequestAnimDict(dict)
+    local deadline = GetGameTimer() + (timeoutMs or 2500)
+    while not HasAnimDictLoaded(dict) do
+        if GetGameTimer() > deadline then return false end
+        Wait(50)
+    end
+    return true
+end
+
+local function PlayAnimAsync()
+    if not ConfigIpad.UseProp then return end
+    CreateThread(function()
+        if not isOpen then return end
+        local ped = PlayerPedId()
+        if IsPedInAnyVehicle(ped, false) then return end
+
+        local dict = ConfigIpad.Prop.dict
+        if not LoadAnim(dict) then return end
+        if not isOpen then return end
+        TaskPlayAnim(ped, dict, ConfigIpad.Prop.anim, 2.0, 2.0, -1, 49, 0.0, false, false, false)
+
+        local model = ConfigIpad.Prop.model
+        if not LoadModel(model) then return end
+        if not isOpen or DoesEntityExist(tabletProp) then return end
+
         local coords = GetEntityCoords(ped)
         tabletProp = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
         AttachEntityToEntity(
@@ -25,19 +50,22 @@ local function PlayAnim()
             ConfigIpad.Prop.rotation.x, ConfigIpad.Prop.rotation.y, ConfigIpad.Prop.rotation.z,
             true, true, false, true, 1, true
         )
-    end
+    end)
 end
 
 local function StopAnim()
     local ped = PlayerPedId()
-    StopAnimTask(ped, ConfigIpad.Prop.dict, ConfigIpad.Prop.anim, 1.5)
-    if DoesEntityExist(tabletProp) then
-        DeleteEntity(tabletProp)
-        tabletProp = nil
+    if ConfigIpad.UseProp then
+        StopAnimTask(ped, ConfigIpad.Prop.dict, ConfigIpad.Prop.anim, 1.5)
     end
+    if tabletProp and DoesEntityExist(tabletProp) then
+        DeleteEntity(tabletProp)
+    end
+    tabletProp = nil
 end
 
-local function BuildPayload()
+--- Local-only snapshot — zero server wait.
+local function BuildLocalPayload()
     local data = ESX.GetPlayerData() or {}
     local accounts = data.accounts or {}
     local cash, bank = 0, 0
@@ -48,8 +76,9 @@ local function BuildPayload()
     end
 
     local gangLabel = 'None'
-    if LocalPlayer and LocalPlayer.state and LocalPlayer.state.gang then
-        gangLabel = LocalPlayer.state.gang.label or LocalPlayer.state.gang.name or 'None'
+    local gang = LocalPlayer and LocalPlayer.state and LocalPlayer.state.gang
+    if gang then
+        gangLabel = gang.label or gang.name or 'None'
     end
 
     return {
@@ -59,23 +88,45 @@ local function BuildPayload()
         bank = bank,
         job = (data.job and (data.job.label or data.job.name)) or 'Unemployed',
         gang = gangLabel,
+        canEditEconomy = false,
+        canPoliceBoss = false,
+        canPoliceMdt = false,
     }
 end
 
+--- Permissions in background — UI already open.
+local function RefreshSessionAsync()
+    CreateThread(function()
+        local session = lib.callback.await('cfx-keydi-ipad:session', false)
+        if not isOpen or type(session) ~= 'table' then return end
+        SendNUIMessage({
+            action = 'cfx-keydi-ipad:session',
+            data = session,
+        })
+    end)
+end
+
 local function OpenIpad()
-    if isOpen then return end
+    if isOpen or opening then return end
+    opening = true
     isOpen = true
-    PlayAnim()
+
+    local payload = BuildLocalPayload()
     SetNuiFocus(true, true)
     SendNUIMessage({
         action = 'cfx-keydi-ipad:open',
-        data = BuildPayload(),
+        data = payload,
     })
+
+    PlayAnimAsync()
+    RefreshSessionAsync()
+    opening = false
 end
 
 local function CloseIpad()
     if not isOpen then return end
     isOpen = false
+    opening = false
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'cfx-keydi-ipad:close' })
     StopAnim()
@@ -94,6 +145,25 @@ RegisterKeyMapping(ConfigIpad.OpenCommand, 'Open iPad', 'keyboard', ConfigIpad.O
 RegisterNUICallback('cfx-keydi-ipad:close', function(_, cb)
     CloseIpad()
     cb({ ok = true })
+end)
+
+-- Economy NUI only when Economy app asks — no idle cost
+RegisterNUICallback('cfx-keydi-ipad:economy:getJobs', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, jobs = {} })
+        return
+    end
+    local result = lib.callback.await('cfx-keydi-ipad:economy:getJobs', false)
+    cb(result or { ok = false, jobs = {} })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:economy:setSalary', function(data, cb)
+    if not isOpen then
+        cb({ ok = false })
+        return
+    end
+    local result = lib.callback.await('cfx-keydi-ipad:economy:setSalary', false, data or {})
+    cb(result or { ok = false })
 end)
 
 AddEventHandler('onResourceStop', function(res)

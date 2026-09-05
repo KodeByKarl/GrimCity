@@ -20,8 +20,105 @@ local activeTargetEntity = nil
 local activeTargetCoords = nil
 local registeredTargetModels = {}
 
+-- Session stats (for cancel report + live forecast)
+local sessionStartedAt = 0
+local sessionGathered = 0
+local sessionWeightGained = 0
+local sessionActive = false
+
 local function GetActiveFarm()
     return activeFarmIndex and ConfigAutofarm.Farms[activeFarmIndex] or nil
+end
+
+local function GetFarmZone(farm)
+    if not farm then return "Unknown Zone" end
+    if type(farm.zone) == "string" and farm.zone ~= "" then
+        return farm.zone
+    end
+    if farm.blip and type(farm.blip.label) == "string" and farm.blip.label ~= "" then
+        return farm.blip.label
+    end
+    return "Farm Zone"
+end
+
+local function GetFarmRarity(farm)
+    if not farm then return "common" end
+    if type(farm.rarity) == "string" and farm.rarity ~= "" then
+        return string.lower(farm.rarity)
+    end
+    -- Auto-tag farms with rare drop tables
+    if farm.drops then
+        for _, drop in ipairs(farm.drops) do
+            local item = drop.item
+            if item == "diamond" or item == "emerald" or item == "kevlar" or item == "titanium" then
+                return "rare"
+            end
+        end
+        return "uncommon"
+    end
+    return "common"
+end
+
+local function ResetSessionStats()
+    sessionStartedAt = 0
+    sessionGathered = 0
+    sessionWeightGained = 0
+    sessionActive = false
+end
+
+local function BeginSessionStats()
+    sessionStartedAt = GetGameTimer()
+    sessionGathered = 0
+    sessionWeightGained = 0
+    sessionActive = true
+end
+
+local function GetAvgPerCycle(farm)
+    local minAmount = (farm and farm.minAmount) or ConfigAutofarm.Farming.minAmount or 1
+    local maxAmount = (farm and farm.maxAmount) or ConfigAutofarm.Farming.maxAmount or minAmount
+    if maxAmount < minAmount then
+        maxAmount = minAmount
+    end
+    return (minAmount + maxAmount) / 2.0
+end
+
+---Estimate how many more items fit + seconds until inventory weight is full.
+local function GetYieldForecast()
+    local farm = GetActiveFarm()
+    local itemWeight = (itemData and itemData.weight) or 0
+    if not farm or itemWeight <= 0 or inventoryMaxWeight <= 0 then
+        return 0, 0
+    end
+
+    -- Free carry capacity (ox weight units) → how many of this item still fit
+    local freeWeight = math.max(0, inventoryMaxWeight - inventoryWeight)
+    local untilFull = math.floor(freeWeight / itemWeight)
+    if untilFull < 0 then untilFull = 0 end
+
+    -- Bag already full
+    if untilFull < 1 then
+        return 0, 0
+    end
+
+    local avgPerCycle = GetAvgPerCycle(farm)
+    if avgPerCycle < 0.1 then avgPerCycle = 1.0 end
+
+    local cycleMs = ConfigAutofarm.Farming.cycleTime or 10000
+    -- Cycles needed to fill remaining bag space at average yield
+    local cyclesNeeded = math.ceil(untilFull / avgPerCycle)
+    local etaSeconds = 0
+
+    if cyclesNeeded > 0 then
+        -- If currently farming, count remaining time on this cycle first
+        local remainingCycleFrac = 1.0
+        if isFarming then
+            remainingCycleFrac = math.max(0.0, 1.0 - cycleProgress)
+        end
+        local etaMs = (remainingCycleFrac * cycleMs) + (math.max(0, cyclesNeeded - 1) * cycleMs)
+        etaSeconds = math.max(1, math.ceil(etaMs / 1000.0))
+    end
+
+    return untilFull, etaSeconds
 end
 
 local function GetLocationCoords(location)
@@ -148,6 +245,8 @@ local function SendHudState(action)
     local farm = GetActiveFarm()
     if not farm then return end
 
+    local untilFull, etaSeconds = GetYieldForecast()
+
     SendNUIMessage({
         action = action or "cfx-keydi-autofarm:update",
         data = {
@@ -159,8 +258,39 @@ local function SendHudState(action)
             weight = inventoryWeight,
             maxWeight = inventoryMaxWeight,
             progress = cycleProgress,
+            zone = GetFarmZone(farm),
+            rarity = GetFarmRarity(farm),
+            untilFull = untilFull,
+            etaSeconds = etaSeconds,
         },
     })
+end
+
+local function ShowSessionReport()
+    if not sessionActive then return end
+    if sessionGathered < 1 and (GetGameTimer() - sessionStartedAt) < 1500 then
+        ResetSessionStats()
+        return
+    end
+
+    local farm = GetActiveFarm()
+    local durationMs = math.max(0, GetGameTimer() - (sessionStartedAt > 0 and sessionStartedAt or GetGameTimer()))
+    local durationSeconds = math.floor(durationMs / 1000.0)
+
+    SendNUIMessage({
+        action = "cfx-keydi-autofarm:report",
+        data = {
+            zone = farm and GetFarmZone(farm) or "Farm Zone",
+            label = itemData and itemData.label or (farm and farm.item) or "Items",
+            rarity = farm and GetFarmRarity(farm) or "common",
+            gathered = sessionGathered,
+            weightGained = sessionWeightGained,
+            durationSeconds = durationSeconds,
+            image = itemData and itemData.image or nil,
+        },
+    })
+
+    ResetSessionStats()
 end
 
 local function ShowHud(force)
@@ -231,15 +361,24 @@ local function ResetFarmingVisuals()
     StopFarmAnim()
 end
 
-local function RequestStopFarming(silent)
+---silent: no toast. isCancel: show session report (X), not pause (E).
+local function RequestStopFarming(silent, isCancel)
     if not isFarming and not pendingStart then return end
 
+    local wasFarming = isFarming or sessionActive
     TriggerServerEvent("cfx-keydi-autofarm:stop")
     ResetFarmingVisuals()
+
+    if isCancel and wasFarming then
+        ShowSessionReport()
+    end
+
     SendHudState()
 
-    if not silent then
-        ESX.ShowNotification("[Auto Farm] Stopped", "info")
+    if not silent and not isCancel then
+        ESX.ShowNotification("[Auto Farm] Paused", "info")
+    elseif not silent and isCancel then
+        ESX.ShowNotification("[Auto Farm] Cancelled", "info")
     end
 end
 
@@ -348,6 +487,9 @@ RegisterNetEvent("cfx-keydi-autofarm:started", function(farmIndex, locationIndex
     inventoryFull = false
     cycleProgress = 0.0
     cycleStartAt = GetGameTimer()
+    if not sessionActive then
+        BeginSessionStats()
+    end
     PlayFarmAnim()
     ShowHud(true)
     SendHudState()
@@ -387,8 +529,20 @@ RegisterNetEvent("cfx-keydi-autofarm:stopped", function()
     SendHudState()
 end)
 
-RegisterNetEvent("cfx-keydi-autofarm:collected", function(farmIndex, itemName)
+RegisterNetEvent("cfx-keydi-autofarm:collected", function(farmIndex, itemName, amount)
     if activeFarmIndex ~= (tonumber(farmIndex) or 0) then return end
+
+    amount = tonumber(amount) or 0
+    if amount > 0 and sessionActive then
+        sessionGathered = sessionGathered + amount
+        local unitWeight = (itemData and itemData.weight) or 0
+        -- Prefer weight of the item that was just granted
+        local granted = exports.ox_inventory:Items(itemName)
+        if granted and granted.weight then
+            unitWeight = granted.weight
+        end
+        sessionWeightGained = sessionWeightGained + (unitWeight * amount)
+    end
 
     -- Presentation-only ring reset; the server owns the real reward timer.
     cycleStartAt = GetGameTimer()
@@ -512,7 +666,7 @@ local function RegisterTargetFarms()
                         local entity = data and data.entity
                         if isFarming or pendingStart then
                             if activeFarmIndex == farmIndex and activeTargetEntity == entity then
-                                RequestStopFarming()
+                                RequestStopFarming(false, true)
                                 ClearActiveTarget(true)
                             end
                             return
@@ -577,11 +731,12 @@ CreateThread(function()
                         RequestStartFarming()
                     end
                 elseif IsControlJustPressed(0, ConfigAutofarm.Controls.cancel) then
-                    RequestStopFarming()
+                    RequestStopFarming(false, true)
                     ClearActiveTarget(true)
                 end
             else
                 RequestStopFarming(true)
+                ResetSessionStats()
                 ClearActiveTarget(true)
             end
         end
@@ -723,13 +878,14 @@ CreateThread(function()
                     RequestStartFarming()
                 end
             elseif IsControlJustPressed(0, ConfigAutofarm.Controls.cancel) then
-                RequestStopFarming()
+                RequestStopFarming(false, true)
             end
         elseif activeFarmIndex then
             local activeFarm = ConfigAutofarm.Farms[activeFarmIndex]
             -- Target-model farms are owned by the ox_target proximity thread.
             if not (activeFarm and activeFarm.targetModel) then
                 RequestStopFarming(true)
+                ResetSessionStats()
                 HideHud()
                 activeFarmIndex = nil
                 activeLocationIndex = nil
