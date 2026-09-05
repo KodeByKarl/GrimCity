@@ -170,13 +170,16 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     self.lastPlaytime = self.metadata.lastPlaytime or 0
     self.paycheckEnabled = true
     self.admin = Core.IsPlayerAdmin(playerId)
-    if Config.Multichar then
-        local startIndex = identifier:find(":", 1)
-        if startIndex then
-            self.license = ("%s%s"):format(Config.Identifier, identifier:sub(startIndex, identifier:len()))
+    self.license = Core.GetAceLicense(identifier, playerId)
+    if not self.license then
+        if Config.Multichar then
+            local startIndex = identifier:find(":", 1)
+            if startIndex then
+                self.license = ("%s%s"):format(Config.Identifier, identifier:sub(startIndex, identifier:len()))
+            end
+        else
+            self.license = ("%s:%s"):format(Config.Identifier, identifier)
         end
-    else
-        self.license = ("%s:%s"):format(Config.Identifier, identifier)
     end
 
     if type(self.metadata.jobDuty) ~= "boolean" then
@@ -184,7 +187,9 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     end
     job.onDuty = self.metadata.jobDuty
 
-    ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, self.group))
+    if self.license then
+        ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, self.group))
+    end
 
     local stateBag = Player(self.source).state
     stateBag:set("identifier", self.identifier, false)
@@ -273,22 +278,32 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     end
 
     function self.setGroup(newGroup)
+        if type(newGroup) ~= "string" or newGroup == "" then
+            return
+        end
+
+        newGroup = newGroup:lower():gsub("%s+", "")
         local lastGroup = self.group
+        self.license = Core.GetAceLicense(self.identifier, self.source) or self.license
+
+        if self.license and lastGroup and lastGroup ~= newGroup then
+            ExecuteCommand(("remove_principal identifier.%s group.%s"):format(self.license, lastGroup))
+        end
 
         if self.license then
-            local licIdentifier = string.find(self.license, "license:") and self.license or ("license:" .. self.license)
-            ExecuteCommand(("remove_principal identifier.%s group.%s"):format(licIdentifier, self.group))
-            ExecuteCommand(("add_principal identifier.%s group.%s"):format(licIdentifier, newGroup))
+            ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, newGroup))
         end
 
         self.group = newGroup
+        self.admin = Core.IsPlayerAdmin(self.source)
 
-        -- Persist to database immediately
-        MySQL.update('UPDATE users SET `group` = ? WHERE identifier = ?', { newGroup, self.identifier })
+        Core.PersistPlayerGroup(self.identifier, self.license, newGroup)
 
         TriggerEvent("esx:setGroup", self.source, self.group, lastGroup)
         self.triggerEvent("esx:setGroup", self.group, lastGroup)
         Player(self.source).state:set("group", self.group, true)
+        Player(self.source).state:set("license", self.license, false)
+        self.triggerEvent("esx:registerSuggestions", Core.RegisteredCommands)
     end
 
     function self.getGroup()

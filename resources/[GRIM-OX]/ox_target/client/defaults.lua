@@ -134,9 +134,17 @@ api.addGlobalVehicle({
         offset = vec3(0.5, 0, 0.5),
         distance = 2,
         canInteract = function(entity, distance, coords, name)
-            return canInteractWithDoor(entity, coords, 5, true)
+            if not canInteractWithDoor(entity, coords, 5, true) then return false end
+            if GetResourceState('ox_inventory') == 'started' then
+                return exports.ox_inventory:IsOwnedTrunk(entity)
+            end
+            return true
         end,
         onSelect = function(data)
+            if GetResourceState('ox_inventory') == 'started' and not exports.ox_inventory:IsOwnedTrunk(data.entity) then
+                lib.notify({ type = 'error', description = 'Only the vehicle owner can open this trunk' })
+                return
+            end
             onSelectDoor(data, 5)
         end
     }

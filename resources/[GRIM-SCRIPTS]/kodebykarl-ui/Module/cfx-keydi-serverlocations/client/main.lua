@@ -69,6 +69,11 @@ RegisterNetEvent("cfx-keydi-serverlocations:client:applied", function(location)
         TriggerEvent("cfx-keydi-serverlocations:changed", location)
         Notify(("Switched to %s."):format(location.name or "destination"), "success")
         DebugLog(("applied id=%s bucket=%s"):format(tostring(location.id), tostring(location.bucket)))
+        -- Keep Regions NUI Active Server badge in sync if the page is still mounted
+        SendNUIMessage({
+            action = "cfx-keydi-serverlocations:applied",
+            location = location,
+        })
     end
 
     FadeIn()
@@ -79,6 +84,10 @@ RegisterNetEvent("cfx-keydi-serverlocations:client:switchFailed", function(messa
     if message then
         Notify(message, "error")
     end
+    SendNUIMessage({
+        action = "cfx-keydi-serverlocations:switchFailed",
+        message = message,
+    })
     if IsScreenFadedOut() then
         FadeIn()
     end

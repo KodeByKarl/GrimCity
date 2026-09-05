@@ -36,4 +36,42 @@ return {
 		weight = 70000,
 		groups = {['ambulance'] = 0}
 	},
+
+	{
+		coords = vec3(454.4, -980.1, 30.7),
+		target = {
+			loc = vec3(454.4, -980.1, 30.7),
+			length = 1.0,
+			width = 2.0,
+			heading = 90,
+			minZ = 29.5,
+			maxZ = 32.0,
+			label = 'Open shared locker'
+		},
+		name = 'policeshared',
+		label = 'Police Shared Locker',
+		owner = false,
+		slots = 150,
+		weight = 300000,
+		groups = shared.police
+	},
+
+	{
+		coords = vec3(460.8, -985.4, 30.7),
+		target = {
+			loc = vec3(460.8, -985.4, 30.7),
+			length = 1.0,
+			width = 1.5,
+			heading = 0,
+			minZ = 29.5,
+			maxZ = 32.0,
+			label = 'Open boss locker'
+		},
+		name = 'policeboss',
+		label = 'Police Boss Locker',
+		owner = false,
+		slots = 100,
+		weight = 200000,
+		groups = { ['police'] = 6 }
+	},
 }

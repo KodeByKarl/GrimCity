@@ -61,7 +61,11 @@ local function handleRemoveDoorsCommand()
     })
 end
 
--- Register both /rd and /removedoors
+-- Register /doors, /rd, and /removedoors
+RegisterCommand('doors', function()
+    handleRemoveDoorsCommand()
+end, false)
+
 RegisterCommand('rd', function()
     handleRemoveDoorsCommand()
 end, false)
@@ -73,3 +77,10 @@ end, false)
 RegisterCommand('removedoor', function()
     handleRemoveDoorsCommand()
 end, false)
+
+CreateThread(function()
+    Wait(1000)
+    TriggerEvent('chat:addSuggestion', '/doors', 'Remove all side doors from the vehicle you are driving')
+    TriggerEvent('chat:addSuggestion', '/rd', 'Remove all side doors from the vehicle you are driving')
+    TriggerEvent('chat:addSuggestion', '/removedoors', 'Remove all side doors from the vehicle you are driving')
+end)

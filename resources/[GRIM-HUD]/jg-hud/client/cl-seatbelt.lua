@@ -157,3 +157,21 @@ if Config.EnableSeatbelt and Config.SeatbeltKeybind then
 
   RegisterKeyMapping("toggle_seatbelt", "Toggle vehicle seatbelt", "keyboard", Config.SeatbeltKeybind or "B")
 end
+
+-- Exit is always allowed while buckled (F). Unbuckle on the way out.
+if Config.EnableSeatbelt then
+  CreateThread(function()
+    while true do
+      local sleep = 400
+      local vehicle = cache.vehicle
+      if vehicle and IsSeatbeltOn then
+        sleep = 0
+        if IsControlJustPressed(0, 75) or IsDisabledControlJustPressed(0, 75) then
+          ToggleSeatbelt(vehicle, false)
+          TaskLeaveVehicle(cache.ped or PlayerPedId(), vehicle, 0)
+        end
+      end
+      Wait(sleep)
+    end
+  end)
+end

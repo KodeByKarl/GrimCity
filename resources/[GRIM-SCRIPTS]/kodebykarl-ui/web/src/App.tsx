@@ -14,8 +14,9 @@ import MultiJob from "./cfx-keydi-multijob/MultiJob";
 import Regions from "./cfx-keydi-regions/Regions";
 import RockstarRecording from "./cfx-keydi-rockstar/RockstarRecording";
 import VipStatus from "./cfx-keydi-vip/VipStatus";
-import DeathScreen from "./cfx-keydi-deathscreen/DeathScreen";
-import { PREVIEW_DEATH, type DeathScreenData } from "./cfx-keydi-deathscreen/types";
+import DeathScreen, { type DeathScreenData } from "./cfx-keydi-deathscreen/DeathScreen";
+import { Spawn, type SpawnData } from "./cfx-keydi-spawn/Spawn";
+import { SpawnMapWarmup } from "./cfx-keydi-spawn/preloadMaps";
 import WelcomeBanner from "./welcomebanner/WelcomeBanner";
 import WelcomeBannerPanel, { WelcomeBannerPanelData } from "./welcomebanner/WelcomeBannerPanel";
 import WelcomeBannerVolume, { WelcomeBannerVolumeData } from "./welcomebanner/WelcomeBannerVolume";
@@ -174,6 +175,8 @@ export default function App() {
   const [vipVisible, setVipVisible] = useState(false);
   const [deathScreenVisible, setDeathScreenVisible] = useState(false);
   const [deathScreenData, setDeathScreenData] = useState<DeathScreenData | null>(null);
+  const [spawnVisible, setSpawnVisible] = useState(false);
+  const [spawnData, setSpawnData] = useState<SpawnData | null>(null);
   const [fpsVisible, setFpsVisible] = useState(false);
   const [fpsPreset, setFpsPreset] = useState("default");
   const [fpsPresets, setFpsPresets] = useState<Record<string, FpsPreset>>({});
@@ -270,7 +273,34 @@ export default function App() {
       if (preview === "deathscreen") {
         setIpadVisible(false);
         setDeathScreenVisible(true);
-        setDeathScreenData(PREVIEW_DEATH);
+        setDeathScreenData({
+          brand: "GRIM CITY",
+          brandUrl: "grim.city",
+          subtitle: "DEATH RECAP",
+          killer: {
+            name: "KEYDI",
+            id: 1,
+            ping: 13,
+            playTime: "—",
+            rank: "Suicide",
+            kills: 0,
+            kd: "0.00",
+            health: 100,
+            armor: 0,
+            achievements: [],
+          },
+          combat: {
+            weapon: "Pistol",
+            streak: 0,
+            distance: 12,
+            damageDealt: 35,
+            damageReceived: 120,
+            damageOutPercent: 23,
+            damageInPercent: 77,
+            hitZones: { head: 1, neck: 0, torso: 2, arm: 1, leg: 0 },
+            recentKills: [],
+          },
+        });
       }
       if (preview === "modules") {
         setIpadVisible(false);
@@ -381,9 +411,27 @@ export default function App() {
         if (data.data?.updates) setModulesUpdates(data.data.updates);
         setModulesVisible(true);
       } else if (data.action === "cfx-keydi-modules:hide") {
+        // ForceCloseModules only sends hide — also tear down submodule pages
+        // (Regions / MultiJob / etc.) or the UI stays stuck with stale Active Server.
         setModulesVisible(false);
+        setPatchNotesVisible(false);
+        setMultiJobVisible(false);
+        setRegionsVisible(false);
+        setRockstarVisible(false);
+        setVipVisible(false);
       } else if (data.action === "cfx-keydi-modules:recording") {
         setRockstarRecording(!!data.recording);
+      } else if (data.action === "cfx-keydi-serverlocations:applied") {
+        // Region switch finished while a module page might still be open — refresh Regions.
+        window.dispatchEvent(
+          new CustomEvent("grim:regionApplied", { detail: data.location || data.data || null })
+        );
+      } else if (data.action === "cfx-keydi-serverlocations:switchFailed") {
+        window.dispatchEvent(
+          new CustomEvent("grim:regionSwitchFailed", {
+            detail: { message: data.message || "Switch failed" },
+          })
+        );
       }
 
       // Death Screen
@@ -393,6 +441,34 @@ export default function App() {
       } else if (data.action === "deathscreen:hide") {
         setDeathScreenVisible(false);
         setDeathScreenData(null);
+      }
+
+      // Spawn selector (ambulance H)
+      if (data.action === "cfx-keydi-spawn:show") {
+        setDeathScreenVisible(false);
+        setDeathScreenData(null);
+        setSpawnData((data.data || {}) as SpawnData);
+        setSpawnVisible(true);
+      } else if (data.action === "cfx-keydi-spawn:hide") {
+        setSpawnVisible(false);
+        setSpawnData(null);
+      } else if (data.action === "cfx-keydi-spawn:setPhase") {
+        setSpawnData((prev) => ({
+          ...(prev || {}),
+          respawnTimer: data.data?.respawnTimer ?? prev?.respawnTimer,
+          allowEarlySpawn: data.data?.allowEarlySpawn ?? prev?.allowEarlySpawn,
+          isBleedout: data.data?.isBleedout ?? prev?.isBleedout,
+        }));
+      } else if (data.action === "cfx-keydi-spawn:updateTimer") {
+        setSpawnData((prev) => ({
+          ...(prev || {}),
+          respawnTimer: data.data?.respawnTimer ?? prev?.respawnTimer,
+        }));
+      } else if (data.action === "cfx-keydi-spawn:updateRecap") {
+        setSpawnData((prev) => ({
+          ...(prev || {}),
+          recap: data.data?.recap ?? prev?.recap,
+        }));
       }
 
       // FPS Optimizer UI Handlers
@@ -872,10 +948,18 @@ export default function App() {
           onClose={() => {
             setDeathScreenVisible(false);
             setDeathScreenData(null);
-            if (isBrowserPreview) {
-              const preview = new URLSearchParams(window.location.search).get("preview");
-              if (preview === "modules") returnToModulesPreview();
-            }
+          }}
+        />
+      )}
+
+      <SpawnMapWarmup />
+      {spawnVisible && (
+        <Spawn
+          visible={spawnVisible}
+          data={spawnData || undefined}
+          onClose={() => {
+            setSpawnVisible(false);
+            setSpawnData(null);
           }}
         />
       )}

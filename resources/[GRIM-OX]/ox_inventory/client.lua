@@ -123,6 +123,10 @@ local CraftingBenches = require 'modules.crafting.client'
 local Vehicles = lib.load('data.vehicles')
 local Inventory = require 'modules.inventory.client'
 
+exports('IsOwnedTrunk', function(entity)
+    return Inventory.IsOwnedTrunk(entity)
+end)
+
 ---@param inv string?
 ---@param data any?
 ---@return boolean?

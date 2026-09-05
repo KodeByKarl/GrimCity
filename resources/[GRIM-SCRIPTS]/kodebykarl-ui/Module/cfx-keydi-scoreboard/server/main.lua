@@ -222,7 +222,8 @@ for _, event in ipairs(ConfigScoreboard.WorldEvents) do
     worldEvents[#worldEvents + 1] = {
         name = event.name,
         location = event.location,
-        status = event.status
+        status = event.status,
+        endsAt = 0,
     }
 end
 
@@ -232,6 +233,35 @@ local activeRobberies = {}
 local function formatTimeLeft(endsAt)
     local remaining = math.max(0, (endsAt or 0) - os.time())
     return string.format('%d:%02d', math.floor(remaining / 60), remaining % 60)
+end
+
+local function getFormattedWorldEvents()
+    local list = {}
+    for _, event in ipairs(worldEvents) do
+        local isActive = tostring(event.status or ''):upper() == 'ACTIVE'
+        local timeLeft = nil
+        if event.endsAt and event.endsAt > os.time() then
+            timeLeft = formatTimeLeft(event.endsAt)
+        elseif not isActive and event.endsAt and event.endsAt > 0 and event.endsAt <= os.time() then
+            timeLeft = '0:00'
+        end
+
+        -- ACTIVE → real location; INACTIVE → remaining time (replaces placeholder locations)
+        local location
+        if isActive then
+            location = (event.location and event.location ~= '' and event.location ~= '—') and event.location or '—'
+        else
+            location = timeLeft or '—'
+        end
+
+        list[#list + 1] = {
+            name = event.name,
+            location = location,
+            status = isActive and 'ACTIVE' or 'INACTIVE',
+            timeLeft = timeLeft,
+        }
+    end
+    return list
 end
 
 local function getFormattedRobberies()
@@ -315,7 +345,7 @@ local function RemoveActiveRobbery(key)
 end
 
 ---@param name string world event name (e.g. "Traphouse")
----@param data { status?: string, location?: string }
+---@param data { status?: string, location?: string, endsAt?: number, timer?: number, remaining?: number }
 local function SetWorldEvent(name, data)
     if type(name) ~= 'string' or name == '' then return false end
     data = type(data) == 'table' and data or {}
@@ -328,6 +358,17 @@ local function SetWorldEvent(name, data)
             if data.location ~= nil then
                 event.location = tostring(data.location)
             end
+
+            if data.endsAt ~= nil then
+                event.endsAt = tonumber(data.endsAt) or 0
+            elseif data.timer ~= nil then
+                local t = math.max(tonumber(data.timer) or 0, 0)
+                event.endsAt = t > 0 and (os.time() + t) or 0
+            elseif data.remaining ~= nil then
+                local t = math.max(tonumber(data.remaining) or 0, 0)
+                event.endsAt = t > 0 and (os.time() + t) or 0
+            end
+
             return true
         end
     end
@@ -489,7 +530,7 @@ ESX.RegisterServerCallback('cfx-keydi-scoreboard:getServerData', function(source
         },
         jobs = formattedJobs,
         priorities = priorityStatuses,
-        worldEvents = worldEvents,
+        worldEvents = getFormattedWorldEvents(),
         robberies = getFormattedRobberies()
     }
 

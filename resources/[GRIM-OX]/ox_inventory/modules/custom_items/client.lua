@@ -552,6 +552,7 @@ end
 
 local iShowSpeed = false
 local energyDrinkBoost = false
+local policeDrinkBoost = false
 
 lib.callback.register('ox_inventory:canUseBandage', function()
     if GetResourceState('cfx-keydi-ambulance') == 'started' then
@@ -596,6 +597,11 @@ CreateThread(function()
 			-- Meth-like speed (not the old 3x super-sprint)
 			SetPedMoveRateOverride(cache.ped, 1.25)
 			SetRunSprintMultiplierForPlayer(cache.playerId, 1.20)
+			RestorePlayerStamina(cache.playerId, 1.0)
+		elseif policeDrinkBoost then
+			sleep = 0
+			SetPedMoveRateOverride(cache.ped, 1.49)
+			SetRunSprintMultiplierForPlayer(cache.playerId, 1.49)
 			RestorePlayerStamina(cache.playerId, 1.0)
 		elseif iShowSpeed then
 			sleep = 0
@@ -657,6 +663,23 @@ RegisterNetEvent('ox_items:UsedItem', function(item)
         if not maxHealth or maxHealth < 200 then maxHealth = 200 end
         SetEntityHealth(ped, maxHealth)
         SetPedArmour(ped, 100)
+    elseif item == 'police_vitamins' then
+        local ped = cache.ped
+        TriggerEvent('cfx-keydi-ambulance:client:RemoveBleed')
+        if GetResourceState('cfx-keydi-ambulance') == 'started' then
+            pcall(function() exports['cfx-keydi-ambulance']:RemoveBleed() end)
+        end
+        local maxHealth = GetEntityMaxHealth(ped)
+        if not maxHealth or maxHealth < 200 then maxHealth = 200 end
+        SetEntityHealth(ped, maxHealth)
+        SetPedArmour(ped, 100)
+    elseif item == 'police_drink' then
+        policeDrinkBoost = true
+        SetTimeout(10000, function()
+            policeDrinkBoost = false
+            SetPedMoveRateOverride(cache.ped, 1.0)
+            SetRunSprintMultiplierForPlayer(cache.playerId, 1.0)
+        end)
     elseif item == 'handcuff' then
         ItemCuff()
     elseif item == 'handcuff_keys' then

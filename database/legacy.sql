@@ -55,7 +55,7 @@ INSERT INTO `items` (`name`, `label`, `weight`, `rare`, `can_remove`) VALUES
 CREATE TABLE `jobs` (
   `name` varchar(50) NOT NULL,
   `label` varchar(50) DEFAULT NULL,
-  `type` varchar(50) NOT NULL DEFAULT 'civ',
+  `type` varchar(51) NOT NULL DEFAULT 'civ',
   `whitelisted` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB;
 
@@ -63,7 +63,7 @@ INSERT INTO `jobs` (`name`, `label`, `type`, `whitelisted`) VALUES
 ('unemployed', 'Unemployed', 'civ', 0),
 ('student', 'Student', 'civ', 0),
 ('teacher', 'Teacher', 'civ', 0),
-('police', 'Police', 'leo', 0),
+('police', 'Police', 'leo', 1),
 ('ambulance', 'EMS', 'ems', 0),
 ('mechanic', 'Mechanic', 'mechanic', 0),
 ('offpolice', 'Off-Duty Police', 'leo', 0),
@@ -94,34 +94,44 @@ INSERT INTO `job_grades` (`id`, `job_name`, `grade`, `name`, `label`, `salary`, 
 (7, 'teacher', 1, 'teacher', 'Teacher', 100, '{}', '{}'),
 (8, 'teacher', 2, 'head_teacher', 'Department Head', 150, '{}', '{}'),
 (9, 'teacher', 3, 'principal', 'Principal', 200, '{}', '{}'),
-(10, 'police', 0, 'recruit', 'Recruit', 50, '{}', '{}'),
-(11, 'police', 1, 'officer', 'Officer', 100, '{}', '{}'),
-(12, 'police', 2, 'sergeant', 'Sergeant', 150, '{}', '{}'),
-(13, 'police', 3, 'lieutenant', 'Lieutenant', 200, '{}', '{}'),
-(14, 'police', 4, 'boss', 'Chief of Police', 250, '{}', '{}'),
-(15, 'offpolice', 0, 'recruit', 'Recruit', 0, '{}', '{}'),
-(16, 'offpolice', 1, 'officer', 'Officer', 0, '{}', '{}'),
-(17, 'offpolice', 2, 'sergeant', 'Sergeant', 0, '{}', '{}'),
-(18, 'offpolice', 3, 'lieutenant', 'Lieutenant', 0, '{}', '{}'),
-(19, 'offpolice', 4, 'boss', 'Chief of Police', 0, '{}', '{}'),
-(20, 'ambulance', 0, 'ambulance', 'Jr. EMT', 50, '{}', '{}'),
-(21, 'ambulance', 1, 'doctor', 'EMT', 100, '{}', '{}'),
-(22, 'ambulance', 2, 'chief_doctor', 'Sr. EMT', 150, '{}', '{}'),
-(23, 'ambulance', 3, 'boss', 'EMS Director', 200, '{}', '{}'),
-(24, 'offambulance', 0, 'ambulance', 'Jr. EMT', 0, '{}', '{}'),
-(25, 'offambulance', 1, 'doctor', 'EMT', 0, '{}', '{}'),
-(26, 'offambulance', 2, 'chief_doctor', 'Sr. EMT', 0, '{}', '{}'),
-(27, 'offambulance', 3, 'boss', 'EMS Director', 0, '{}', '{}'),
-(28, 'mechanic', 0, 'recrue', 'Recruit', 40, '{}', '{}'),
-(29, 'mechanic', 1, 'novice', 'Novice', 80, '{}', '{}'),
-(30, 'mechanic', 2, 'experimente', 'Experienced', 120, '{}', '{}'),
-(31, 'mechanic', 3, 'chief', 'Leader', 160, '{}', '{}'),
-(32, 'mechanic', 4, 'boss', 'Boss', 200, '{}', '{}'),
-(33, 'offmechanic', 0, 'recrue', 'Recruit', 0, '{}', '{}'),
-(34, 'offmechanic', 1, 'novice', 'Novice', 0, '{}', '{}'),
-(35, 'offmechanic', 2, 'experimente', 'Experienced', 0, '{}', '{}'),
-(36, 'offmechanic', 3, 'chief', 'Leader', 0, '{}', '{}'),
-(37, 'offmechanic', 4, 'boss', 'Boss', 0, '{}', '{}');
+(10, 'police', 0, 'cadet', 'Cadet', 60000, '{}', '{}'),
+(11, 'police', 1, 'officer', 'Police Officer', 65000, '{}', '{}'),
+(12, 'police', 2, 'senior', 'Senior Police Officer', 70000, '{}', '{}'),
+(13, 'police', 3, 'captain', 'Captain', 75000, '{}', '{}'),
+(14, 'police', 4, 'deputy', 'Deputy Chief', 80000, '{}', '{}'),
+(15, 'police', 5, 'chief', 'Chief of Police', 100000, '{}', '{}'),
+(16, 'police', 6, 'boss', 'Director', 120000, '{}', '{}'),
+(17, 'offpolice', 0, 'cadet', 'Cadet', 0, '{}', '{}'),
+(18, 'offpolice', 1, 'officer', 'Police Officer', 0, '{}', '{}'),
+(19, 'offpolice', 2, 'senior', 'Senior Police Officer', 0, '{}', '{}'),
+(20, 'offpolice', 3, 'captain', 'Captain', 0, '{}', '{}'),
+(21, 'offpolice', 4, 'deputy', 'Deputy Chief', 0, '{}', '{}'),
+(22, 'offpolice', 5, 'chief', 'Chief of Police', 0, '{}', '{}'),
+(23, 'offpolice', 6, 'boss', 'Director', 0, '{}', '{}'),
+(24, 'ambulance', 0, 'intern', 'Intern', 65000, '{}', '{}'),
+(25, 'ambulance', 1, 'nurse', 'Nurse', 70000, '{}', '{}'),
+(26, 'ambulance', 2, 'head_nurse', 'Head Nurse', 75000, '{}', '{}'),
+(27, 'ambulance', 3, 'resident_doctor', 'Resident Doctor', 80000, '{}', '{}'),
+(28, 'ambulance', 4, 'senior_resident_doctor', 'Senior Resident Doctor', 85000, '{}', '{}'),
+(29, 'ambulance', 5, 'assistant_director', 'Assistant Director', 90000, '{}', '{}'),
+(30, 'ambulance', 6, 'boss', 'Medical Director', 100000, '{}', '{}'),
+(31, 'offambulance', 0, 'intern', 'Intern', 0, '{}', '{}'),
+(32, 'offambulance', 1, 'nurse', 'Nurse', 0, '{}', '{}'),
+(33, 'offambulance', 2, 'head_nurse', 'Head Nurse', 0, '{}', '{}'),
+(34, 'offambulance', 3, 'resident_doctor', 'Resident Doctor', 0, '{}', '{}'),
+(35, 'offambulance', 4, 'senior_resident_doctor', 'Senior Resident Doctor', 0, '{}', '{}'),
+(36, 'offambulance', 5, 'assistant_director', 'Assistant Director', 0, '{}', '{}'),
+(37, 'offambulance', 6, 'boss', 'Medical Director', 0, '{}', '{}'),
+(38, 'mechanic', 0, 'recrue', 'Recruit', 40, '{}', '{}'),
+(39, 'mechanic', 1, 'novice', 'Novice', 80, '{}', '{}'),
+(40, 'mechanic', 2, 'experimente', 'Experienced', 120, '{}', '{}'),
+(41, 'mechanic', 3, 'chief', 'Leader', 160, '{}', '{}'),
+(42, 'mechanic', 4, 'boss', 'Boss', 200, '{}', '{}'),
+(43, 'offmechanic', 0, 'recrue', 'Recruit', 0, '{}', '{}'),
+(44, 'offmechanic', 1, 'novice', 'Novice', 0, '{}', '{}'),
+(45, 'offmechanic', 2, 'experimente', 'Experienced', 0, '{}', '{}'),
+(46, 'offmechanic', 3, 'chief', 'Leader', 0, '{}', '{}'),
+(47, 'offmechanic', 4, 'boss', 'Boss', 0, '{}', '{}');
 
 -- --------------------------------------------------------
 -- Table structure & data for table `licenses`
@@ -505,7 +515,7 @@ ALTER TABLE `vehicle_categories`
 -- AUTO_INCREMENT Definitions
 -- --------------------------------------------------------
 ALTER TABLE `job_grades`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;

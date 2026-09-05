@@ -1,9 +1,11 @@
 --[[
-  Pause-menu redzone radius blips — ONLY visible on Region 3 / 4 (turfwar function).
-  Leaving to Region 1 / 2 removes them.
+  Gang map blips (named base + redzone radius) — ONLY visible on Region 3 / 4
+  (turfwar function). Leaving to Region 1 / 2 removes them.
 ]]
 
 local redzoneBlips = {}
+local baseBlips = {}
+local redzonesVisible = false
 
 local function CanShowTurfMap()
     if GetResourceState('kodebykarl-ui') ~= 'started' then
@@ -15,14 +17,21 @@ local function CanShowTurfMap()
     return ok and allowed == true
 end
 
-local function ClearRedzones()
-    for i = 1, #redzoneBlips do
-        local b = redzoneBlips[i]
+local function RemoveBlipList(list)
+    for i = 1, #list do
+        local b = list[i]
         if b and DoesBlipExist(b) then
             RemoveBlip(b)
         end
     end
+end
+
+local function ClearRedzones()
+    RemoveBlipList(redzoneBlips)
+    RemoveBlipList(baseBlips)
     redzoneBlips = {}
+    baseBlips = {}
+    redzonesVisible = false
 end
 
 local function CreateRedzones()
@@ -31,22 +40,36 @@ local function CreateRedzones()
         local g = Config.Gangs[i]
         local rz = g.redzone
         if rz and rz.coords then
-            local blip = AddBlipForRadius(rz.coords.x, rz.coords.y, rz.coords.z, rz.radius or 75.0)
+            local radius = tonumber(rz.radius) or 150.0
+            local blip = AddBlipForRadius(rz.coords.x, rz.coords.y, rz.coords.z, radius)
+            -- Classic red 2D zone (color 1) unless gang overrides
             SetBlipColour(blip, rz.color or 1)
-            SetBlipAlpha(blip, rz.alpha or 100)
-            -- Not short-range so it shows on pause-menu map while in turf regions
+            SetBlipAlpha(blip, rz.alpha or 128)
+            -- Visible on pause-menu map while in turf regions
             SetBlipAsShortRange(blip, false)
             redzoneBlips[#redzoneBlips + 1] = blip
+
+            if g.blip then
+                local named = AddBlipForCoord(rz.coords.x, rz.coords.y, rz.coords.z)
+                SetBlipSprite(named, g.blip.sprite or 84)
+                SetBlipColour(named, g.blip.color or 1)
+                SetBlipScale(named, g.blip.scale or 0.8)
+                SetBlipAsShortRange(named, true)
+                BeginTextCommandSetBlipName('STRING')
+                AddTextComponentSubstringPlayerName(g.label .. ' Base')
+                EndTextCommandSetBlipName(named)
+                baseBlips[#baseBlips + 1] = named
+            end
         end
     end
+    redzonesVisible = (#redzoneBlips > 0) or (#baseBlips > 0)
 end
 
 local function RefreshRedzones()
-    if CanShowTurfMap() then
-        if #redzoneBlips == 0 then
-            CreateRedzones()
-        end
-    else
+    local allow = CanShowTurfMap()
+    if allow and not redzonesVisible then
+        CreateRedzones()
+    elseif not allow and redzonesVisible then
         ClearRedzones()
     end
 end
@@ -55,18 +78,21 @@ CreateThread(function()
     Wait(2000)
     RefreshRedzones()
     while true do
-        Wait(3000)
+        Wait(2000)
         RefreshRedzones()
     end
 end)
 
 AddEventHandler('cfx-keydi-serverlocations:changed', function()
     Wait(250)
+    -- Force rebuild so radius/color always match config after region hop
+    ClearRedzones()
     RefreshRedzones()
 end)
 
 AddStateBagChangeHandler('grimServerId', ('player:%s'):format(GetPlayerServerId(PlayerId())), function()
     Wait(250)
+    ClearRedzones()
     RefreshRedzones()
 end)
 

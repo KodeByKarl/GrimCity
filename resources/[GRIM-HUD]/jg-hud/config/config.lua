@@ -19,7 +19,7 @@ Config.CruiseControlKeybind = "J"
 Config.EnableSeatbelt = true
 Config.UseCustomSeatbeltIntegration = false -- Enable to use a third-party seatbelt script via Framework.Client.ToggleSeatbelt (in framework/cl-functions.lua)
 Config.SeatbeltKeybind = "B"
-Config.PreventExitWhileBuckled = false
+Config.PreventExitWhileBuckled = false -- F / exit always works, even while buckled
 Config.DisablePassengerSeatbelts = false
 Config.MinSpeedMphEjectionSeatbeltOff = 20.0
 Config.MinSpeedMphEjectionSeatbeltOn = 9999.0 -- buckled = do not eject

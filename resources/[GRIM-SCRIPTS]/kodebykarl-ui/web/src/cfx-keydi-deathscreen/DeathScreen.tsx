@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   Activity,
   BarChart3,
@@ -12,10 +12,68 @@ import {
 import { cn } from "@/lib/utils";
 import { fetchNui, isBrowserEnv } from "@/lib/nui";
 import BodySilhouette from "./BodySilhouette";
-import { PREVIEW_DEATH, type BodyZone, type DeathScreenData } from "./types";
+import type { BodyHits, BodyZone } from "./types";
+
+/** Keydi client payload shape (keep function / data contract). */
+export interface DeathScreenKiller {
+  name: string;
+  id: number;
+  ping: number;
+  avatarUrl?: string;
+  playTime: string;
+  rank: string;
+  kills: number;
+  kd: string;
+  health: number;
+  armor: number;
+  achievements?: string[];
+  badges?: string[];
+}
+
+export interface DeathScreenRecentKill {
+  name: string;
+  time?: string;
+  id?: number;
+}
+
+export interface DeathScreenCombat {
+  weapon?: string;
+  fatalWeapon?: string;
+  streak?: number;
+  killStreak?: number;
+  distance: number;
+  damageDealt: number;
+  damageReceived: number;
+  damageOutPercent?: number;
+  damageInPercent?: number;
+  damageOutPct?: number;
+  damageInPct?: number;
+  headshot?: boolean;
+  hitZones?: {
+    head?: number;
+    neck?: number;
+    torso?: number;
+    arm?: number;
+    leg?: number;
+    arms?: number;
+    legs?: number;
+  };
+  bodyHits?: BodyHits;
+  totalHits?: number;
+  recentKills?: DeathScreenRecentKill[];
+}
+
+export interface DeathScreenData {
+  brand?: string;
+  brandUrl?: string;
+  subtitle?: string;
+  killer: DeathScreenKiller;
+  combat: DeathScreenCombat;
+  recentEliminations?: DeathScreenRecentKill[];
+}
 
 interface DeathScreenProps {
-  data?: DeathScreenData | null;
+  data?: Partial<DeathScreenData> | null;
   onClose?: () => void;
 }
 
@@ -26,6 +84,13 @@ const ZONE_LABELS: { key: BodyZone; label: string }[] = [
   { key: "arms", label: "ARMS" },
   { key: "legs", label: "LEGS" },
 ];
+
+const panelShell: CSSProperties = {
+  // Solid fills only — FiveM CEF breaks backdrop-blur / low-alpha panels
+  backgroundColor: "rgba(14, 12, 16, 0.97)",
+  borderColor: "rgba(255, 58, 58, 0.85)",
+  boxShadow: "0 14px 40px rgba(0, 0, 0, 0.88), 0 0 22px rgba(255, 58, 58, 0.1)",
+};
 
 function StatBox({
   label,
@@ -39,10 +104,18 @@ function StatBox({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[#ff3a3a]/35 bg-black/35 px-2.5 py-2.5",
-        tone === "green" && "border-emerald-500/40 bg-emerald-950/40",
-        tone === "red" && "border-red-500/45 bg-red-950/45"
+        "rounded-xl border border-[#ff3a3a]/50 px-2.5 py-2.5",
+        tone === "green" && "border-emerald-500/50",
+        tone === "red" && "border-red-500/55"
       )}
+      style={{
+        backgroundColor:
+          tone === "green"
+            ? "rgba(6, 46, 30, 0.95)"
+            : tone === "red"
+              ? "rgba(55, 10, 14, 0.95)"
+              : "rgba(10, 10, 12, 0.96)",
+      }}
     >
       <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#ff4d4d]">{label}</p>
       <p className="mt-1 text-[15px] font-black uppercase tracking-wide text-white">{value}</p>
@@ -65,13 +138,46 @@ function Meter({ label, value, fillClass }: { label: string; value: number; fill
   );
 }
 
+function closeDeathUi(onClose?: () => void) {
+  onClose?.();
+  // Keydi client callback
+  fetchNui("closeDeathScreen", {});
+}
+
+function normalizeHits(combat: DeathScreenCombat): BodyHits {
+  if (combat.bodyHits) return combat.bodyHits;
+  const z = combat.hitZones || {};
+  return {
+    head: z.head || 0,
+    neck: z.neck || 0,
+    torso: z.torso || 0,
+    arms: z.arms ?? z.arm ?? 0,
+    legs: z.legs ?? z.leg ?? 0,
+  };
+}
+
 export default function DeathScreen({ data, onClose }: DeathScreenProps) {
-  const payload = data || PREVIEW_DEATH;
+  if (!data?.killer || !data?.combat) return null;
+
   const [anatomy, setAnatomy] = useState(false);
 
-  const killer = payload.killer;
-  const combat = payload.combat;
-  const hits = combat.bodyHits;
+  const killer = data.killer;
+  const combat = data.combat;
+  const brand = data.brand || "GRIM CITY";
+  const brandUrl = data.brandUrl || "grim.city";
+  const subtitle = data.subtitle || "DEATH RECAP";
+
+  const fatalWeapon = combat.fatalWeapon || combat.weapon || "Unknown";
+  const killStreak = combat.killStreak ?? combat.streak ?? 0;
+  const outPct = combat.damageOutPct ?? combat.damageOutPercent ?? 0;
+  const inPct = combat.damageInPct ?? combat.damageInPercent ?? 100;
+  const hits = normalizeHits(combat);
+  const badges = killer.badges || killer.achievements || [];
+  const recent =
+    data.recentEliminations ||
+    combat.recentKills ||
+    [];
+
   const totalHits = useMemo(
     () => combat.totalHits || ZONE_LABELS.reduce((n, z) => n + (hits[z.key] || 0), 0),
     [combat.totalHits, hits]
@@ -79,10 +185,7 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose?.();
-        fetchNui("cfx-keydi-deathscreen:close", {});
-      }
+      if (e.key === "Escape") closeDeathUi(onClose);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -92,7 +195,10 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
     <div className="pointer-events-auto fixed inset-0 z-[99940] flex items-center justify-center bg-transparent px-4 py-6 font-sans select-none">
       <div className="relative flex h-[min(640px,86vh)] w-full max-w-[1180px] items-stretch gap-4">
         {/* LEFT — Killer Profile */}
-        <aside className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-[#ff3a3a] bg-[#121214]/92 shadow-[0_0_40px_rgba(255,58,58,0.12)] backdrop-blur-md">
+        <aside
+          className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border-2"
+          style={panelShell}
+        >
           <div className="flex items-start justify-between px-4 pt-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff3a3a]">
@@ -108,7 +214,10 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
           </div>
 
           <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-3 custom-scrollbar">
-            <div className="flex items-center gap-3 rounded-xl border border-[#ff3a3a]/35 bg-black/30 px-3 py-2.5">
+            <div
+              className="flex items-center gap-3 rounded-xl border border-[#ff3a3a]/50 px-3 py-2.5"
+              style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#ff3a3a]/50 bg-[#ff3a3a]/15">
                 <User className="h-5 w-5 text-[#ff8080]" />
               </div>
@@ -135,7 +244,10 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
               <StatBox label="K/D" value={killer.kd} tone="green" />
             </div>
 
-            <div className="space-y-2.5 rounded-xl border border-[#ff3a3a]/30 bg-black/25 px-3 py-3">
+            <div
+              className="space-y-2.5 rounded-xl border border-[#ff3a3a]/40 px-3 py-3"
+              style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
+            >
               <Meter label="Health" value={killer.health} fillClass="bg-[#ff3a3a]" />
               <Meter label="Armor" value={killer.armor} fillClass="bg-slate-300" />
             </div>
@@ -144,10 +256,11 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
               <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
                 Achievements
               </p>
-              <div className="rounded-xl border border-dashed border-white/20 bg-black/20 px-3 py-4 text-center text-[11px] text-[#8a8086]">
-                {killer.badges && killer.badges.length > 0
-                  ? killer.badges.join(" · ")
-                  : "No badges unlocked"}
+              <div
+                className="rounded-xl border border-dashed border-white/20 px-3 py-4 text-center text-[11px] text-[#8a8086]"
+                style={{ backgroundColor: "rgba(8, 8, 10, 0.96)" }}
+              >
+                {badges.length > 0 ? badges.join(" · ") : "No badges unlocked"}
               </div>
             </div>
           </div>
@@ -157,11 +270,11 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
               <Zap className="h-3 w-3 text-[#ff4d4d]" />
               You were eliminated
             </span>
-            <span className="font-semibold tracking-wide">grim.city</span>
+            <span className="font-semibold tracking-wide">{brandUrl}</span>
           </div>
         </aside>
 
-        {/* CENTER — transparent killer preview cutout (game world / ped cam shows through) */}
+        {/* CENTER — transparent killer preview cutout */}
         <div className="relative flex min-w-0 flex-1 flex-col items-center justify-between py-1">
           <div className="rounded-full border border-[#ff3a3a] bg-[#ff3a3a]/90 px-4 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white shadow-[0_0_20px_rgba(255,58,58,0.45)]">
             Killer Preview
@@ -180,17 +293,14 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
           </div>
           <div className="pb-2 text-center">
             <p className="text-[28px] font-black uppercase tracking-[0.12em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
-              {payload.brand || "GRIM CITY"}
+              {brand}
             </p>
             <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/55">
-              {payload.subtitle || "DEATH RECAP"}
+              {subtitle}
             </p>
             <button
               type="button"
-              onClick={() => {
-                onClose?.();
-                fetchNui("cfx-keydi-deathscreen:close", {});
-              }}
+              onClick={() => closeDeathUi(onClose)}
               className="mt-3 cursor-pointer rounded-lg border border-white/20 bg-black/50 px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-white/80 transition hover:border-[#ff3a3a] hover:text-white"
             >
               Close · Esc
@@ -199,7 +309,10 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
         </div>
 
         {/* RIGHT — Combat Recap / Anatomy */}
-        <aside className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-[#ff3a3a] bg-[#121214]/92 shadow-[0_0_40px_rgba(255,58,58,0.12)] backdrop-blur-md">
+        <aside
+          className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border-2"
+          style={panelShell}
+        >
           <div className="flex items-start justify-between px-4 pt-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff3a3a]">
@@ -220,7 +333,10 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
           </div>
 
           <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-3 custom-scrollbar">
-            <div className="flex items-center gap-3 rounded-xl border border-[#ff3a3a]/40 bg-black/30 px-3 py-2.5">
+            <div
+              className="flex items-center gap-3 rounded-xl border border-[#ff3a3a]/50 px-3 py-2.5"
+              style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#ff3a3a]/55 bg-[#ff3a3a]/15">
                 <Crosshair className="h-5 w-5 text-[#ff4d4d]" />
               </div>
@@ -229,7 +345,7 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
                   Fatal Weapon
                 </p>
                 <p className="text-[16px] font-black uppercase tracking-wide text-white">
-                  {combat.fatalWeapon}
+                  {fatalWeapon}
                 </p>
               </div>
             </div>
@@ -237,8 +353,11 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
             {!anatomy ? (
               <>
                 <div className="grid grid-cols-2 gap-2">
-                  <StatBox label="Kill Streak" value={combat.killStreak} />
-                  <div className="rounded-xl border border-[#ff3a3a]/35 bg-black/35 px-2.5 py-2.5">
+                  <StatBox label="Kill Streak" value={killStreak} />
+                  <div
+                    className="rounded-xl border border-[#ff3a3a]/50 px-2.5 py-2.5"
+                    style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
+                  >
                     <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#ff4d4d]">
                       Distance
                     </p>
@@ -249,7 +368,10 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[#ff3a3a]/30 bg-black/25 px-3 py-3">
+                <div
+                  className="rounded-xl border border-[#ff3a3a]/40 px-3 py-3"
+                  style={{ backgroundColor: "rgba(10, 10, 12, 0.96)" }}
+                >
                   <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#ff4d4d]">
                     Damage Exchange
                   </p>
@@ -259,18 +381,12 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
                   </div>
                   <div className="mt-2.5">
                     <div className="mb-1 flex justify-between text-[9px] font-bold text-[#8a8086]">
-                      <span>{combat.damageOutPct}% OUT</span>
-                      <span>{combat.damageInPct}% IN</span>
+                      <span>{outPct}% OUT</span>
+                      <span>{inPct}% IN</span>
                     </div>
                     <div className="flex h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full bg-emerald-500/80"
-                        style={{ width: `${combat.damageOutPct}%` }}
-                      />
-                      <div
-                        className="h-full bg-[#ff3a3a]"
-                        style={{ width: `${combat.damageInPct}%` }}
-                      />
+                      <div className="h-full bg-emerald-500/80" style={{ width: `${outPct}%` }} />
+                      <div className="h-full bg-[#ff3a3a]" style={{ width: `${inPct}%` }} />
                     </div>
                   </div>
                 </div>
@@ -279,16 +395,21 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
                   <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff4d4d]">
                     Recent Eliminations
                   </p>
-                  <div className="rounded-xl border border-dashed border-white/20 bg-black/20 px-3 py-3">
-                    {payload.recentEliminations?.length ? (
+                  <div
+                    className="rounded-xl border border-dashed border-white/20 px-3 py-3"
+                    style={{ backgroundColor: "rgba(8, 8, 10, 0.96)" }}
+                  >
+                    {recent.length ? (
                       <ul className="space-y-1.5">
-                        {payload.recentEliminations.map((e) => (
+                        {recent.map((e, i) => (
                           <li
-                            key={`${e.id}-${e.name}`}
+                            key={`${e.id ?? i}-${e.name}`}
                             className="flex items-center justify-between text-[11px] text-white/85"
                           >
                             <span className="font-bold uppercase">{e.name}</span>
-                            <span className="text-[#8a8086]">ID {e.id}</span>
+                            <span className="text-[#8a8086]">
+                              {e.time || (e.id != null ? `ID ${e.id}` : "")}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -338,7 +459,7 @@ export default function DeathScreen({ data, onClose }: DeathScreenProps) {
             </span>
             <span className="inline-flex items-center gap-1.5 font-semibold tracking-wide">
               <Activity className="h-3 w-3 text-[#ff4d4d]" />
-              grim.city
+              {brandUrl}
             </span>
           </div>
         </aside>

@@ -24,6 +24,15 @@ end
 MySQL.ready(function()
     Core.DatabaseConnected = true
 
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `user_groups` (
+            `license` VARCHAR(72) NOT NULL,
+            `group` VARCHAR(50) NOT NULL DEFAULT 'user',
+            `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`license`)
+        )
+    ]])
+
     if not Config.CustomInventory then
         ESX.RefreshItems()
     end

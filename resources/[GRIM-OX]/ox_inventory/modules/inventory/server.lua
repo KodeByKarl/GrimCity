@@ -1593,27 +1593,64 @@ end
 AddEventHandler('ox_inventory:customDrop', CustomDrop)
 exports('CustomDrop', CustomDrop)
 
-exports('CreateDropFromPlayer', function(playerId)
+local function dropPlayerInventory(playerId, keep, coords)
 	local playerInventory = Inventory(playerId)
 
 	if not playerInventory or not next(playerInventory.items) then return end
 
+	local keepSet = {}
+	if type(keep) == 'string' then
+		keepSet[keep] = true
+		keep = { keep }
+	elseif type(keep) == 'table' then
+		for i = 1, #keep do
+			keepSet[keep[i]] = true
+		end
+	else
+		keep = nil
+	end
+
+	local dropItems = {}
+	local hasDrop = false
+	for slot, item in pairs(playerInventory.items) do
+		if item and not keepSet[item.name] then
+			dropItems[slot] = table.clone(item)
+			hasDrop = true
+		end
+	end
+
+	if not hasDrop then return end
+
 	local dropId = generateInvId()
-	local inventory = Inventory.Create(dropId, ('Drop %s'):format(dropId:gsub('%D', '')), 'drop', playerInventory.slots, playerInventory.weight, playerInventory.maxWeight, false, table.clone(playerInventory.items))
+	local inventory = Inventory.Create(dropId, ('Drop %s'):format(dropId:gsub('%D', '')), 'drop', playerInventory.slots, playerInventory.weight, playerInventory.maxWeight, false, dropItems)
 
 	if not inventory then return end
 
-	local coords = GetEntityCoords(GetPlayerPed(playerId))
-	inventory.coords = vec3(coords.x, coords.y, coords.z-0.2)
+	local dropCoords = coords
+	if not dropCoords then
+		local ped = GetPlayerPed(playerId)
+		local c = ped and ped ~= 0 and GetEntityCoords(ped)
+		if c then
+			dropCoords = vec3(c.x, c.y, c.z - 0.2)
+		else
+			dropCoords = vec3(0.0, 0.0, 0.0)
+		end
+	end
+
+	inventory.coords = vec3(dropCoords.x + 0.0, dropCoords.y + 0.0, dropCoords.z + 0.0)
 	Inventory.Drops[dropId] = {
 		coords = inventory.coords,
 		instance = Player(playerId).state.instance
 	}
 
-	Inventory.Clear(playerInventory)
+	Inventory.Clear(playerInventory, keep)
 	TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId])
 
 	return dropId
+end
+
+exports('CreateDropFromPlayer', function(playerId, keep, coords)
+	return dropPlayerInventory(playerId, keep, coords)
 end)
 
 local TriggerEventHooks = require 'modules.hooks.server'
@@ -2472,7 +2509,12 @@ function Inventory.SaveInventories(lock, clearInventories)
 end
 
 AddEventHandler('playerDropped', function()
-	server.playerDropped(source)
+	local src = source
+	if Player(src).state.dead then
+		dropPlayerInventory(src, { 'identification', 'phone' })
+	end
+
+	server.playerDropped(src)
 
 	if GetNumPlayerIndices() == 0 then
 		Inventory.SaveInventories(false, true)

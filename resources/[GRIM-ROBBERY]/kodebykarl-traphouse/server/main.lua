@@ -25,6 +25,18 @@ end
 
 local currentZoneIndex = 0
 
+-- Scoreboard World Event sync
+local function syncScoreboardTrapHouse(zoneLabel, expires)
+    if GetResourceState('kodebykarl-ui') ~= 'started' then return end
+    pcall(function()
+        exports['kodebykarl-ui']:SetWorldEvent('Traphouse', {
+            status = 'ACTIVE',
+            location = zoneLabel or '—',
+            endsAt = expires or 0,
+        })
+    end)
+end
+
 -- Helper: Build Fit-To-Text Rotation Chat Template
 local function SendTrapHouseRotationChatTemplate(zoneLabel)
     local template = '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.85) 0%, rgba(15, 10, 14, 0.92) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;">'
@@ -47,17 +59,19 @@ local function rotateActiveTrapHouse()
     currentZoneIndex = nextIndex
 
     local zone = Config.TrapZones[currentZoneIndex]
+    local expires = os.time() + ((Config.RotationMinutes or 15) * 60)
     local activeData = {
         id = zone.id,
         label = zone.label,
         coords = zone.coords,
         radius = zone.radius,
         blip = zone.blip,
-        expires = os.time() + ((Config.RotationMinutes or 15) * 60)
+        expires = expires
     }
 
     GlobalState:set('traphouse_active_zone', activeData, true)
     SendTrapHouseRotationChatTemplate(zone.label)
+    syncScoreboardTrapHouse(zone.label, expires)
 
     Webhook.SendLog('TRAPHOUSE ROTATED', 16744192, ('**Active Zone:** %s\n**Duration:** %d minutes'):format(zone.label, Config.RotationMinutes or 15))
 end
@@ -83,6 +97,15 @@ CreateThread(function()
     while true do
         Wait((Config.RotationMinutes or 15) * 60 * 1000)
         rotateActiveTrapHouse()
+    end
+end)
+
+-- Re-sync scoreboard if UI restarts after TrapHouse
+AddEventHandler('onResourceStart', function(resource)
+    if resource ~= 'kodebykarl-ui' then return end
+    local activeZone = GlobalState.traphouse_active_zone
+    if activeZone and activeZone.label then
+        syncScoreboardTrapHouse(activeZone.label, activeZone.expires)
     end
 end)
 

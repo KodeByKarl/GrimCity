@@ -333,6 +333,12 @@ end
 
 local function PlayFarmAnim()
     local farm = GetActiveFarm()
+    local ped = PlayerPedId()
+    if farm and farm.scenario then
+        TaskStartScenarioInPlace(ped, farm.scenario, 0, true)
+        return
+    end
+
     local settings = ConfigAutofarm.Farming
     local animDict = (farm and farm.animDict) or settings.animDict
     local animName = (farm and farm.animName) or settings.animName
@@ -345,12 +351,14 @@ local function PlayFarmAnim()
     end
 
     if HasAnimDictLoaded(animDict) then
-        TaskPlayAnim(PlayerPedId(), animDict, animName, 4.0, -4.0, -1, 1, 0, false, false, false)
+        TaskPlayAnim(ped, animDict, animName, 4.0, -4.0, -1, 1, 0, false, false, false)
     end
 end
 
 local function StopFarmAnim()
-    ClearPedTasks(PlayerPedId())
+    local ped = PlayerPedId()
+    ClearPedTasks(ped)
+    ClearPedSecondaryTask(ped)
 end
 
 local function ResetFarmingVisuals()
@@ -418,11 +426,31 @@ local function RequestStartFarming()
         return
     end
 
+    if farm.job then
+        local playerData = ESX.GetPlayerData()
+        local playerJob = playerData and playerData.job and playerData.job.name
+        local allowed = false
+        if type(farm.job) == 'table' then
+            for _, j in ipairs(farm.job) do
+                if playerJob == j then allowed = true; break end
+            end
+        elseif playerJob == farm.job then
+            allowed = true
+        end
+        if not allowed then
+            ESX.ShowNotification(("[Auto Farm] Only authorized %s staff can do this activity"):format(string.upper(tostring(farm.job))), "error")
+            return
+        end
+    end
+
     if farm.requireTool then
         local haveTool = tonumber(exports.ox_inventory:Search("count", farm.requireTool)) or 0
+        if haveTool < 1 and farm.requireTool == "battleaxe" then
+            haveTool = tonumber(exports.ox_inventory:Search("count", "WEAPON_BATTLEAXE")) or 0
+        end
         if haveTool < 1 then
             local label = farm.requireTool
-            local toolItem = exports.ox_inventory:Items(farm.requireTool)
+            local toolItem = exports.ox_inventory:Items(farm.requireTool) or exports.ox_inventory:Items("WEAPON_BATTLEAXE")
             if toolItem and toolItem.label then
                 label = toolItem.label
             end
@@ -516,6 +544,8 @@ RegisterNetEvent("cfx-keydi-autofarm:startDenied", function(reason, requireItem)
             label = item.label
         end
         ESX.ShowNotification(("[Auto Farm] You need a %s to harvest"):format(label), "error")
+    elseif reason == "job_required" then
+        ESX.ShowNotification(("[Auto Farm] Only authorized %s staff can do this activity"):format(string.upper(tostring(requireItem or "service"))), "error")
     elseif reason == "wrong_server" then
         local msg = (ConfigServerLocations and ConfigServerLocations.WrongServerMessage)
             and ConfigServerLocations.WrongServerMessage("grind")

@@ -4,6 +4,7 @@
     distance checks, and inventory mutations all happen here.
 ]]
 
+local ESX = exports['es_extended']:getSharedObject()
 local sessions = {}       -- [src] = { farmIndex, locationIndex, nextRewardAt }
 local requestTracker = {} -- [src] = { lastRequestAt, windowStart, count }
 local dropCache = {}      -- [farmIndex] = { totalChance, entries }
@@ -158,6 +159,9 @@ end
 ---Find a usable tool slot (durability > 0, or legacy time-based durability still valid).
 local function GetUsableToolSlot(src, itemName)
     local slots = exports.ox_inventory:Search(src, "slots", itemName)
+    if (type(slots) ~= "table" or next(slots) == nil) and itemName == "battleaxe" then
+        slots = exports.ox_inventory:Search(src, "slots", "WEAPON_BATTLEAXE")
+    end
     if type(slots) ~= "table" then return nil end
 
     local now = os.time()
@@ -201,8 +205,9 @@ local function WearTool(src, itemName)
 
     dur = dur - drain
 
+    local actualItem = slot.name or itemName
     if dur <= 0 then
-        exports.ox_inventory:RemoveItem(src, itemName, 1, nil, slot.slot)
+        exports.ox_inventory:RemoveItem(src, actualItem, 1, nil, slot.slot)
         return true, true
     end
 
@@ -320,6 +325,25 @@ local function GrantReward(src, session)
 
     TriggerClientEvent("cfx-keydi-autofarm:collected", src, farmIndex, itemName, amount)
     DebugLog(("%s processed %dx %s"):format(GetPlayerName(src) or src, amount, itemName))
+
+    if farm.rewardCoins then
+        local coinAmount = 1
+        if type(farm.rewardCoins) == "table" then
+            local cMin = tonumber(farm.rewardCoins.min or farm.rewardCoins[1]) or 1
+            local cMax = tonumber(farm.rewardCoins.max or farm.rewardCoins[2]) or cMin
+            coinAmount = math.random(cMin, cMax)
+        else
+            coinAmount = tonumber(farm.rewardCoins) or 1
+        end
+
+        pcall(function()
+            if exports['kodebykarl-ui'] and exports['kodebykarl-ui'].AddCoins then
+                exports['kodebykarl-ui']:AddCoins(src, coinAmount, farm.zone or 'Activity')
+            elseif exports['cfx-keydi-playtimeshop'] and exports['cfx-keydi-playtimeshop'].AddCoins then
+                exports['cfx-keydi-playtimeshop']:AddCoins(src, coinAmount, farm.zone or 'Activity')
+            end
+        end)
+    end
 end
 
 RegisterNetEvent("cfx-keydi-autofarm:start", function(farmIndex, locationIndex, coords)
@@ -338,6 +362,23 @@ RegisterNetEvent("cfx-keydi-autofarm:start", function(farmIndex, locationIndex, 
     if not farm then
         DebugLog(("invalid start farm src=%s farm=%s"):format(src, tostring(farmIndex)))
         return
+    end
+
+    if farm.job then
+        local xPlayer = ESX.GetPlayerFromId(src)
+        local playerJob = xPlayer and xPlayer.job and xPlayer.job.name
+        local allowed = false
+        if type(farm.job) == 'table' then
+            for _, j in ipairs(farm.job) do
+                if playerJob == j then allowed = true; break end
+            end
+        elseif playerJob == farm.job then
+            allowed = true
+        end
+        if not allowed then
+            TriggerClientEvent("cfx-keydi-autofarm:startDenied", src, "job_required", tostring(farm.job))
+            return
+        end
     end
 
     local sessionCoords = nil

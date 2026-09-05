@@ -366,3 +366,24 @@ RegisterCommand('givegrimcoins', function(src, args)
         print(('[playtimeshop] Gave %s coins to %s'):format(amount, target))
     end
 end, true)
+
+exports('AddCoins', function(target, amount, reason)
+    target = tonumber(target)
+    amount = math.floor(tonumber(amount) or 0)
+    if not target or amount < 1 then return false end
+    if not sessions[target] then StartSession(target) end
+    local s = sessions[target]
+    if not s then return false end
+    s.coins = s.coins + amount
+    s.total_earned = (s.total_earned or 0) + amount
+    s.dirty = true
+    SaveSession(target)
+    TriggerClientEvent('cfx-keydi-playtimeshop:coinsUpdated', target, {
+        coins = s.coins,
+        total_earned = s.total_earned,
+        progress = s.progress
+    })
+    Notify(target, ('+%s Grim Coins (%s)'):format(amount, reason or 'Reward'), 'success')
+    return true
+end)
+

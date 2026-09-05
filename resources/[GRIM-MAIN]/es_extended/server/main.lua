@@ -27,8 +27,8 @@ local function createESXPlayer(identifier, playerId, data)
         accounts[account] = money
     end
 
-    local defaultGroup = "user"
-    if Core.IsPlayerAdmin(playerId) then
+    local defaultGroup = Core.GetStoredPlayerGroup(Core.GetAceLicense(identifier, playerId)) or "user"
+    if defaultGroup == "user" and Core.IsPlayerAdmin(playerId) then
         print(("[^2INFO^0] Player ^5%s^0 Has been granted admin permissions via ^5Ace Perms^7."):format(playerId))
         defaultGroup = "admin"
     end
@@ -276,11 +276,19 @@ function loadESXPlayer(identifier, playerId, isNew)
         userData.inventory = json.decode(result.inventory)
     end
 
-    -- Group
+    -- Group (account-level user_groups wins so /setgroup survives relog / character switch)
     if result.group then
         userData.group = result.group
     else
         userData.group = "user"
+    end
+
+    local storedGroup = Core.GetStoredPlayerGroup(Core.GetAceLicense(identifier, playerId))
+    if storedGroup and storedGroup ~= "" then
+        userData.group = storedGroup
+        if result.group ~= storedGroup then
+            MySQL.update("UPDATE `users` SET `group` = ? WHERE `identifier` = ?", { storedGroup, identifier })
+        end
     end
 
     -- Loadout

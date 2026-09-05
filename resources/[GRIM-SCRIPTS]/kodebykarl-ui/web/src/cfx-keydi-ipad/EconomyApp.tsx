@@ -31,10 +31,13 @@ const MOCK_JOBS: EconomyJob[] = [
     name: "ambulance",
     label: "EMS",
     grades: [
-      { grade: 0, name: "recruit", label: "Recruit", salary: 45000 },
-      { grade: 1, name: "paramedic", label: "Paramedic", salary: 55000 },
-      { grade: 2, name: "doctor", label: "Doctor", salary: 70000 },
-      { grade: 3, name: "chief", label: "Chief", salary: 90000 },
+      { grade: 0, name: "intern", label: "Intern", salary: 65000 },
+      { grade: 1, name: "nurse", label: "Nurse", salary: 70000 },
+      { grade: 2, name: "head_nurse", label: "Head Nurse", salary: 75000 },
+      { grade: 3, name: "resident_doctor", label: "Resident Doctor", salary: 80000 },
+      { grade: 4, name: "senior_resident_doctor", label: "Senior Resident Doctor", salary: 85000 },
+      { grade: 5, name: "assistant_director", label: "Assistant Director", salary: 90000 },
+      { grade: 6, name: "boss", label: "Medical Director", salary: 100000 },
     ],
   },
   {

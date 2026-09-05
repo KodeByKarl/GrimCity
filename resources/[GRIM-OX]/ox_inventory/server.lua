@@ -37,6 +37,10 @@ local function canOpenOwnedTrunk(src, plate)
     return xPlayer and xPlayer.identifier == row.owner or false
 end
 
+lib.callback.register('ox_inventory:isVehicleOwner', function(source, plate)
+    return canOpenOwnedTrunk(source, plate)
+end)
+
 ---@param player table
 ---@param data table?
 --- player requires source, identifier, and name

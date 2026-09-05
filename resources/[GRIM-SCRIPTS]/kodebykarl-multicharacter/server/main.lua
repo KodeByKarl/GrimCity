@@ -2,6 +2,7 @@ local ESX = exports["es_extended"]:getSharedObject()
 local MAX_SLOTS = Config.Multicharacter.MaxSlots or 3
 local DEFAULT_SLOTS = Config.Multicharacter.DefaultSlots or 1
 local tableReady = false
+local hasPlayerSkins = false
 
 local function NormalizeLicense(id)
     if type(id) ~= "string" or id == "" then return nil end
@@ -67,9 +68,29 @@ local function EnsureSlotsTable()
         MySQL.query.await("ALTER TABLE `multicharacter_slots` ADD COLUMN `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     end)
 
+    pcall(function()
+        MySQL.query.await([[
+            CREATE TABLE IF NOT EXISTS `playerskins` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `citizenid` varchar(255) NOT NULL,
+                `model` varchar(255) NOT NULL DEFAULT '',
+                `skin` text NOT NULL,
+                `active` tinyint(4) NOT NULL DEFAULT 1,
+                PRIMARY KEY (`id`),
+                KEY `citizenid` (`citizenid`),
+                KEY `active` (`active`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ]])
+        hasPlayerSkins = true
+    end)
+
     tableReady = true
     return true
 end
+
+MySQL.ready(function()
+    EnsureSlotsTable()
+end)
 
 local function GetPlayerSlots(identifier)
     identifier = NormalizeLicense(identifier)
@@ -195,7 +216,7 @@ local function fetchCharacters(source, cb)
             local accounts = char.accounts and json.decode(char.accounts) or {}
             local skinData = char.skin
 
-            if not skinData or skinData == "" then
+            if (not skinData or skinData == "") and hasPlayerSkins then
                 pcall(function()
                     local pSkin = MySQL.single.await("SELECT skin FROM playerskins WHERE citizenid = ? AND active = 1", { char.identifier })
                     if pSkin and pSkin.skin then
@@ -259,8 +280,15 @@ ESX.RegisterServerCallback('esx_multicharacter:createCharacter', function(source
     local charIdentifier = ("char%s:%s"):format(count + 1, license)
     local ssn = ("%03d-%02d-%04d"):format(math.random(100, 999), math.random(10, 99), math.random(1000, 9999))
     local accounts = json.encode({ money = Config.Multicharacter.DefaultMoney, bank = Config.Multicharacter.DefaultBank })
+    local staffGroup = "user"
+    pcall(function()
+        local saved = MySQL.scalar.await("SELECT `group` FROM user_groups WHERE license = ?", { license })
+        if saved and saved ~= "" then
+            staffGroup = saved
+        end
+    end)
 
-    MySQL.insert('INSERT INTO users (identifier, ssn, firstname, lastname, dateofbirth, sex, height, job, job_grade, accounts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', {
+    MySQL.insert('INSERT INTO users (identifier, ssn, firstname, lastname, dateofbirth, sex, height, job, job_grade, accounts, `group`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', {
         charIdentifier,
         ssn,
         data.firstname,
@@ -270,7 +298,8 @@ ESX.RegisterServerCallback('esx_multicharacter:createCharacter', function(source
         data.height or 175,
         Config.Multicharacter.DefaultJob,
         Config.Multicharacter.DefaultGrade,
-        accounts
+        accounts,
+        staffGroup
     }, function(id)
         cb(id and id > 0, id)
     end)
@@ -279,8 +308,8 @@ end)
 ESX.RegisterServerCallback('esx_multicharacter:deleteCharacter', function(source, cb, charId)
     if charId then
         local charData = MySQL.single.await("SELECT identifier FROM users WHERE id = ?", { charId })
-        if charData then
-            pcall(function() MySQL.query('DELETE FROM playerskins WHERE citizenid = ?', { charData.identifier }) end)
+        if charData and hasPlayerSkins then
+            pcall(function() MySQL.query.await('DELETE FROM playerskins WHERE citizenid = ?', { charData.identifier }) end)
         end
         MySQL.query('DELETE FROM users WHERE id = ?', { charId }, function()
             cb(true)

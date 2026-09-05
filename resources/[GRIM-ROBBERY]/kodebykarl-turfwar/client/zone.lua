@@ -3,11 +3,42 @@ local TurfBlips = {}
 local RadiusBlips = {}
 local InsideZones = {}
 local DamageThreads = {}
+local blipsVisible = false
 
--- Create & Update Map Blips for Turf Locations
+local function CanUseTurfWar()
+    if GetResourceState('kodebykarl-ui') ~= 'started' then
+        return false
+    end
+    local ok, allowed = pcall(function()
+        return exports['kodebykarl-ui']:HasFunction('turfwar')
+    end)
+    return ok and allowed == true
+end
+
+local function ClearBlips()
+    for id, b in pairs(TurfBlips) do
+        if b and DoesBlipExist(b) then
+            RemoveBlip(b)
+        end
+        TurfBlips[id] = nil
+    end
+    for id, r in pairs(RadiusBlips) do
+        if r and DoesBlipExist(r) then
+            RemoveBlip(r)
+        end
+        RadiusBlips[id] = nil
+    end
+    blipsVisible = false
+end
+
+-- Create & Update Map Blips for Turf Locations (Region 3 / 4 only)
 function ZoneManager.InitBlips()
+    ClearBlips()
+    if not CanUseTurfWar() then
+        return
+    end
+
     for id, data in pairs(Config.TurfWars) do
-        -- Primary Turf Marker Blip
         if data.blip and data.blip.turf and data.blip.turf.enable then
             local b = AddBlipForCoord(data.coords.x, data.coords.y, data.coords.z)
             SetBlipSprite(b, data.blip.turf.id or 310)
@@ -15,19 +46,37 @@ function ZoneManager.InitBlips()
             SetBlipScale(b, data.blip.turf.scale or 0.8)
             SetBlipColour(b, data.blip.turf.color or 1)
             SetBlipAsShortRange(b, true)
-            BeginTextCommandSetBlipName("STRING")
+            BeginTextCommandSetBlipName('STRING')
             AddTextComponentString(data.label)
             EndTextCommandSetBlipName(b)
             TurfBlips[id] = b
         end
 
-        -- Radius Area Blip
         if data.blip and data.blip.radius and data.blip.radius.enable then
-            local r = AddBlipForRadius(data.coords.x, data.coords.y, data.coords.z, data.blip.radius.scale or 150.0)
+            local r = AddBlipForRadius(
+                data.coords.x,
+                data.coords.y,
+                data.coords.z,
+                data.blip.radius.scale or data.zone and data.zone.radius or 150.0
+            )
             SetBlipColour(r, data.blip.radius.color or 1)
             SetBlipAlpha(r, data.blip.radius.alpha or 110)
+            SetBlipAsShortRange(r, false)
             RadiusBlips[id] = r
         end
+    end
+
+    blipsVisible = true
+end
+
+function ZoneManager.RefreshBlips()
+    local allow = CanUseTurfWar()
+    if allow and not blipsVisible then
+        ZoneManager.InitBlips()
+    elseif not allow and blipsVisible then
+        ClearBlips()
+    elseif allow and blipsVisible then
+        -- Keep existing; state colors still update in monitor loop
     end
 end
 
@@ -39,35 +88,38 @@ function ZoneManager.UpdateBlipState(id, state)
     if not turfBlip and not radiusBlip then return end
 
     if state == 'ACTIVE' then
-        if turfBlip then SetBlipColour(turfBlip, 1) end -- Red
+        if turfBlip then SetBlipColour(turfBlip, 1) end
         if radiusBlip then SetBlipColour(radiusBlip, 1); SetBlipAlpha(radiusBlip, 140) end
     elseif state == 'CLAIMABLE' then
-        if turfBlip then SetBlipColour(turfBlip, 2) end -- Green
+        if turfBlip then SetBlipColour(turfBlip, 2) end
         if radiusBlip then SetBlipColour(radiusBlip, 2); SetBlipAlpha(radiusBlip, 140) end
     elseif state == 'COOLDOWN' then
-        if turfBlip then SetBlipColour(turfBlip, 39) end -- Gray/Dark
+        if turfBlip then SetBlipColour(turfBlip, 39) end
         if radiusBlip then SetBlipColour(radiusBlip, 39); SetBlipAlpha(radiusBlip, 60) end
     else
-        if turfBlip then SetBlipColour(turfBlip, 5) end -- Yellow/Idle
+        if turfBlip then SetBlipColour(turfBlip, 5) end
         if radiusBlip then SetBlipColour(radiusBlip, 5); SetBlipAlpha(radiusBlip, 70) end
     end
 end
 
 -- Zone Boundary Monitor Thread
 CreateThread(function()
-    ZoneManager.InitBlips()
+    Wait(1500)
+    ZoneManager.RefreshBlips()
 
     while true do
         Wait(1000)
+
+        ZoneManager.RefreshBlips()
+
         local ped = PlayerPedId()
-        if DoesEntityExist(ped) and not IsEntityDead(ped) then
+        if DoesEntityExist(ped) and not IsEntityDead(ped) and CanUseTurfWar() then
             local pCoords = GetEntityCoords(ped)
 
             for id, data in pairs(Config.TurfWars) do
                 local state = GlobalState[('turf_state_%s'):format(id)] or 'IDLE'
                 ZoneManager.UpdateBlipState(id, state)
 
-                -- Check boundary while War is ACTIVE
                 if state == 'ACTIVE' and data.zone and data.zone.enable then
                     local dist = #(pCoords - data.coords)
                     local maxRadius = data.zone.radius or 150.0
@@ -76,7 +128,6 @@ CreateThread(function()
                         InsideZones[id] = true
                     else
                         if InsideZones[id] then
-                            -- Player crossed outside the boundary line while war active!
                             if not DamageThreads[id] then
                                 DamageThreads[id] = true
                                 CreateThread(function()
@@ -105,8 +156,27 @@ CreateThread(function()
                     InsideZones[id] = false
                 end
             end
+        else
+            for id in pairs(InsideZones) do
+                InsideZones[id] = false
+            end
         end
     end
+end)
+
+AddEventHandler('cfx-keydi-serverlocations:changed', function()
+    Wait(250)
+    ZoneManager.RefreshBlips()
+end)
+
+AddStateBagChangeHandler('grimServerId', ('player:%s'):format(GetPlayerServerId(PlayerId())), function()
+    Wait(250)
+    ZoneManager.RefreshBlips()
+end)
+
+AddEventHandler('onResourceStop', function(resName)
+    if resName ~= GetCurrentResourceName() then return end
+    ClearBlips()
 end)
 
 return ZoneManager

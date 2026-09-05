@@ -117,18 +117,28 @@ export default function Regions({ onClose }: RegionsProps) {
   const [loadingServers, setLoadingServers] = useState(false);
   const [switchingServer, setSwitchingServer] = useState<string | null>(null);
 
+  const markCurrent = useCallback((id: string) => {
+    setPublicServers((prev) => prev.map((s) => ({ ...s, isCurrent: s.id === id })));
+    setJobServers((prev) => prev.map((s) => ({ ...s, isCurrent: s.id === id })));
+  }, []);
+
   const loadServerRealms = useCallback(() => {
     setLoadingServers(true);
     fetchNui<{
       publicServers?: ServerRealm[];
       sideJobServers?: SideJobServer[];
+      currentServerId?: string;
       inSafezone?: boolean;
       isLocked?: boolean;
       lockReason?: string;
     }>("cfx-keydi-modules:getServers", {})
       .then((res) => {
         if (res) {
-          if (res.publicServers && res.publicServers.length > 0) setPublicServers(res.publicServers);
+          if (res.publicServers && res.publicServers.length > 0) {
+            setPublicServers(res.publicServers);
+          } else if (res.currentServerId) {
+            markCurrent(res.currentServerId);
+          }
           if (res.sideJobServers && res.sideJobServers.length > 0) setJobServers(res.sideJobServers);
           if (typeof res.inSafezone === "boolean") setInSafezone(res.inSafezone);
           if (typeof res.isLocked === "boolean") setIsLocked(res.isLocked);
@@ -137,25 +147,61 @@ export default function Regions({ onClose }: RegionsProps) {
       })
       .catch(() => {})
       .finally(() => setLoadingServers(false));
-  }, []);
+  }, [markCurrent]);
 
   useEffect(() => {
     loadServerRealms();
   }, [loadServerRealms]);
 
+  // Keep Active Server badge in sync when Lua finishes (or fails) a region switch.
+  useEffect(() => {
+    const onApplied = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ id?: string } | null>).detail;
+      const id = detail?.id;
+      if (id) markCurrent(id);
+      setSwitchingServer(null);
+      loadServerRealms();
+    };
+    const onFailed = () => {
+      setSwitchingServer(null);
+      loadServerRealms();
+    };
+    window.addEventListener("grim:regionApplied", onApplied);
+    window.addEventListener("grim:regionSwitchFailed", onFailed);
+    return () => {
+      window.removeEventListener("grim:regionApplied", onApplied);
+      window.removeEventListener("grim:regionSwitchFailed", onFailed);
+    };
+  }, [loadServerRealms, markCurrent]);
+
   const handleSwitchServer = (realm: { id: string; name: string; isCurrent?: boolean }) => {
     if (realm.isCurrent || switchingServer || !inSafezone || isLocked) return;
     setSwitchingServer(realm.id);
     if (isBrowserEnv()) {
-      setPublicServers((prev) => prev.map((s) => ({ ...s, isCurrent: s.id === realm.id })));
-      setJobServers((prev) => prev.map((s) => ({ ...s, isCurrent: s.id === realm.id })));
+      markCurrent(realm.id);
       setTimeout(() => setSwitchingServer(null), 600);
       return;
     }
-    fetchNui("cfx-keydi-modules:connectServer", { id: realm.id, name: realm.name })
-      .catch(() => {})
+    fetchNui<{ ok?: boolean; message?: string }>("cfx-keydi-modules:connectServer", {
+      id: realm.id,
+      name: realm.name,
+    })
+      .then((res) => {
+        if (res && res.ok === false) {
+          setSwitchingServer(null);
+          loadServerRealms();
+          return;
+        }
+        // Optimistic Active Server update; Lua applied event refreshes for real.
+        markCurrent(realm.id);
+      })
+      .catch(() => {
+        setSwitchingServer(null);
+        loadServerRealms();
+      })
       .finally(() => {
-        setTimeout(() => setSwitchingServer(null), 2500);
+        // Safety clear if applied/failed NUI never arrives (menu may already be closed).
+        setTimeout(() => setSwitchingServer(null), 4000);
       });
   };
 

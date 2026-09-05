@@ -522,11 +522,18 @@ ESX.RegisterCommand(
         if not args.playerId then
             args.playerId = xPlayer.source
         end
+        args.group = tostring(args.group or "user"):lower():gsub("%s+", "")
         if args.group == "superadmin" then
             args.group = "admin"
             print("[^3WARNING^7] ^5Superadmin^7 detected, setting group to ^5admin^7")
         end
         args.playerId.setGroup(args.group)
+        if xPlayer then
+            xPlayer.showNotification(("Set %s group to %s (saved)"):format(args.playerId.getName(), args.group))
+        else
+            print(("[^2INFO^7] Set ^5%s^7 group to ^5%s^7 (saved)"):format(args.playerId.getName(), args.group))
+        end
+        args.playerId.showNotification(("Your group is now %s"):format(args.group))
         if Config.AdminLogging then
             ESX.DiscordLogFields("UserActions", "/setgroup Triggered!", "pink", {
                 { name = "Player", value = xPlayer and xPlayer.name or "Server Console", inline = true },

@@ -313,6 +313,36 @@ exports('police_pill', function(event, item, inventory, slot, data)
 	end
 end)
 
+exports('police_vitamins', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not hasGroup(inventory.id, {'police', 'sheriff'}) then
+			notify(inventory.id, 'INVENTORY', 'You are not an active police officer.', 'error', 5000)
+			return false
+		end
+		return true
+	end
+	if event == 'usedItem' then
+		grantHealthArmor(inventory.id, 200, 100)
+		TriggerClientEvent('cfx-keydi-ambulance:client:RemoveBleed', inventory.id)
+		TriggerClientEvent('ox_items:UsedItem', inventory.id, 'police_vitamins')
+		return true
+	end
+end)
+
+exports('police_drink', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not hasGroup(inventory.id, {'police', 'sheriff'}) then
+			notify(inventory.id, 'INVENTORY', 'You are not an active police officer.', 'error', 5000)
+			return false
+		end
+		return true
+	end
+	if event == 'usedItem' then
+		TriggerClientEvent('ox_items:UsedItem', inventory.id, 'police_drink')
+		return true
+	end
+end)
+
 exports('oxy', function(event, item, inventory, slot, data)
 	if event == 'usedItem' then
 		grantHealthArmor(inventory.id, 50, 50)

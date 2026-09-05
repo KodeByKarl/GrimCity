@@ -1,565 +1,611 @@
+--[[
+    cfx-keydi-deathscreen (client)
+    PvP death UI: killer profile | killer ped (camera) | combat recap
+]]
+
+if not ConfigDeathScreen or not ConfigDeathScreen.Enabled then return end
+
 local ESX = exports["es_extended"]:getSharedObject()
 
-local isOpen = false
-local previewCam = nil
-local previewPed = nil
-local engagement = nil
-local lastKillerServerId = nil
-local vitals = { health = 200, armor = 0, lastAliveHealth = 200, lastAliveArmor = 0 }
+local isVisible = false
+local isOpening = false
+local holdWhileAlive = false -- /testdeathscreen preview while alive
+local clonePed = nil
+local deathCam = nil
+local displayToken = 0
+local lastAttackerPed = 0
+local lastAttackerSid = 0
 
--- Per-ped lag buffer so dealt damage matches real HP/armor loss (same technique as indicator)
-local targetVitals = {} -- [ped] = { health, armor, lastAliveHealth, lastAliveArmor, serverId, time }
+--- Prefer framework / ambulance death flags. Ped natives alone can false-positive
+--- during spawn / SetPlayerModel, so they are only used as a last resort when
+--- the player is already loaded and not reviving.
+local function isActuallyDead()
+    if LocalPlayer.state and LocalPlayer.state.isReviving then
+        return false
+    end
+    if GetResourceState('cfx-keydi-ambulance') == 'started' then
+        local ok, dead = pcall(function()
+            return exports['cfx-keydi-ambulance']:isDead()
+        end)
+        if ok and dead == true then
+            return true
+        end
+        -- Ambulance started but not dead yet — keep checking other sources below
+    end
+    if ESX then
+        local pd = (ESX.GetPlayerData and ESX.GetPlayerData()) or ESX.PlayerData
+        if pd and pd.dead == true then
+            return true
+        end
+    end
+    if LocalPlayer.state and LocalPlayer.state.dead == true then
+        return true
+    end
+    -- Fallback: ped is down and character is loaded (covers delayed ESX dead flag)
+    if ESX and ESX.PlayerLoaded then
+        local ped = PlayerPedId()
+        if ped and ped ~= 0 and (IsPedDeadOrDying(ped, true) or IsPedFatallyInjured(ped) or IsEntityDead(ped)) then
+            return true
+        end
+    end
+    return false
+end
 
+--- Wait until death is confirmed (ESX / ambulance often lag gameEvent by a few hundred ms).
+local function waitUntilDead(timeoutMs)
+    local deadline = GetGameTimer() + (timeoutMs or 2000)
+    while GetGameTimer() < deadline do
+        if isActuallyDead() then
+            return true
+        end
+        Wait(50)
+    end
+    return isActuallyDead()
+end
 
-local WEAPON_LABELS = {
-    [`WEAPON_UNARMED`] = "Fists",
-    [`WEAPON_KNIFE`] = "Knife",
-    [`WEAPON_NIGHTSTICK`] = "Nightstick",
-    [`WEAPON_HAMMER`] = "Hammer",
-    [`WEAPON_BAT`] = "Bat",
-    [`WEAPON_CROWBAR`] = "Crowbar",
-    [`WEAPON_GOLFCLUB`] = "Golf Club",
-    [`WEAPON_BOTTLE`] = "Bottle",
-    [`WEAPON_DAGGER`] = "Dagger",
-    [`WEAPON_HATCHET`] = "Hatchet",
-    [`WEAPON_MACHETE`] = "Machete",
-    [`WEAPON_SWITCHBLADE`] = "Switchblade",
-    [`WEAPON_BATTLEAXE`] = "Battle Axe",
-    [`WEAPON_POOLCUE`] = "Pool Cue",
-    [`WEAPON_WRENCH`] = "Wrench",
-    [`WEAPON_PISTOL`] = "Pistol",
-    [`WEAPON_PISTOL_MK2`] = "Pistol Mk II",
-    [`WEAPON_COMBATPISTOL`] = "Combat Pistol",
-    [`WEAPON_APPISTOL`] = "AP Pistol",
-    [`WEAPON_STUNGUN`] = "Stun Gun",
-    [`WEAPON_PISTOL50`] = "Pistol .50",
-    [`WEAPON_SNSPISTOL`] = "SNS Pistol",
-    [`WEAPON_SNSPISTOL_MK2`] = "SNS Pistol Mk II",
-    [`WEAPON_HEAVYPISTOL`] = "Heavy Pistol",
-    [`WEAPON_VINTAGEPISTOL`] = "Vintage Pistol",
-    [`WEAPON_FLAREGUN`] = "Flare Gun",
-    [`WEAPON_MARKSMANPISTOL`] = "Marksman Pistol",
-    [`WEAPON_REVOLVER`] = "Revolver",
-    [`WEAPON_REVOLVER_MK2`] = "Revolver Mk II",
-    [`WEAPON_DOUBLEACTION`] = "Double Action",
-    [`WEAPON_RAYPISTOL`] = "Up-n-Atomizer",
-    [`WEAPON_CERAMICPISTOL`] = "Ceramic Pistol",
-    [`WEAPON_NAVYREVOLVER`] = "Navy Revolver",
-    [`WEAPON_GADGETPISTOL`] = "Perico Pistol",
-    [`WEAPON_MICROSMG`] = "Micro SMG",
-    [`WEAPON_SMG`] = "SMG",
-    [`WEAPON_SMG_MK2`] = "SMG Mk II",
-    [`WEAPON_ASSAULTSMG`] = "Assault SMG",
-    [`WEAPON_COMBATPDW`] = "Combat PDW",
-    [`WEAPON_MACHINEPISTOL`] = "Machine Pistol",
-    [`WEAPON_MINISMG`] = "Mini SMG",
-    [`WEAPON_RAYCARBINE`] = "Unholy Hellbringer",
-    [`WEAPON_PUMPSHOTGUN`] = "Pump Shotgun",
-    [`WEAPON_PUMPSHOTGUN_MK2`] = "Pump Shotgun Mk II",
-    [`WEAPON_SAWNOFFSHOTGUN`] = "Sawed-Off Shotgun",
-    [`WEAPON_ASSAULTSHOTGUN`] = "Assault Shotgun",
-    [`WEAPON_BULLPUPSHOTGUN`] = "Bullpup Shotgun",
-    [`WEAPON_MUSKET`] = "Musket",
-    [`WEAPON_HEAVYSHOTGUN`] = "Heavy Shotgun",
-    [`WEAPON_DBSHOTGUN`] = "Double Barrel Shotgun",
-    [`WEAPON_AUTOSHOTGUN`] = "Auto Shotgun",
-    [`WEAPON_COMBATSHOTGUN`] = "Combat Shotgun",
-    [`WEAPON_ASSAULTRIFLE`] = "Assault Rifle",
-    [`WEAPON_ASSAULTRIFLE_MK2`] = "Assault Rifle Mk II",
-    [`WEAPON_CARBINERIFLE`] = "Carbine Rifle",
-    [`WEAPON_CARBINERIFLE_MK2`] = "Carbine Rifle Mk II",
-    [`WEAPON_ADVANCEDRIFLE`] = "Advanced Rifle",
-    [`WEAPON_SPECIALCARBINE`] = "Special Carbine",
-    [`WEAPON_SPECIALCARBINE_MK2`] = "Special Carbine Mk II",
-    [`WEAPON_BULLPUPRIFLE`] = "Bullpup Rifle",
-    [`WEAPON_BULLPUPRIFLE_MK2`] = "Bullpup Rifle Mk II",
-    [`WEAPON_COMPACTRIFLE`] = "Compact Rifle",
-    [`WEAPON_MILITARYRIFLE`] = "Military Rifle",
-    [`WEAPON_HEAVYRIFLE`] = "Heavy Rifle",
-    [`WEAPON_TACTICALRIFLE`] = "Tactical Rifle",
-    [`WEAPON_MG`] = "MG",
-    [`WEAPON_COMBATMG`] = "Combat MG",
-    [`WEAPON_COMBATMG_MK2`] = "Combat MG Mk II",
-    [`WEAPON_GUSENBERG`] = "Gusenberg",
-    [`WEAPON_SNIPERRIFLE`] = "Sniper Rifle",
-    [`WEAPON_HEAVYSNIPER`] = "Heavy Sniper",
-    [`WEAPON_HEAVYSNIPER_MK2`] = "Heavy Sniper Mk II",
-    [`WEAPON_MARKSMANRIFLE`] = "Marksman Rifle",
-    [`WEAPON_MARKSMANRIFLE_MK2`] = "Marksman Rifle Mk II",
-    [`WEAPON_PRECISIONRIFLE`] = "Precision Rifle",
-    [`WEAPON_RPG`] = "RPG",
-    [`WEAPON_GRENADELAUNCHER`] = "Grenade Launcher",
-    [`WEAPON_MINIGUN`] = "Minigun",
-    [`WEAPON_FIREWORK`] = "Firework",
-    [`WEAPON_RAILGUN`] = "Railgun",
-    [`WEAPON_HOMINGLAUNCHER`] = "Homing Launcher",
-    [`WEAPON_COMPACTLAUNCHER`] = "Compact Launcher",
-    [`WEAPON_RAYMINIGUN`] = "Widowmaker",
-    [`WEAPON_GRENADE`] = "Grenade",
-    [`WEAPON_STICKYBOMB`] = "Sticky Bomb",
-    [`WEAPON_PROXMINE`] = "Proximity Mine",
-    [`WEAPON_PIPEBOMB`] = "Pipe Bomb",
-    [`WEAPON_SMOKEGRENADE`] = "Smoke Grenade",
-    [`WEAPON_MOLOTOV`] = "Molotov",
-    [`WEAPON_FIREEXTINGUISHER`] = "Fire Extinguisher",
-    [`WEAPON_PETROLCAN`] = "Jerry Can",
-    [`WEAPON_FLARE`] = "Flare",
-    [`WEAPON_BALL`] = "Ball",
-    [`WEAPON_SNOWBALL`] = "Snowball",
-    [`WEAPON_FALL`] = "Fall",
-    [`WEAPON_DROWNING`] = "Drowning",
-    [`WEAPON_DROWNING_IN_VEHICLE`] = "Drowning",
-    [`WEAPON_BLEEDING`] = "Bleeding",
-    [`WEAPON_ELECTRIC_FENCE`] = "Electric Fence",
-    [`WEAPON_EXPLOSION`] = "Explosion",
-    [`WEAPON_RAMMED_BY_CAR`] = "Vehicle",
-    [`WEAPON_RUN_OVER_BY_CAR`] = "Vehicle",
-    [`WEAPON_FIRE`] = "Fire",
-    [`WEAPON_ANIMAL`] = "Animal",
+-- Engagement tracking vs other players
+-- [serverId] = { dealt = number, received = number, zones = { head=n, neck=n, ... }, lastBone = number, headshot = bool }
+local engagement = {}
+local localHealth = 200
+local localArmor = 0
+local lastHitZones = { head = 0, neck = 0, torso = 0, arm = 0, leg = 0 }
+local lastBone = -1
+local wasHeadshot = false
+local lastRecap = nil
+
+local ZONE_LABELS = {
+    head = "Head",
+    neck = "Neck",
+    torso = "Upper Torso",
+    arm = "Arms",
+    leg = "Legs",
 }
 
-local function DebugLog(msg)
-    if ConfigDeathScreen.Debug then
-        print(("[cfx-keydi-deathscreen] %s"):format(msg))
+local function resolveBoneZone(boneId)
+    boneId = tonumber(boneId) or -1
+    if boneId < 0 then return "torso", false end
+    local zones = ConfigDeathScreen.BoneZones or {}
+    local heads = ConfigDeathScreen.HeadBones or {}
+    local zone = zones[boneId]
+    -- Neck bone 35731 was listed under head in some maps; force neck if configured
+    if boneId == 39317 or boneId == 35731 or boneId == 97 or boneId == 124 then
+        zone = "neck"
     end
+    local isHead = heads[boneId] == true or zone == "head"
+    if isHead then
+        return "head", true
+    end
+    if zone then
+        return zone, false
+    end
+    -- Unknown bone: do not assume torso (that hid real headshots). Recheck as head if mapped.
+    return "torso", false
 end
 
-local function WeaponLabel(hash)
-    hash = tonumber(hash) or 0
-    if hash == 0 then return "Unknown" end
-    if WEAPON_LABELS[hash] then return WEAPON_LABELS[hash] end
-
-    -- Prefer GTA display name (covers custom / addon guns)
-    local ok, labelKey = pcall(function()
-        return GetWeaponNameFromHash and GetWeaponNameFromHash(hash) or nil
-    end)
-    if ok and labelKey and labelKey ~= "" and labelKey ~= "NULL" and labelKey ~= "CARBINERIFLE" then
-        local text = GetLabelText(labelKey)
-        if text and text ~= "NULL" and text ~= "" then
-            return text
-        end
-        return labelKey
-    end
-
-    local ok2, display = pcall(function()
-        if GetDisplayNameFromWeaponHash then
-            return GetDisplayNameFromWeaponHash(hash)
-        end
-        return nil
-    end)
-    if ok2 and display and display ~= "" and display ~= "NULL" then
-        local text = GetLabelText(display)
-        if text and text ~= "NULL" and text ~= "" then
-            return text
-        end
-        return display
-    end
-
-    return ("Weapon 0x%X"):format(hash & 0xFFFFFFFF)
-end
-
-local function ResolveWeaponHash(eventWeapon, pedFallback)
-    local hash = tonumber(eventWeapon) or 0
-    if hash ~= 0 and hash ~= `WEAPON_UNARMED` then
-        return hash
-    end
-    if pedFallback and pedFallback ~= 0 then
-        local cause = GetPedCauseOfDeath(pedFallback)
-        if cause and cause ~= 0 then return cause end
-        local selected = GetSelectedPedWeapon(pedFallback)
-        if selected and selected ~= 0 then return selected end
-    end
-    return hash ~= 0 and hash or `WEAPON_UNARMED`
-end
-
-local function ComputeDamageDelta(prevHealth, prevArmor, curHealth, curArmor, lastAliveHealth, lastAliveArmor, fatal)
-    local healthDmg = 0
-    local armorDmg = 0
-
-    if prevArmor and curArmor and prevArmor > curArmor then
-        armorDmg = prevArmor - curArmor
-    end
-    if prevHealth and curHealth and prevHealth > curHealth then
-        healthDmg = prevHealth - curHealth
-    end
-
-    -- One-shot / fatal: event often arrives after HP already collapsed
-    if fatal or (curHealth and curHealth <= 100) then
-        local baseH = lastAliveHealth or prevHealth or 200
-        if baseH > curHealth then
-            healthDmg = math.max(healthDmg, baseH - curHealth)
-        end
-        local baseA = lastAliveArmor or prevArmor or 0
-        if baseA > (curArmor or 0) then
-            armorDmg = math.max(armorDmg, baseA - (curArmor or 0))
-        end
-    end
-
-    return math.max(0, healthDmg), math.max(0, armorDmg), math.max(0, healthDmg + armorDmg)
-end
-
-local function NewEngagement()
-    return {
-        startedAt = GetGameTimer(),
-        hits = DeathScreenBones.EmptyHits(),
-        damageReceived = 0,
-        damageDealt = 0,
-        damageByAttacker = {}, -- [serverId] = damage received from them
-        dealtToTarget = {}, -- [serverId] = accurate damage we dealt them
-        weaponsByAttacker = {}, -- [serverId] = weaponHash that hurt us most recently
-        weaponsDealtTo = {}, -- [serverId] = weapon we used on them
-        lastAttacker = nil,
-        lastWeapon = 0,
-        fatalWeapon = 0,
-        distance = 0,
+local function normalizeBoneId(ped, bone)
+    bone = tonumber(bone) or -1
+    if bone < 0 then return bone end
+    -- GetPedLastDamageBone may return a bone INDEX; GetPedBoneCoords / zone maps use bone IDs
+    local indexToId = {
+        [97] = 39317, [98] = 31086, [99] = 12844, [102] = 65068,
+        [103] = 58331, [104] = 45750, [105] = 25260, [106] = 21550,
+        [107] = 29868, [108] = 43536, [109] = 27474, [110] = 19336,
+        [111] = 1356, [112] = 11174, [113] = 37193, [114] = 20178,
+        [115] = 61839, [116] = 20279, [117] = 17719, [118] = 46240,
+        [119] = 17188, [120] = 20623, [121] = 47419, [122] = 49979,
+        [123] = 47495, [124] = 35731, [125] = 64654,
     }
-end
-
-local function EnsureEngagement()
-    local now = GetGameTimer()
-    if not engagement or (now - (engagement.startedAt or 0)) > (ConfigDeathScreen.EngagementTimeout or 45000) then
-        engagement = NewEngagement()
+    if indexToId[bone] then
+        return indexToId[bone]
     end
-    return engagement
-end
-
-local function AddDealtDamage(serverId, total, weaponHash)
-    if total <= 0 then return end
-    local eng = EnsureEngagement()
-    eng.damageDealt = (eng.damageDealt or 0) + total
-    if serverId and serverId > 0 then
-        eng.dealtToTarget = eng.dealtToTarget or {}
-        eng.dealtToTarget[serverId] = (eng.dealtToTarget[serverId] or 0) + total
-        if weaponHash and weaponHash ~= 0 then
-            eng.weaponsDealtTo = eng.weaponsDealtTo or {}
-            eng.weaponsDealtTo[serverId] = weaponHash
-        end
-    end
-    DebugLog(("dealt +%s to %s weapon=%s totalDealt=%s"):format(
-        tostring(total), tostring(serverId), tostring(weaponHash), tostring(eng.damageDealt)
-    ))
-end
-
-local function TrackTargetPed(ped, serverId)
-    if not ped or ped == 0 or not DoesEntityExist(ped) then return end
-    local h = GetEntityHealth(ped)
-    local a = GetPedArmour(ped)
-    local row = targetVitals[ped]
-    if not row then
-        targetVitals[ped] = {
-            health = h,
-            armor = a,
-            prevHealth = h,
-            prevArmor = a,
-            lastAliveHealth = h > 100 and h or 200,
-            lastAliveArmor = a,
-            serverId = serverId,
-            time = GetGameTimer(),
-        }
-        return
-    end
-    -- Lag buffer: prev* = last frame, health/armor = current frame before overwrite
-    row.prevHealth = row.health
-    row.prevArmor = row.armor
-    row.health = h
-    row.armor = a
-    if h > 100 then
-        row.lastAliveHealth = h
-    end
-    row.lastAliveArmor = a
-    if serverId then row.serverId = serverId end
-    row.time = GetGameTimer()
-end
-
-local function HealthPct(ped)
-    local h = GetEntityHealth(ped)
-    local maxH = GetEntityMaxHealth(ped)
-    if maxH > 100 then
-        return math.max(0, math.min(100, math.floor(((h - 100) / (maxH - 100)) * 100)))
-    end
-    return math.max(0, math.min(100, math.floor((h / math.max(1, maxH)) * 100)))
-end
-
-local function CleanupPreview()
-    if previewCam then
-        RenderScriptCams(false, true, 400, true, true)
-        DestroyCam(previewCam, false)
-        previewCam = nil
-    end
-    if previewPed and DoesEntityExist(previewPed) then
-        DeleteEntity(previewPed)
-        previewPed = nil
-    end
-end
-
-local function StartKillerPreview(killerServerId, isSuicide)
-    CleanupPreview()
-    if not (ConfigDeathScreen.Preview and ConfigDeathScreen.Preview.enabled) then
-        return
-    end
-
-    local myPed = PlayerPedId()
-    local coords = GetEntityCoords(myPed)
-    local heading = GetEntityHeading(myPed)
-
-    local sourcePed = myPed
-    if not isSuicide and killerServerId and killerServerId > 0 then
-        local player = GetPlayerFromServerId(killerServerId)
-        if player ~= -1 then
-            local kp = GetPlayerPed(player)
-            if kp and kp ~= 0 and DoesEntityExist(kp) then
-                sourcePed = kp
+    local zones = ConfigDeathScreen.BoneZones or {}
+    local heads = ConfigDeathScreen.HeadBones or {}
+    if zones[bone] or heads[bone] then return bone end
+    if ped and ped ~= 0 then
+        for tag in pairs(zones) do
+            if tag > 200 and GetPedBoneIndex(ped, tag) == bone then
+                return tag
             end
         end
     end
+    return bone
+end
 
-    previewPed = ClonePed(sourcePed, false, false, true)
-    if not previewPed or previewPed == 0 then
-        DebugLog("clone failed")
+local function zoneDisplayName(zone)
+    return ZONE_LABELS[zone] or "Unknown"
+end
+
+local function pickFatalZone(eng, isSuicide)
+    if isSuicide then return "Self" end
+    local bone = (eng and eng.lastBone) or lastBone
+    if bone and bone >= 0 then
+        local zone = resolveBoneZone(bone)
+        return zoneDisplayName(zone)
+    end
+    local zones = (eng and eng.zones) or lastHitZones
+    local best, bestN = "torso", -1
+    if type(zones) == "table" then
+        for z, n in pairs(zones) do
+            local count = tonumber(n) or 0
+            if count > bestN then
+                best, bestN = z, count
+            end
+        end
+    end
+    if bestN <= 0 then
+        if wasHeadshot or (eng and eng.headshot) then return "Head" end
+        return "Unknown"
+    end
+    return zoneDisplayName(best)
+end
+
+local function registerReceivedHit(sid, boneId)
+    local zone, isHead = resolveBoneZone(boneId)
+    engagement[sid] = engagement[sid] or { dealt = 0, received = 0, zones = {}, lastBone = -1, headshot = false }
+    local eng = engagement[sid]
+    eng.zones = eng.zones or {}
+    eng.zones[zone] = (eng.zones[zone] or 0) + 1
+    eng.lastBone = boneId
+    if isHead then
+        eng.headshot = true
+    end
+    lastHitZones = {
+        head = eng.zones.head or 0,
+        neck = eng.zones.neck or 0,
+        torso = eng.zones.torso or 0,
+        arm = eng.zones.arm or 0,
+        leg = eng.zones.leg or 0,
+    }
+    lastBone = boneId
+    wasHeadshot = eng.headshot == true
+end
+
+local function healthPercent(ped)
+    local health = GetEntityHealth(ped)
+    local maxHealth = GetEntityMaxHealth(ped)
+    if health <= 100 then return 0 end
+    if maxHealth > 100 then
+        return math.max(0, math.min(100, math.floor(((health - 100) / (maxHealth - 100)) * 100)))
+    end
+    return math.max(0, math.min(100, math.floor((health / maxHealth) * 100)))
+end
+
+local function weaponLabel(hash)
+    if not hash or hash == 0 then return "Unknown" end
+    local mapped = ConfigDeathScreen.Weapons[hash]
+    if mapped then return mapped end
+    local name = GetWeaponNameFromHash and GetWeaponNameFromHash(hash)
+    if name and name ~= "" then return name end
+    return "Unknown"
+end
+
+local function destroyPreview()
+    if deathCam and DoesCamExist(deathCam) then
+        RenderScriptCams(false, true, 400, true, true)
+        DestroyCam(deathCam, false)
+        deathCam = nil
+    end
+    if clonePed and DoesEntityExist(clonePed) then
+        DeleteEntity(clonePed)
+        clonePed = nil
+    end
+    local ped = PlayerPedId()
+    if ped and ped ~= 0 then
+        ResetEntityAlpha(ped)
+        SetEntityVisible(ped, true, false)
+        pcall(function()
+            SetEntityLocallyVisible(ped)
+        end)
+    end
+end
+
+local function hideDeathScreen()
+    isOpening = false
+    holdWhileAlive = false
+    displayToken = displayToken + 1
+    if not isVisible then
+        destroyPreview()
+        SendNUIMessage({ action = "deathscreen:hide" })
         return
     end
+    isVisible = false
+    destroyPreview()
+    SendNUIMessage({ action = "deathscreen:hide" })
+end
 
-    SetEntityCollision(previewPed, false, false)
-    FreezeEntityPosition(previewPed, true)
-    SetEntityInvincible(previewPed, true)
-    SetBlockingOfNonTemporaryEvents(previewPed, true)
-    ClearPedTasksImmediately(previewPed)
-    SetPedCanRagdoll(previewPed, false)
-    SetEntityVisible(previewPed, true, false)
-    SetPedFleeAttributes(previewPed, 0, false)
+local function standAnims(_)
+    return "amb@world_human_stand_guard@male@base", "base"
+end
 
+local function forceCloneStanding(ped)
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return end
+
+    local maxH = GetEntityMaxHealth(ped)
+    if not maxH or maxH < 100 then
+        maxH = 200
+        SetEntityMaxHealth(ped, maxH)
+    end
+
+    if IsPedDeadOrDying(ped, true) or IsEntityDead(ped) or GetEntityHealth(ped) <= 100 then
+        pcall(ResurrectPed, ped)
+        pcall(ReviveInjuredPed, ped)
+        SetEntityHealth(ped, maxH)
+    end
+
+    SetPedCanRagdoll(ped, false)
+    SetPedCanRagdollFromPlayerImpact(ped, false)
+    SetPedRagdollOnCollision(ped, false)
+    ResetPedRagdollTimer(ped)
+    SetPedConfigFlag(ped, 166, false)
+    ClearPedBloodDamage(ped)
+    ClearPedTasksImmediately(ped)
+    SetEntityRotation(ped, 0.0, 0.0, GetEntityHeading(ped), 2, true)
+end
+
+local function resolveKillerPed(serverId, fallbackPed)
+    if fallbackPed and fallbackPed ~= 0 and DoesEntityExist(fallbackPed) then
+        return fallbackPed
+    end
+    if lastAttackerSid == serverId and lastAttackerPed and lastAttackerPed ~= 0 and DoesEntityExist(lastAttackerPed) then
+        return lastAttackerPed
+    end
+    if not serverId or serverId <= 0 then return 0 end
+
+    for _ = 1, 15 do
+        local player = GetPlayerFromServerId(serverId)
+        if player and player ~= -1 then
+            local ped = GetPlayerPed(player)
+            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                return ped
+            end
+        end
+        Wait(40)
+    end
+    return 0
+end
+
+local function getTopEngagementSid()
+    local bestSid, bestDmg = nil, 0
+    for sid, eng in pairs(engagement) do
+        local rec = tonumber(eng.received) or 0
+        if rec > bestDmg then
+            bestDmg, bestSid = rec, sid
+        end
+    end
+    return bestSid
+end
+
+local function startPreviewHold(token)
+    CreateThread(function()
+        while displayToken == token and clonePed and DoesEntityExist(clonePed) do
+            SetEntityLocallyInvisible(PlayerPedId())
+            Wait(0)
+        end
+    end)
+
+    CreateThread(function()
+        while displayToken == token and clonePed and DoesEntityExist(clonePed) do
+            if IsPedDeadOrDying(clonePed, true) or IsEntityDead(clonePed) or GetEntityHealth(clonePed) <= 100 then
+                forceCloneStanding(clonePed)
+            else
+                SetPedCanRagdoll(clonePed, false)
+                ResetPedRagdollTimer(clonePed)
+            end
+            local dict, clip = standAnims(clonePed)
+            if not IsEntityPlayingAnim(clonePed, dict, clip, 3) then
+                TaskPlayAnim(clonePed, dict, clip, 8.0, 8.0, -1, 1, 0.0, false, false, false)
+            end
+            FreezeEntityPosition(clonePed, true)
+            Wait(400)
+        end
+    end)
+end
+
+local function spawnKillerPreview(killerPed)
+    destroyPreview()
+    if not killerPed or killerPed == 0 or not DoesEntityExist(killerPed) then
+        return false
+    end
+
+    local playerPed = PlayerPedId()
+    local coords = GetEntityCoords(playerPed)
+    local heading = GetEntityHeading(killerPed)
+    if heading == 0.0 then
+        heading = GetEntityHeading(playerPed)
+    end
+
+    -- Place clone in front of the dead player so the center NUI gap frames them
     local rad = math.rad(heading)
-    local stand = vector3(
-        coords.x - math.sin(rad) * 0.15,
-        coords.y + math.cos(rad) * 0.15,
-        coords.z + (ConfigDeathScreen.Preview.cloneOffsetZ or 0.0)
-    )
-    SetEntityCoordsNoOffset(previewPed, stand.x, stand.y, stand.z, false, false, false)
-    SetEntityHeading(previewPed, heading)
-    TaskStandStill(previewPed, -1)
+    local spawnX = coords.x - math.sin(rad) * 1.35
+    local spawnY = coords.y + math.cos(rad) * 1.35
+    local spawnZ = coords.z
 
-    local dist = ConfigDeathScreen.Preview.camDistance or 2.35
-    local camH = ConfigDeathScreen.Preview.camHeight or 0.42
-    local camCoords = vector3(
-        stand.x - math.sin(rad) * dist,
-        stand.y + math.cos(rad) * dist,
-        stand.z + camH
-    )
+    -- Detect true ground elevation so ped feet stand on the road surface rather than sinking
+    local foundGround, gZ = GetGroundZFor_3dCoord(spawnX, spawnY, spawnZ + 2.5, false)
+    if not foundGround then
+        foundGround, gZ = GetGroundZFor_3dCoord(spawnX, spawnY, spawnZ + 15.0, false)
+    end
+    if foundGround then
+        spawnZ = gZ + 0.98 -- GTA V ped root origin sits ~0.98m above bottom of feet
+    else
+        spawnZ = spawnZ + 0.92
+    end
 
-    previewCam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
-    SetCamCoord(previewCam, camCoords.x, camCoords.y, camCoords.z)
-    PointCamAtEntity(previewCam, previewPed, 0.0, 0.0, 0.35, true)
-    SetCamFov(previewCam, ConfigDeathScreen.Preview.fov or 38.0)
-    SetCamActive(previewCam, true)
+    -- Create a living ped, then copy the killer's appearance.
+    -- ClonePed() from a dead/ragdolled source stays lying down and cannot play idle.
+    local model = GetEntityModel(killerPed)
+    if not model or model == 0 then return false end
+
+    lib.requestModel(model, 3000)
+    clonePed = CreatePed(4, model, spawnX, spawnY, spawnZ, heading, false, true)
+    SetModelAsNoLongerNeeded(model)
+
+    if not clonePed or clonePed == 0 or not DoesEntityExist(clonePed) then
+        clonePed = ClonePed(killerPed, false, false, true)
+    end
+    if not clonePed or clonePed == 0 or not DoesEntityExist(clonePed) then
+        return false
+    end
+
+    SetEntityAsMissionEntity(clonePed, true, true)
+    SetEntityVisible(clonePed, false, false)
+    pcall(ClonePedToTarget, killerPed, clonePed)
+
+    SetEntityCoordsNoOffset(clonePed, spawnX, spawnY, spawnZ, false, false, false)
+    SetEntityHeading(clonePed, heading)
+    SetEntityInvincible(clonePed, true)
+    SetBlockingOfNonTemporaryEvents(clonePed, true)
+    SetEntityCollision(clonePed, false, false)
+    FreezeEntityPosition(clonePed, true)
+    forceCloneStanding(clonePed)
+
+    local dict, clip = standAnims(clonePed)
+    lib.requestAnimDict(dict, 3000)
+    TaskPlayAnim(clonePed, dict, clip, 8.0, 8.0, -1, 1, 0.0, false, false, false)
+    Wait(50)
+    forceCloneStanding(clonePed)
+    TaskPlayAnim(clonePed, dict, clip, 8.0, 8.0, -1, 1, 0.0, false, false, false)
+
+    SetEntityVisible(clonePed, true, false)
+    ResetEntityAlpha(clonePed)
+
+    local camCfg = ConfigDeathScreen.Cam or {}
+    local offset = camCfg.offset or vector3(0.0, 4.6, 1.15)
+    local pointOffset = camCfg.pointOffset or vector3(0.0, 0.0, 0.05)
+
+    local camCoords = GetOffsetFromEntityInWorldCoords(clonePed, offset.x, offset.y, offset.z)
+    local lookAt = GetOffsetFromEntityInWorldCoords(clonePed, pointOffset.x, pointOffset.y, pointOffset.z)
+
+    deathCam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
+    SetCamCoord(deathCam, camCoords.x, camCoords.y, camCoords.z)
+    PointCamAtCoord(deathCam, lookAt.x, lookAt.y, lookAt.z)
+    SetCamFov(deathCam, camCfg.fov or 48.0)
+    SetCamActive(deathCam, true)
     RenderScriptCams(true, true, 500, true, true)
 
-    -- Soften local corpse so center focuses on killer clone
-    SetEntityAlpha(myPed, 80, false)
+    startPreviewHold(displayToken)
+    return true
 end
 
-local function CloseDeathScreen()
-    if not isOpen then return end
-    isOpen = false
-    SetNuiFocus(false, false)
-    SendNUIMessage({ action = "deathscreen:hide" })
-    CleanupPreview()
-    local ped = PlayerPedId()
-    ResetEntityAlpha(ped)
-end
-
-local function OpenDeathScreen(payload)
-    if isOpen then
-        CloseDeathScreen()
-        Wait(50)
-    end
-    isOpen = true
-    SetNuiFocus(ConfigDeathScreen.FocusMouse ~= false, ConfigDeathScreen.FocusMouse ~= false)
+local function showDeathScreen(payload)
+    isVisible = true
     SendNUIMessage({
         action = "deathscreen:show",
         data = payload,
     })
 end
 
-local function BuildLocalCombat(isSuicide, killerServerId, weaponHash, distance)
-    local eng = engagement or NewEngagement()
-    local hits = eng.hits or DeathScreenBones.EmptyHits()
+local function buildLocalCombat(killerServerId, killerPed, isSuicide)
+    local playerPed = PlayerPedId()
+    local eng = engagement[killerServerId] or { dealt = 0, received = 0 }
 
-    -- Prefer damage dealt specifically to the killer (accurate exchange)
-    local dealt = tonumber(eng.damageDealt) or 0
-    if killerServerId and eng.dealtToTarget and eng.dealtToTarget[killerServerId] then
-        dealt = eng.dealtToTarget[killerServerId]
+    local weaponHash = GetPedCauseOfDeath(playerPed)
+    if (not weaponHash or weaponHash == 0 or weaponHash == `WEAPON_FALL` or weaponHash == `WEAPON_DROWNING` or weaponHash == `WEAPON_RUN_OVER_BY_CAR`)
+        and not isSuicide and killerPed and DoesEntityExist(killerPed) then
+        weaponHash = GetSelectedPedWeapon(killerPed)
+    end
+    if (not weaponHash or weaponHash == 0) and killerPed and DoesEntityExist(killerPed) then
+        weaponHash = GetSelectedPedWeapon(killerPed)
     end
 
-    local received = tonumber(eng.damageReceived) or 0
-    if killerServerId and eng.damageByAttacker and eng.damageByAttacker[killerServerId] then
-        -- Use attacker-specific total when available (more accurate than whole engagement)
-        received = eng.damageByAttacker[killerServerId]
-    end
-    if received <= 0 and not isSuicide then
-        -- Minimum fatal package if event missed mid-frame
-        received = math.max(1, (vitals.lastAliveHealth or 200) - 100 + (vitals.lastAliveArmor or 0))
+    local distance = 0.0
+    if not isSuicide and killerPed and DoesEntityExist(killerPed) then
+        local raw = #(GetEntityCoords(playerPed) - GetEntityCoords(killerPed))
+        distance = math.floor(raw * 10 + 0.5) / 10
     end
 
-    local fatalHash = ResolveWeaponHash(
-        weaponHash or eng.fatalWeapon or eng.lastWeapon,
-        PlayerPedId()
-    )
-    if eng.fatalWeapon and eng.fatalWeapon ~= 0 then
-        fatalHash = eng.fatalWeapon
+    local dealt = math.floor(eng.dealt or 0)
+    local received = math.floor(eng.received or 0)
+
+    if isSuicide then
+        -- Self damage only
+        if received <= 0 then
+            received = math.max(0, localHealth - 100)
+            if received <= 0 then received = 100 end
+        end
+        dealt = 0
+    elseif received <= 0 then
+        received = math.max(received, 100)
     end
 
     local total = dealt + received
     local outPct = total > 0 and math.floor((dealt / total) * 100 + 0.5) or 0
-    local inPct = math.max(0, 100 - outPct)
+    local inPct = 100 - outPct
 
     return {
-        fatalWeapon = WeaponLabel(fatalHash),
-        killStreak = 0,
-        distance = math.floor((tonumber(distance) or 0) + 0.5),
-        damageDealt = math.floor(dealt + 0.5),
-        damageReceived = math.floor(received + 0.5),
-        damageOutPct = outPct,
-        damageInPct = inPct,
-        bodyHits = {
-            head = hits.head or 0,
-            neck = hits.neck or 0,
-            torso = hits.torso or 0,
-            arms = hits.arms or 0,
-            legs = hits.legs or 0,
+        weapon = weaponLabel(weaponHash),
+        weaponHash = weaponHash,
+        distance = distance,
+        damageDealt = dealt,
+        damageReceived = received,
+        damageOutPercent = outPct,
+        damageInPercent = inPct,
+        headshot = isSuicide and false or (eng.headshot == true or wasHeadshot),
+        fatalBone = eng.lastBone or lastBone,
+        fatalZone = pickFatalZone(eng, isSuicide),
+        hitZones = {
+            head = (eng.zones and eng.zones.head) or lastHitZones.head or 0,
+            neck = (eng.zones and eng.zones.neck) or lastHitZones.neck or 0,
+            torso = (eng.zones and eng.zones.torso) or lastHitZones.torso or 0,
+            arm = (eng.zones and eng.zones.arm) or lastHitZones.arm or 0,
+            leg = (eng.zones and eng.zones.leg) or lastHitZones.leg or 0,
         },
-        totalHits = DeathScreenBones.TotalHits(hits),
-        isSuicide = isSuicide == true,
     }
 end
 
-local function RequestAndShow(killerServerId, isSuicide, weaponHash, distance)
-    lastKillerServerId = killerServerId
-    local combat = BuildLocalCombat(isSuicide, killerServerId, weaponHash, distance)
+local function openForKiller(killerServerId, killerPed, isSuicide)
+    if isVisible or isOpening then return end
+    if not waitUntilDead(2000) then return end
+    isOpening = true
+    isSuicide = isSuicide == true
+    local openToken = displayToken
 
-    lib.callback("cfx-keydi-deathscreen:getRecap", false, function(result)
-        result = result or {}
-        local killer = result.killer or {
-            name = isSuicide and GetPlayerName(PlayerId()) or "Unknown",
-            id = isSuicide and GetPlayerServerId(PlayerId()) or (killerServerId or 0),
-            ping = 0,
-            playTime = "—",
-            rank = isSuicide and "Suicide" or "—",
-            kills = 0,
-            kd = "0.00",
-            health = 100,
-            armor = 0,
-            badges = {},
+    local myServerId = GetPlayerServerId(PlayerId())
+    if not killerServerId or killerServerId <= 0 then
+        killerServerId = myServerId
+        isSuicide = true
+    end
+    if killerServerId == myServerId then
+        isSuicide = true
+        killerPed = PlayerPedId()
+    elseif not isSuicide then
+        killerPed = resolveKillerPed(killerServerId, killerPed)
+    else
+        killerPed = PlayerPedId()
+    end
+
+    local combat = buildLocalCombat(killerServerId, killerPed, isSuicide)
+
+    -- Capture vitals before dead ped reports 0 (especially suicide)
+    local killerHealth = 0
+    local killerArmor = 0
+    if isSuicide then
+        local maxH = GetEntityMaxHealth(PlayerPedId())
+        if maxH > 100 then
+            killerHealth = math.max(0, math.min(100, math.floor(((localHealth - 100) / (maxH - 100)) * 100)))
+        end
+        killerArmor = math.max(0, math.min(100, math.floor(localArmor)))
+    elseif killerPed and DoesEntityExist(killerPed) then
+        killerHealth = healthPercent(killerPed)
+        killerArmor = math.floor(GetPedArmour(killerPed))
+    end
+
+    -- Preview is best-effort; UI must still open even if clone/cam fails (suicide dead ped).
+    pcall(spawnKillerPreview, killerPed)
+
+    ESX.TriggerServerCallback("cfx-keydi-deathscreen:getKillerData", function(data)
+        -- Only abort if this open was cancelled (token bump). Stay open while still dead.
+        if openToken ~= displayToken then
+            isOpening = false
+            return
+        end
+        if not isActuallyDead() then
+            isOpening = false
+            hideDeathScreen()
+            return
+        end
+        if not data then
+            isOpening = false
+            hideDeathScreen()
+            return
+        end
+
+        local payload = {
+            brand = ConfigDeathScreen.Brand,
+            brandUrl = ConfigDeathScreen.BrandUrl,
+            killer = {
+                name = data.name,
+                id = data.id,
+                ping = data.ping,
+                avatarUrl = data.avatarUrl,
+                playTime = data.playTime,
+                rank = isSuicide and "Suicide" or (data.rank or "#—"),
+                kills = data.kills,
+                kd = data.kd,
+                health = killerHealth,
+                armor = killerArmor,
+                achievements = data.achievements or {},
+            },
+            combat = {
+                weapon = combat.weapon,
+                streak = isSuicide and 0 or (data.streak or 0),
+                distance = combat.distance,
+                damageDealt = combat.damageDealt,
+                damageReceived = combat.damageReceived,
+                damageOutPercent = combat.damageOutPercent,
+                damageInPercent = combat.damageInPercent,
+                headshot = combat.headshot == true,
+                hitZones = combat.hitZones or {},
+                fatalZone = combat.fatalZone,
+                recentKills = data.recentKills or {},
+            },
         }
-        if isSuicide then
-            killer.rank = "Suicide"
-        end
-        if result.killStreak then
-            combat.killStreak = result.killStreak
-        end
 
-        StartKillerPreview(killerServerId, isSuicide)
+        lastRecap = {
+            killer = {
+                name = payload.killer.name,
+                id = payload.killer.id,
+            },
+            combat = {
+                weapon = payload.combat.weapon,
+                distance = payload.combat.distance,
+                damageReceived = payload.combat.damageReceived,
+                damageDealt = payload.combat.damageDealt,
+                headshot = payload.combat.headshot == true,
+                fatalZone = payload.combat.fatalZone,
+                hitZones = payload.combat.hitZones or {},
+            },
+            isSuicide = isSuicide,
+        }
 
-        OpenDeathScreen({
-            killer = killer,
-            combat = combat,
-            recentEliminations = result.recentEliminations or {},
-            brand = "GRIM CITY",
-            subtitle = "DEATH RECAP",
-        })
-    end, {
-        killerServerId = killerServerId,
-        isSuicide = isSuicide,
-        weaponHash = weaponHash,
-        distance = distance,
-        combat = combat,
-    })
+        pcall(function()
+            exports['cfx-keydi-ui']:UpdateSpawnRecap(lastRecap)
+        end)
+
+        showDeathScreen(payload)
+        isOpening = false
+
+        local token = displayToken
+        local duration = ConfigDeathScreen.DisplayDuration or 0
+        if duration > 0 then
+            SetTimeout(duration, function()
+                if displayToken == token then
+                    hideDeathScreen()
+                end
+            end)
+        end
+    end, killerServerId)
 end
 
--- Own vitals lag buffer + nearby player target vitals (for accurate Damage Dealt)
+-- Keep local vitals for accurate damage diffs
 CreateThread(function()
-    local prevH, prevA
     while true do
         local ped = PlayerPedId()
         if ped and ped ~= 0 then
-            local h = GetEntityHealth(ped)
-            local a = GetPedArmour(ped)
-            vitals.health = prevH or h
-            vitals.armor = prevA or a
-            prevH, prevA = h, a
-            if h > 100 then
-                vitals.lastAliveHealth = h
-            end
-            vitals.lastAliveArmor = a
+            localHealth = GetEntityHealth(ped)
+            localArmor = GetPedArmour(ped)
         end
-
-        -- Track active players within combat range for HP/armor deltas
-        local myCoords = GetEntityCoords(ped)
-        for _, player in ipairs(GetActivePlayers()) do
-            local otherPed = GetPlayerPed(player)
-            if otherPed and otherPed ~= 0 and otherPed ~= ped then
-                if #(myCoords - GetEntityCoords(otherPed)) < 120.0 then
-                    TrackTargetPed(otherPed, GetPlayerServerId(player))
-                end
-            end
-        end
-
-        Wait(0)
-    end
-end)
-
--- Cleanup stale target vitals
-CreateThread(function()
-    while true do
-        Wait(5000)
-        local now = GetGameTimer()
-        for ped, row in pairs(targetVitals) do
-            if not DoesEntityExist(ped) or (now - (row.time or 0)) > 15000 then
-                targetVitals[ped] = nil
-            end
-        end
-    end
-end)
-
--- Victim-authoritative damage (same numbers the hit indicator shows) — most accurate for PvP Dealt
-RegisterNetEvent("cfx-keydi-indicator:client:onHit", function(victimServerId, hit, victimDied, _)
-    victimServerId = tonumber(victimServerId)
-    if not victimServerId or not hit then return end
-
-    local health = tonumber(hit.health) or 0
-    local armor = tonumber(hit.armor) or 0
-    local total = health + armor
-    if total <= 0 and not victimDied then return end
-
-    local eng = EnsureEngagement()
-    local weapon = GetSelectedPedWeapon(PlayerPedId())
-    if eng._pendingDealt and eng._pendingDealt[victimServerId] then
-        local pending = eng._pendingDealt[victimServerId]
-        if pending.weapon and pending.weapon ~= 0 then
-            weapon = pending.weapon
-        end
-        -- Consume this hit from the pending fallback pool so timeout won't double-count
-        if total > 0 then
-            pending.total = math.max(0, (pending.total or 0) - total)
-        end
-        if (pending.total or 0) <= 0 then
-            eng._pendingDealt[victimServerId] = nil
-        end
-    end
-
-    if total <= 0 and victimDied then
-        -- One-shot with empty hit payload — use whatever pending remains
-        if eng._pendingDealt and eng._pendingDealt[victimServerId] then
-            total = eng._pendingDealt[victimServerId].total or 0
-            eng._pendingDealt[victimServerId] = nil
-        end
-    end
-
-    if total > 0 then
-        AddDealtDamage(victimServerId, total, weapon)
-    end
-
-    if victimDied then
-        TriggerServerEvent("cfx-keydi-deathscreen:registerKill", victimServerId)
+        Wait(100)
     end
 end)
 
@@ -568,246 +614,238 @@ AddEventHandler("gameEventTriggered", function(eventName, data)
 
     local victim = data[1]
     local attacker = data[2]
-    -- Weapon hash slot varies by game build — try common indices
-    local weaponHash = data[7] or data[5] or data[4] or 0
-    local isFatal = data[6] == 1
-
+    local isDead = data[6] == 1
     local playerPed = PlayerPedId()
 
-    ------------------------------------------------------------------
-    -- WE dealt damage → accurate HP/armor delta from target vitals
-    ------------------------------------------------------------------
-    if victim ~= playerPed and attacker == playerPed and IsEntityAPed(victim) then
-        local curH = GetEntityHealth(victim)
-        local curA = GetPedArmour(victim)
-        local fatalVictim = isFatal or IsEntityDead(victim) or IsPedFatallyInjured(victim) or curH <= 100
-
-        local cached = targetVitals[victim]
-        if not cached then
-            TrackTargetPed(victim, IsPedAPlayer(victim) and GetPlayerServerId(NetworkGetPlayerIndexFromPed(victim)) or nil)
-            cached = targetVitals[victim]
-        end
-
-        local prevH = cached and (cached.prevHealth or cached.health) or curH
-        local prevA = cached and (cached.prevArmor or cached.armor) or curA
-        local lastH = cached and cached.lastAliveHealth or prevH
-        local lastA = cached and cached.lastAliveArmor or prevA
-
-        local _, _, total = ComputeDamageDelta(prevH, prevA, curH, curA, lastH, lastA, fatalVictim)
-
-        local sid = nil
-        local isPlayerVictim = IsPedAPlayer(victim)
-        if isPlayerVictim then
-            local idx = NetworkGetPlayerIndexFromPed(victim)
-            if idx and NetworkIsPlayerActive(idx) then
-                sid = GetPlayerServerId(idx)
-            end
-        end
-
-        weaponHash = ResolveWeaponHash(weaponHash, playerPed)
-
-        if isPlayerVictim and sid then
-            -- PvP: prefer victim-reported indicator numbers (same as hitmarkers).
-            -- Accumulate pending fallback if indicator packets are delayed/lost.
-            local eng = EnsureEngagement()
-            eng._pendingDealt = eng._pendingDealt or {}
-            local pending = eng._pendingDealt[sid]
-            if not pending then
-                pending = { total = 0, weapon = weaponHash, at = GetGameTimer(), fatal = false, gen = 0 }
-                eng._pendingDealt[sid] = pending
-            end
-            pending.total = (pending.total or 0) + math.max(0, total)
-            pending.weapon = weaponHash
-            pending.at = GetGameTimer()
-            pending.fatal = pending.fatal or fatalVictim
-            pending.gen = (pending.gen or 0) + 1
-            local gen = pending.gen
-            if fatalVictim then
-                TriggerServerEvent("cfx-keydi-deathscreen:registerKill", sid)
-            end
-            CreateThread(function()
-                local captureSid = sid
-                local captureLastH, captureLastA = lastH, lastA
-                local captureGen = gen
-                Wait(220)
-                if not engagement or not engagement._pendingDealt then return end
-                local left = engagement._pendingDealt[captureSid]
-                -- Only the latest debounce flush commits (avoids multi-timer double count)
-                if not left or left.gen ~= captureGen then return end
-                local amt = left.total or 0
-                if amt <= 0 and left.fatal then
-                    amt = math.max(1, (captureLastH - 100) + (captureLastA or 0))
-                end
-                engagement._pendingDealt[captureSid] = nil
-                if amt > 0 then
-                    AddDealtDamage(captureSid, amt, left.weapon)
-                end
-            end)
-        else
-            -- NPCs / non-players: local HP/armor delta is authoritative
-            if total > 0 then
-                AddDealtDamage(nil, total, weaponHash)
-            elseif fatalVictim then
-                AddDealtDamage(nil, math.max(1, (lastH - 100) + (lastA or 0)), weaponHash)
-            end
-        end
-
-        -- Refresh cache to post-hit values so next shot diffs correctly
-        if cached then
-            cached.prevHealth = curH
-            cached.prevArmor = curA
-            cached.health = curH
-            cached.armor = curA
-            cached.time = GetGameTimer()
-        else
-            TrackTargetPed(victim, sid)
-        end
-        return
-    end
-
-    if victim ~= playerPed then return end
-
-    ------------------------------------------------------------------
-    -- WE took damage → accurate received + bones + fatal weapon
-    ------------------------------------------------------------------
-    local eng = EnsureEngagement()
-    local curH = GetEntityHealth(playerPed)
-    local curA = GetPedArmour(playerPed)
-    local fatal = isFatal or IsPedFatallyInjured(playerPed) or IsEntityDead(playerPed) or curH <= 100
-
-    local healthDmg, armorDmg, dmg = ComputeDamageDelta(
-        vitals.health,
-        vitals.armor,
-        curH,
-        curA,
-        vitals.lastAliveHealth,
-        vitals.lastAliveArmor,
-        fatal
-    )
-    eng.damageReceived = (eng.damageReceived or 0) + dmg
-    vitals.health, vitals.armor = curH, curA
-
-    if dmg > 0 or fatal then
-        local found, bone = GetPedLastDamageBone(playerPed)
-        if found and bone then
-            local zone = DeathScreenBones.ZoneFromBone(bone)
-            eng.hits[zone] = (eng.hits[zone] or 0) + 1
-            DebugLog(("recv bone=%s zone=%s hp=%s ar=%s"):format(tostring(bone), zone, tostring(healthDmg), tostring(armorDmg)))
-        elseif dmg > 0 then
-            eng.hits.torso = (eng.hits.torso or 0) + 1
-        end
-    end
-
-    weaponHash = ResolveWeaponHash(weaponHash, attacker ~= 0 and attacker or playerPed)
-    if weaponHash and weaponHash ~= 0 then
-        eng.lastWeapon = weaponHash
-        if fatal then
-            eng.fatalWeapon = weaponHash
-        end
-    end
-
-    local attackerServerId = nil
-    local isSuicide = false
-    local distance = 0.0
-
-    if attacker and attacker ~= 0 and attacker == playerPed then
-        isSuicide = true
-        attackerServerId = GetPlayerServerId(PlayerId())
-    elseif attacker and attacker ~= 0 and IsEntityAPed(attacker) and IsPedAPlayer(attacker) then
+    -- Track damage taken from other players
+    if victim == playerPed and attacker and attacker ~= playerPed and IsPedAPlayer(attacker) then
         local idx = NetworkGetPlayerIndexFromPed(attacker)
         if idx and NetworkIsPlayerActive(idx) then
-            attackerServerId = GetPlayerServerId(idx)
-            eng.lastAttacker = attackerServerId
-            eng.damageByAttacker = eng.damageByAttacker or {}
-            eng.damageByAttacker[attackerServerId] = (eng.damageByAttacker[attackerServerId] or 0) + dmg
-            eng.weaponsByAttacker = eng.weaponsByAttacker or {}
-            eng.weaponsByAttacker[attackerServerId] = weaponHash
-            -- Prefer killer's selected weapon if event hash is empty
-            if (not weaponHash or weaponHash == 0 or weaponHash == `WEAPON_UNARMED`) then
-                local held = GetSelectedPedWeapon(attacker)
-                if held and held ~= 0 then
-                    eng.weaponsByAttacker[attackerServerId] = held
-                    if fatal then eng.fatalWeapon = held end
-                end
+            local sid = GetPlayerServerId(idx)
+            lastAttackerPed = attacker
+            lastAttackerSid = sid
+            engagement[sid] = engagement[sid] or { dealt = 0, received = 0, zones = {}, lastBone = -1, headshot = false }
+
+            local curH = GetEntityHealth(playerPed)
+            local curA = GetPedArmour(playerPed)
+            local dmg = 0
+            if localArmor > curA then dmg = dmg + (localArmor - curA) end
+            if localHealth > curH then dmg = dmg + (localHealth - curH) end
+            if dmg > 0 then
+                engagement[sid].received = engagement[sid].received + dmg
             end
-            distance = #(GetEntityCoords(playerPed) - GetEntityCoords(attacker))
-            eng.distance = distance
+
+            -- Capture bone ASAP (before other scripts clear head bone)
+            local found, bone = GetPedLastDamageBone(playerPed)
+            if found and bone then
+                registerReceivedHit(sid, normalizeBoneId(playerPed, bone))
+            elseif isDead then
+                -- Fatal hit with no bone yet — retry next frame
+                CreateThread(function()
+                    Wait(0)
+                    local retryPed = PlayerPedId()
+                    local ok2, bone2 = GetPedLastDamageBone(retryPed)
+                    if ok2 and bone2 then
+                        registerReceivedHit(sid, normalizeBoneId(retryPed, bone2))
+                    end
+                end)
+            end
+
+            localHealth = curH
+            localArmor = curA
         end
-    elseif eng.lastAttacker then
-        attackerServerId = eng.lastAttacker
-        distance = eng.distance or 0.0
-        if eng.weaponsByAttacker and eng.weaponsByAttacker[attackerServerId] then
-            weaponHash = eng.weaponsByAttacker[attackerServerId]
-            if fatal then eng.fatalWeapon = weaponHash end
-        end
-    else
-        isSuicide = true
-        attackerServerId = GetPlayerServerId(PlayerId())
     end
 
-    if fatal and ConfigDeathScreen.AutoOpenOnDeath and not isOpen then
-        CreateThread(function()
-            Wait(175)
-            if isOpen then return end
-            local me = PlayerPedId()
-            if not IsEntityDead(me) and GetEntityHealth(me) > 100 then return end
+    -- Track damage dealt to other players
+    if attacker == playerPed and victim and victim ~= playerPed and IsPedAPlayer(victim) then
+        local idx = NetworkGetPlayerIndexFromPed(victim)
+        if idx and NetworkIsPlayerActive(idx) then
+            local sid = GetPlayerServerId(idx)
+            engagement[sid] = engagement[sid] or { dealt = 0, received = 0, zones = {}, lastBone = -1, headshot = false }
+            -- Approximate tick damage; exact value is hard without pre-cache, use 10–25 estimate from event
+            engagement[sid].dealt = engagement[sid].dealt + 15
+        end
+    end
 
-            local cause = GetPedCauseOfDeath(me)
-            if cause and cause ~= 0 then
-                weaponHash = cause
-                if engagement then engagement.fatalWeapon = cause end
-            elseif engagement and engagement.fatalWeapon and engagement.fatalWeapon ~= 0 then
-                weaponHash = engagement.fatalWeapon
-            elseif engagement and engagement.lastWeapon and engagement.lastWeapon ~= 0 then
-                weaponHash = engagement.lastWeapon
+    -- Local player died — data[6] also fires on spawn/SetPlayerModel. Confirm after ambulance/ESX catch up.
+    if isDead and victim == playerPed then
+        local attackerPed = attacker
+        CreateThread(function()
+            if not waitUntilDead(2500) then return end
+            if isVisible or isOpening then return end
+
+            local myId = GetPlayerServerId(PlayerId())
+            local ped = PlayerPedId()
+
+            -- Fall / world damage often reports the victim as attacker. Prefer last PvP hitter
+            -- only when that engagement is recent (not stale leftover from earlier fights).
+            local pvpSid = lastAttackerSid
+            local pvpPed = lastAttackerPed
+            if (not pvpSid or pvpSid <= 0 or pvpSid == myId) then
+                pvpSid = getTopEngagementSid()
             end
 
-            RequestAndShow(attackerServerId, isSuicide, weaponHash, distance)
-            engagement = nil
+            local attackerIsSelf = (not attackerPed or attackerPed == 0 or attackerPed == ped)
+            local lookLikeSuicide = attackerIsSelf or (attackerPed and attackerPed ~= 0 and not IsPedAPlayer(attackerPed))
+
+            if pvpSid and pvpSid > 0 and pvpSid ~= myId and not lookLikeSuicide then
+                openForKiller(pvpSid, resolveKillerPed(pvpSid, pvpPed), false)
+                return
+            end
+
+            if ConfigDeathScreen.ShowOnSuicide and lookLikeSuicide then
+                openForKiller(myId, ped, true)
+                return
+            end
+
+            if attackerPed and attackerPed ~= 0 and attackerPed ~= ped and IsPedAPlayer(attackerPed) then
+                local idx = NetworkGetPlayerIndexFromPed(attackerPed)
+                if idx and NetworkIsPlayerActive(idx) then
+                    local killerServerId = GetPlayerServerId(idx)
+                    if killerServerId and killerServerId > 0 then
+                        openForKiller(killerServerId, attackerPed, killerServerId == myId)
+                        return
+                    end
+                end
+            end
+
+            -- Final fallback: any death with ShowOnSuicide should still show self-recap
+            if ConfigDeathScreen.ShowOnSuicide then
+                openForKiller(myId, ped, true)
+            end
         end)
     end
 end)
 
-AddEventHandler("esx:onPlayerSpawn", function()
-    if ConfigDeathScreen.CloseOnRespawn then
-        CloseDeathScreen()
+-- Also hook ESX death (covers edge cases where gameEvent misses killer ped)
+AddEventHandler("esx:onPlayerDeath", function(data)
+    CreateThread(function()
+        -- gameEvent has the live killer ped; give it a chance to open first
+        Wait(450)
+        if isVisible or isOpening then return end
+        if not waitUntilDead(2000) then return end
+        if type(data) ~= "table" then
+            if ConfigDeathScreen.ShowOnSuicide then
+                openForKiller(GetPlayerServerId(PlayerId()), PlayerPedId(), true)
+            end
+            return
+        end
+
+        local myId = GetPlayerServerId(PlayerId())
+        local killerServerId = tonumber(data.killerServerId)
+        local killedByPlayer = data.killedByPlayer == true
+
+        -- Prefer live attacker only for true PvP (ESX Natural / suicide must not reuse stale engagement)
+        if killedByPlayer and killerServerId and killerServerId > 0 and killerServerId ~= myId then
+            local killerPed = resolveKillerPed(killerServerId, lastAttackerSid == killerServerId and lastAttackerPed or 0)
+            openForKiller(killerServerId, killerPed, false)
+            return
+        end
+
+        -- Self-kill / natural death
+        if ConfigDeathScreen.ShowOnSuicide then
+            openForKiller(myId, PlayerPedId(), true)
+        end
+    end)
+end)
+
+local function clearDeathUi()
+    engagement = {}
+    lastHitZones = { head = 0, neck = 0, torso = 0, arm = 0, leg = 0 }
+    lastBone = -1
+    wasHeadshot = false
+    lastAttackerPed = 0
+    lastAttackerSid = 0
+    hideDeathScreen()
+end
+
+AddEventHandler("esx:onPlayerSpawn", clearDeathUi)
+AddEventHandler("playerSpawned", clearDeathUi)
+
+RegisterNetEvent("cfx-keydi-ambulance:revive", clearDeathUi)
+
+AddStateBagChangeHandler("isReviving", ("player:%s"):format(GetPlayerServerId(PlayerId())), function(_, _, value)
+    if value then
+        hideDeathScreen()
     end
 end)
 
-AddEventHandler("playerSpawned", function()
-    if ConfigDeathScreen.CloseOnRespawn then
-        CloseDeathScreen()
+AddStateBagChangeHandler("dead", ("player:%s"):format(GetPlayerServerId(PlayerId())), function(_, _, value)
+    if value == false then
+        hideDeathScreen()
     end
 end)
 
-RegisterNetEvent("hospital:client:Revive", function()
-    CloseDeathScreen()
+CreateThread(function()
+    while true do
+        Wait(500)
+        -- Never tear down mid-open; only hide after UI is shown and player is alive again.
+        if isVisible and not isOpening and not holdWhileAlive and not isActuallyDead() then
+            hideDeathScreen()
+        end
+    end
 end)
 
-RegisterNetEvent("esx_ambulancejob:revive", function()
-    CloseDeathScreen()
+RegisterNUICallback("closeDeathScreen", function(_, cb)
+    cb("ok")
+    hideDeathScreen()
 end)
 
-RegisterNUICallback("cfx-keydi-deathscreen:close", function(_, cb)
-    CloseDeathScreen()
-    cb({ ok = true })
+AddEventHandler("onResourceStop", function(res)
+    if res ~= GetCurrentResourceName() then return end
+    hideDeathScreen()
 end)
 
-RegisterCommand(ConfigDeathScreen.Command or "deathscreen", function()
-    engagement = NewEngagement()
-    engagement.hits.head = 1
-    engagement.hits.torso = 2
-    engagement.damageReceived = 120
-    engagement.damageDealt = 35
-    RequestAndShow(GetPlayerServerId(PlayerId()), true, `WEAPON_PISTOL`, 0.0)
+-- Manual open for testing (works while alive)
+RegisterCommand("testdeathscreen", function()
+    local ped = PlayerPedId()
+    local sid = GetPlayerServerId(PlayerId())
+    if isVisible or isOpening then
+        hideDeathScreen()
+        Wait(100)
+    end
+    isOpening = true
+    holdWhileAlive = true
+    local openToken = displayToken
+    local combat = buildLocalCombat(sid, ped, true)
+    pcall(spawnKillerPreview, ped)
+    ESX.TriggerServerCallback("cfx-keydi-deathscreen:getKillerData", function(data)
+        if openToken ~= displayToken then
+            isOpening = false
+            return
+        end
+        if not data then
+            isOpening = false
+            holdWhileAlive = false
+            destroyPreview()
+            return
+        end
+        showDeathScreen({
+            brand = ConfigDeathScreen.Brand,
+            brandUrl = ConfigDeathScreen.BrandUrl,
+            killer = {
+                name = data.name,
+                id = data.id,
+                ping = data.ping,
+                avatarUrl = data.avatarUrl,
+                playTime = data.playTime,
+                rank = "Suicide",
+                kills = data.kills,
+                kd = data.kd,
+                health = 100,
+                armor = math.floor(GetPedArmour(ped)),
+                achievements = data.achievements or {},
+            },
+            combat = combat,
+        })
+        isOpening = false
+    end, sid)
 end, false)
 
-exports("OpenDeathScreen", function(data)
-    if data then
-        OpenDeathScreen(data)
-    else
-        ExecuteCommand(ConfigDeathScreen.Command or "deathscreen")
-    end
+exports("HideDeathScreen", hideDeathScreen)
+exports("IsDeathScreenVisible", function()
+    return isVisible
 end)
-
-exports("CloseDeathScreen", CloseDeathScreen)
+exports("GetLastRecap", function()
+    return lastRecap
+end)

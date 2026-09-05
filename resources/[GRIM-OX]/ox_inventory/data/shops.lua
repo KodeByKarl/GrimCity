@@ -112,13 +112,36 @@ return {
 		blip = {
 			id = 110, colour = 84, scale = 0.8
 		}, inventory = {
-			{ name = 'ammo-9', price = 5, },
-			{ name = 'ammo-rifle', price = 5, },
-			{ name = 'WEAPON_FLASHLIGHT', price = 200 },
+			{ name = 'police_vitamins', price = 50 },
+			{ name = 'police_drink', price = 50 },
+			{ name = 'police_vest', price = 100 },
+			{ name = 'armour', price = 100 },
+			{ name = 'WEAPON_STUNGUN', price = 500, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_BZGAS', price = 250 },
+			{ name = 'WEAPON_HEAVYPISTOL', price = 750, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SMG', price = 1000, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SMG_MK2', price = 1200, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_COMBATPDW', price = 1100, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_PUMPSHOTGUN', price = 1200, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_PUMPSHOTGUN_MK2', price = 1400, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SPECIALCARBINE', price = 1500, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SPECIALCARBINE_MK2', price = 1800, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_CARBINERIFLE_MK2', price = 1800, metadata = { registered = true, serial = 'POL' } },
+			{ name = 'ammo-9', price = 5 },
+			{ name = 'ammo-rifle', price = 5 },
+			{ name = 'ammo-rifle2', price = 5 },
+			{ name = 'ammo-shotgun', price = 5 },
+			{ name = 'WEAPON_FLASHLIGHT', price = 100 },
 			{ name = 'WEAPON_NIGHTSTICK', price = 100 },
-			{ name = 'WEAPON_PISTOL', price = 500, metadata = { registered = true, serial = 'POL' }, license = 'weapon' },
-			{ name = 'WEAPON_CARBINERIFLE', price = 1000, metadata = { registered = true, serial = 'POL' }, license = 'weapon', grade = 3 },
-			{ name = 'WEAPON_STUNGUN', price = 500, metadata = { registered = true, serial = 'POL'} }
+			{ name = 'at_flashlight', price = 150 },
+			{ name = 'at_suppressor_light', price = 250 },
+			{ name = 'at_suppressor_heavy', price = 300 },
+			{ name = 'at_grip', price = 200 },
+			{ name = 'at_barrel', price = 250 },
+			{ name = 'at_clip_extended_pistol', price = 150 },
+			{ name = 'at_clip_extended_smg', price = 180 },
+			{ name = 'at_clip_extended_shotgun', price = 200 },
+			{ name = 'at_clip_extended_rifle', price = 200 }
 		}, locations = {
 			vec3(451.51, -979.44, 30.68)
 		}, targets = {
@@ -134,8 +157,12 @@ return {
 		blip = {
 			id = 403, colour = 69, scale = 0.8
 		}, inventory = {
-			{ name = 'medikit', price = 26 },
-			{ name = 'bandage', price = 5 }
+			{ name = 'medkit', price = 25 },
+			{ name = 'medikit', price = 25 },
+			{ name = 'bandage', price = 5 },
+			{ name = 'gauze', price = 5 },
+			{ name = 'stresstab', price = 10 },
+			{ name = 'stresstabs', price = 10 }
 		}, locations = {
 			vec3(306.3687, -601.5139, 43.28406)
 		}, targets = {

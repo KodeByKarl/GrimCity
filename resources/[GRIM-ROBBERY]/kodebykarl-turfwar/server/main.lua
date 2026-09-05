@@ -5,36 +5,38 @@ local ActiveTurfs = {}
 local CooldownTurfs = {}
 local ClaimableTurfs = {}
 
--- Initialize GlobalState on startup
-CreateThread(function()
-    Wait(1000)
-    for id, data in pairs(Config.TurfWars) do
-        GlobalState:set(('turf_state_%s'):format(id), 'IDLE', true)
-        GlobalState:set(('turf_timer_%s'):format(id), 0, true)
-        GlobalState:set(('turf_cooldown_%s'):format(id), 0, true)
-        GlobalState:set(('turf_claimable_%s'):format(id), false, true)
-        ClaimableTurfs[id] = false
-        ActiveTurfs[id] = nil
-        CooldownTurfs[id] = nil
-    end
-end)
-
 -- Scoreboard & HUD World Event Synchronization
-local function updateScoreboardEvents()
-    if GetResourceState('cfx-keydi-ui') ~= 'started' then return end
+local updateScoreboardEvents
+
+updateScoreboardEvents = function()
+    if GetResourceState('kodebykarl-ui') ~= 'started' then return end
 
     local activeLabels = {}
+    local activeRemaining = 0
     for id, data in pairs(Config.TurfWars) do
-        if ActiveTurfs[id] or ClaimableTurfs[id] then
+        if ActiveTurfs[id] then
+            activeLabels[#activeLabels + 1] = data.label
+            local rem = ActiveTurfs[id] or 0
+            if rem > activeRemaining then
+                activeRemaining = rem
+            end
+        elseif ClaimableTurfs[id] then
             activeLabels[#activeLabels + 1] = data.label
         end
     end
 
     if #activeLabels == 0 then
+        local maxCooldown = 0
+        for _, remaining in pairs(CooldownTurfs) do
+            if remaining and remaining > maxCooldown then
+                maxCooldown = remaining
+            end
+        end
         pcall(function()
             exports['kodebykarl-ui']:SetWorldEvent('Turf Wars', {
                 status = 'INACTIVE',
-                location = 'None',
+                location = '—',
+                timer = maxCooldown,
             })
         end)
     else
@@ -43,10 +45,33 @@ local function updateScoreboardEvents()
             exports['kodebykarl-ui']:SetWorldEvent('Turf Wars', {
                 status = 'ACTIVE',
                 location = table.concat(activeLabels, ', '),
+                timer = activeRemaining,
             })
         end)
     end
 end
+
+-- Initialize GlobalState on startup
+CreateThread(function()
+    Wait(1000)
+    for id, _ in pairs(Config.TurfWars) do
+        GlobalState:set(('turf_state_%s'):format(id), 'IDLE', true)
+        GlobalState:set(('turf_timer_%s'):format(id), 0, true)
+        GlobalState:set(('turf_cooldown_%s'):format(id), 0, true)
+        GlobalState:set(('turf_claimable_%s'):format(id), false, true)
+        ClaimableTurfs[id] = false
+        ActiveTurfs[id] = nil
+        CooldownTurfs[id] = nil
+    end
+    updateScoreboardEvents()
+end)
+
+-- Re-sync scoreboard if UI restarts after Turf War
+AddEventHandler('onResourceStart', function(resource)
+    if resource == 'kodebykarl-ui' then
+        updateScoreboardEvents()
+    end
+end)
 
 local function addScoreboardRobbery(id, label, remainingSecs)
     if GetResourceState('kodebykarl-ui') ~= 'started' then return end
@@ -181,6 +206,8 @@ CreateThread(function()
                 end
             end
         end
+
+        updateScoreboardEvents()
     end
 end)
 

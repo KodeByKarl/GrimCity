@@ -69,6 +69,18 @@ return {
 		}
 	},
 
+	['gauze'] = {
+		label = 'Medical Gauze',
+		weight = 50,
+		description = 'Sterile medical gauze wrap used to stop bleeding and dress wounds.',
+		allowArmed = true,
+		client = {
+			anim = { dict = 'missheistdockssetup1clipboard@idle_a', clip = 'idle_a', flag = 49 },
+			disable = { move = false, combat = false, car = false },
+			usetime = 2000,
+		}
+	},
+
 	['black_money'] = {
 		label = 'Dirty Money',
 	},
@@ -207,6 +219,16 @@ return {
 
 	['armour'] = {
 		label = 'Bulletproof Vest',
+		weight = 3000,
+		stack = false,
+		client = {
+			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
+			usetime = 3500
+		}
+	},
+
+	['police_vest'] = {
+		label = 'Police Tactical Vest',
 		weight = 3000,
 		stack = false,
 		client = {
@@ -448,6 +470,20 @@ return {
 		stack = true,
 		close = true,
 		description = 'Use on a downed player with ox_target to revive them.',
+		server = {
+			export = 'ox_inventory.medikit'
+		}
+	},
+
+	["medkit"] = {
+		label = "Medkit",
+		weight = 250,
+		stack = true,
+		close = true,
+		description = 'Use on a downed player with ox_target to revive them.',
+		client = {
+			image = 'medikit.png'
+		},
 		server = {
 			export = 'ox_inventory.medikit'
 		}
@@ -702,6 +738,25 @@ return {
 		}
 	},
 
+	['stresstab'] = {
+		label = 'Stresstab',
+		weight = 150,
+		description = 'Reduces current stress by 50%.',
+		degrade = 4320,
+		decay = true,
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'stresstabs.png',
+			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
+			usetime = 3000
+		},
+		server = {
+			export = 'ox_inventory.stresstabs'
+		}
+	},
+
 	['police_bandage'] = {
 		label = 'Police Bandage',
 		weight = 100,
@@ -776,6 +831,41 @@ return {
 		},
 		server = {
 			export = 'ox_inventory.police_vest'
+		}
+	},
+
+	['police_vitamins'] = {
+		label = 'Police Vitamins',
+		weight = 100,
+		description = 'Tactical vitamins: Cures bleeding, restores 100% health and full 100 armor.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'police_vitamins.png',
+			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.police_vitamins'
+		}
+	},
+
+	['police_drink'] = {
+		label = 'Police Speed Drink',
+		weight = 250,
+		description = 'Tactical energy drink: Grants 2x sprint speed for 10 seconds.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'police_drink.png',
+			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
+			prop = { model = `prop_ld_can_01`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.police_drink'
 		}
 	},
 
@@ -1105,5 +1195,46 @@ return {
 		allowArmed = true,
 		client = { anim = { dict = 'missheistdockssetup1clipboard@base', clip = 'base', flag = 49 }, usetime = 1500 },
 		server = { exportRemove = true, export = 'ox_inventory.itemBoxes' }
+	},
+
+	['orange'] = {
+		label = 'Orange',
+		weight = 100,
+		stack = true,
+		close = true,
+		description = 'A fresh, juicy orange.',
+		client = {
+			status = { hunger = 100000, thirst = 50000 },
+			anim = 'eating',
+			prop = 'prop_food_orange',
+			usetime = 2500,
+			notification = 'You ate a delicious fresh orange'
+		}
+	},
+
+	['trowel'] = {
+		label = 'Garden Trowel',
+		weight = 500,
+		stack = false,
+		close = true,
+		durability = 100,
+		description = 'A small hand tool used for digging and harvesting.'
+	},
+
+	['wood'] = {
+		label = 'Wood',
+		weight = 500,
+		stack = true,
+		close = true,
+		description = 'Raw wood log harvested from trees.'
+	},
+
+	['battleaxe'] = {
+		label = 'Battle Axe',
+		weight = 6500,
+		stack = false,
+		close = true,
+		durability = 100,
+		description = 'A heavy battle axe, ideal for chopping wood.'
 	},
 }

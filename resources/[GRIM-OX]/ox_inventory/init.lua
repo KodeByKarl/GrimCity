@@ -46,7 +46,7 @@ if IsDuplicityVersion() then
         loglevel = GetConvarInt('inventory:loglevel', 1),
         randomprices = GetConvarBool('inventory:randomprices', false),
         randomloot = GetConvarBool('inventory:randomloot', true),
-        evidencegrade = GetConvarInt('inventory:evidencegrade', 2),
+        evidencegrade = GetConvarInt('inventory:evidencegrade', 6),
         trimplate = GetConvarBool('inventory:trimplate', true),
         vehicleloot = json.decode(GetConvar('inventory:vehicleloot', [[
 			[

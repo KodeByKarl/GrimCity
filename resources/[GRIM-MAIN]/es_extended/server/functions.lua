@@ -416,6 +416,90 @@ function ESX.GetIdentifier(playerId)
     return identifier:gsub(("%s:"):format(identifierType), "")
 end
 
+--- Rockstar license used by ACE principals (`license:HASH`).
+--- Handles `char1:HASH`, `char1:license:HASH`, and `license:license:HASH`.
+---@param identifier? string
+---@param playerId? number|string
+---@return string?
+function Core.GetAceLicense(identifier, playerId)
+    if playerId then
+        local live = GetPlayerIdentifierByType(tostring(playerId), Config.Identifier or "license")
+        if live and live ~= "" then
+            return live
+        end
+    end
+
+    if type(identifier) ~= "string" or identifier == "" then
+        return nil
+    end
+
+    local stripped = identifier:gsub("^char%d+:", "")
+    local prev
+    repeat
+        prev = stripped
+        stripped = stripped:gsub("^license2:", ""):gsub("^license:", "")
+    until stripped == prev
+
+    if stripped == "" then
+        return nil
+    end
+
+    return ("%s:%s"):format(Config.Identifier or "license", stripped)
+end
+
+--- Account-level group stored by Rockstar license (survives relog and character switch).
+---@param license string
+---@return string?
+function Core.GetStoredPlayerGroup(license)
+    if type(license) ~= "string" or license == "" then
+        return nil
+    end
+
+    local ok, group = pcall(function()
+        return MySQL.scalar.await("SELECT `group` FROM `user_groups` WHERE `license` = ?", { license })
+    end)
+
+    if ok and type(group) == "string" and group ~= "" then
+        return group
+    end
+end
+
+--- Persist group to this character, every other character on the same license, and user_groups.
+---@param identifier string
+---@param license? string
+---@param newGroup string
+---@return boolean
+function Core.PersistPlayerGroup(identifier, license, newGroup)
+    license = license or Core.GetAceLicense(identifier)
+    newGroup = type(newGroup) == "string" and newGroup:lower():gsub("%s+", "") or "user"
+
+    if license then
+        pcall(function()
+            MySQL.prepare.await(
+                "INSERT INTO `user_groups` (`license`, `group`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `group` = VALUES(`group`)",
+                { license, newGroup }
+            )
+        end)
+    end
+
+    local affected = 0
+    if type(identifier) == "string" and identifier ~= "" then
+        affected = MySQL.update.await("UPDATE `users` SET `group` = ? WHERE `identifier` = ?", { newGroup, identifier }) or 0
+    end
+
+    local hash = license and license:gsub("^license2:", ""):gsub("^license:", "") or nil
+    if hash and hash ~= "" then
+        local extra = MySQL.update.await("UPDATE `users` SET `group` = ? WHERE `identifier` LIKE ?", { newGroup, "%:" .. hash }) or 0
+        affected = math.max(affected, extra)
+    end
+
+    if affected < 1 then
+        print(("[^3WARNING^7] /setgroup persisted 0 `users` rows for ^5%s^7 (license ^5%s^7, group ^5%s^7)"):format(identifier or "nil", license or "nil", newGroup))
+    end
+
+    return affected > 0 or license ~= nil
+end
+
 ---@param model string|number
 ---@param player number
 ---@param cb function?

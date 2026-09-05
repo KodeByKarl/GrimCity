@@ -19,10 +19,6 @@ provide 'xsound'
 
 ui_page 'web/dist/index.html'
 
-ox_libs {
-    'locale'
-}
-
 files {
     'web/dist/index.html',
     'web/dist/assets/**/*',
@@ -46,7 +42,7 @@ shared_scripts {
     'Module/cfx-keydi-scoreboard/shared/config.lua',
     'Module/cfx-keydi-indicator/shared/config.lua',
     'Module/cfx-keydi-deathscreen/shared/config.lua',
-    'Module/cfx-keydi-deathscreen/shared/bones.lua',
+    'Module/cfx-keydi-spawn/shared/config.lua',
     'Module/cfx-keydi-chat/shared/config.lua',
     'Module/cfx-keydi-modules/shared/config.lua',
     'Module/cfx-keydi-serverlocations/shared/config.lua',
@@ -107,6 +103,7 @@ client_scripts {
     'Module/cfx-keydi-playtimeshop/client/main.lua',
     'Module/cfx-keydi-vip/client/main.lua',
     'Module/cfx-keydi-deathscreen/client/main.lua',
+    'Module/cfx-keydi-spawn/client/main.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 
@@ -151,6 +148,7 @@ server_scripts {
     'Module/cfx-keydi-playtimeshop/server/main.lua',
     'Module/cfx-keydi-vip/server/main.lua',
     'Module/cfx-keydi-deathscreen/server/main.lua',
+    'Module/cfx-keydi-spawn/server/main.lua',
     'Module/cfx-keydi-raven/raven.lua',
 }
 

@@ -48,7 +48,7 @@ Config.Gangs = {
         discordRoleId = '', -- fill later
         claimVehicle = 'buccaneer2',
         blip = { sprite = 84, color = 27, scale = 0.85 },
-        redzone = { coords = vec3(114.12, -1961.17, 21.33), radius = 85.0, color = 1, alpha = 100 },
+        redzone = { coords = vec3(114.12, -1961.17, 21.33), radius = 150.0, color = 1, alpha = 128 },
         points = {
             bossStash = vec3(117.05, -1963.90, 21.33),
             publicStash = vec3(112.40, -1960.50, 21.33),
@@ -67,7 +67,7 @@ Config.Gangs = {
         discordRoleId = '',
         claimVehicle = 'tornado',
         blip = { sprite = 84, color = 2, scale = 0.85 },
-        redzone = { coords = vec3(-148.20, -1596.40, 34.80), radius = 80.0, color = 2, alpha = 100 },
+        redzone = { coords = vec3(-148.20, -1596.40, 34.80), radius = 150.0, color = 1, alpha = 128 },
         points = {
             bossStash = vec3(-151.10, -1599.20, 34.80),
             publicStash = vec3(-146.50, -1594.80, 34.80),
@@ -86,7 +86,7 @@ Config.Gangs = {
         discordRoleId = '',
         claimVehicle = 'chino2',
         blip = { sprite = 84, color = 5, scale = 0.85 },
-        redzone = { coords = vec3(331.40, -2041.80, 20.90), radius = 80.0, color = 5, alpha = 100 },
+        redzone = { coords = vec3(331.40, -2041.80, 20.90), radius = 150.0, color = 1, alpha = 128 },
         points = {
             bossStash = vec3(334.20, -2044.50, 20.90),
             publicStash = vec3(328.80, -2040.10, 20.90),
@@ -105,7 +105,7 @@ Config.Gangs = {
         discordRoleId = '',
         claimVehicle = 'daemon',
         blip = { sprite = 226, color = 40, scale = 0.85 },
-        redzone = { coords = vec3(982.10, -104.40, 74.85), radius = 70.0, color = 40, alpha = 100 },
+        redzone = { coords = vec3(982.10, -104.40, 74.85), radius = 150.0, color = 1, alpha = 128 },
         points = {
             bossStash = vec3(985.40, -107.20, 74.85),
             publicStash = vec3(979.80, -102.90, 74.85),
@@ -124,7 +124,7 @@ Config.Gangs = {
         discordRoleId = '',
         claimVehicle = 'faction2',
         blip = { sprite = 84, color = 3, scale = 0.85 },
-        redzone = { coords = vec3(1250.40, -1575.80, 58.35), radius = 75.0, color = 3, alpha = 100 },
+        redzone = { coords = vec3(1250.40, -1575.80, 58.35), radius = 150.0, color = 1, alpha = 128 },
         points = {
             bossStash = vec3(1253.20, -1578.60, 58.35),
             publicStash = vec3(1247.80, -1573.20, 58.35),

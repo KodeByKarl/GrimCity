@@ -23,8 +23,9 @@ RegisterNetEvent('kodebykarl-turfwar:client:announce', function(msg, msgType)
 end)
 
 local function CanUseTurfWar()
+    -- Region 3 / 4 only (HasFunction turfwar). Never default-allow.
     if GetResourceState('kodebykarl-ui') ~= 'started' then
-        return true
+        return false
     end
     local ok, allowed = pcall(function()
         return exports['kodebykarl-ui']:HasFunction('turfwar')
@@ -189,12 +190,22 @@ CreateThread(function()
     end
 end)
 
--- Claim Reward Bag Prop Spawning Thread
+-- Claim Reward Bag Prop Spawning Thread (Region 3 / 4 only)
 CreateThread(function()
     local rewardBagModel = Config.RewardBag.model or `prop_cs_heist_bag_02`
 
     while true do
         Wait(500)
+        if not CanUseTurfWar() then
+            for id, prop in pairs(RewardProps) do
+                if prop and DoesEntityExist(prop) then
+                    DeleteObject(prop)
+                end
+                RewardProps[id] = nil
+            end
+            goto continue
+        end
+
         for id, data in pairs(Config.TurfWars) do
             local claimable = GlobalState[('turf_claimable_%s'):format(id)] == true
 
@@ -218,6 +229,7 @@ CreateThread(function()
                 end
             end
         end
+        ::continue::
     end
 end)
 
