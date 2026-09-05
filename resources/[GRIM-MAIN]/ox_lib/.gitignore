@@ -10,5 +10,5 @@ pnpm-debug.log*
 /package/**/*.d.ts
 
 /web/node_modules
-/web/build
+# /web/build
 /package/dist
