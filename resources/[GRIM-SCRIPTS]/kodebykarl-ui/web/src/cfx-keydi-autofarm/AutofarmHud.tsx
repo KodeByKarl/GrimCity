@@ -20,16 +20,6 @@ interface AutofarmData {
   etaSeconds: number;
 }
 
-interface SessionReport {
-  zone: string;
-  label: string;
-  rarity: FarmRarity;
-  gathered: number;
-  weightGained: number;
-  durationSeconds: number;
-  image?: string;
-}
-
 const DEFAULT_DATA: AutofarmData = {
   status: "idle",
   label: "Bandage",
@@ -58,15 +48,6 @@ const PREVIEW_DATA: AutofarmData = {
   rarity: "common",
   untilFull: 207,
   etaSeconds: 690,
-};
-
-const PREVIEW_REPORT: SessionReport = {
-  zone: "Orange Grove",
-  label: "Orange",
-  rarity: "common",
-  gathered: 33,
-  weightGained: 3300,
-  durationSeconds: 312,
 };
 
 const STATUS_META: Record<FarmStatus, { label: string }> = {
@@ -105,7 +86,6 @@ const RARITY_META: Record<FarmRarity, { label: string; color: string; border: st
 const RING_RADIUS = 38;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const RED = "#e10600";
-const REPORT_MS = 7000;
 
 function formatWeight(grams: number) {
   if (grams >= 1000) {
@@ -127,12 +107,6 @@ function formatEta(seconds: number) {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 function normalizeRarity(value?: string): FarmRarity {
   const key = (value || "common").toLowerCase() as FarmRarity;
   return RARITY_META[key] ? key : "common";
@@ -149,7 +123,6 @@ export default function AutofarmHud() {
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState<AutofarmData>(DEFAULT_DATA);
   const [imageFailed, setImageFailed] = useState(false);
-  const [report, setReport] = useState<SessionReport | null>(null);
 
   useEffect(() => {
     if (isBrowserEnv()) {
@@ -158,13 +131,6 @@ export default function AutofarmHud() {
       if (preview === "autofarm") {
         setData(PREVIEW_DATA);
         setVisible(true);
-        if (params.get("report") === "1") {
-          setReport(PREVIEW_REPORT);
-        } else {
-          // Demo: flash report after a short farm view
-          const t = window.setTimeout(() => setReport(PREVIEW_REPORT), 6500);
-          return () => window.clearTimeout(t);
-        }
       }
     }
 
@@ -190,21 +156,8 @@ export default function AutofarmHud() {
             rarity: normalizeRarity(msg.data.rarity ?? prev.rarity),
           }));
         }
-      } else if (msg.action === "cfx-keydi-autofarm:report") {
-        if (msg.data) {
-          setReport({
-            zone: msg.data.zone || "Farm Zone",
-            label: msg.data.label || "Items",
-            rarity: normalizeRarity(msg.data.rarity),
-            gathered: Number(msg.data.gathered) || 0,
-            weightGained: Number(msg.data.weightGained) || 0,
-            durationSeconds: Number(msg.data.durationSeconds) || 0,
-            image: msg.data.image,
-          });
-        }
       } else if (msg.action === "cfx-keydi-autofarm:hide") {
         setVisible(false);
-        setReport(null);
       }
     };
 
@@ -215,12 +168,6 @@ export default function AutofarmHud() {
   useEffect(() => {
     setImageFailed(false);
   }, [data.image]);
-
-  useEffect(() => {
-    if (!report) return;
-    const id = window.setTimeout(() => setReport(null), REPORT_MS);
-    return () => window.clearTimeout(id);
-  }, [report]);
 
   // Smooth preview progress + live forecast in browser
   useEffect(() => {
@@ -247,7 +194,7 @@ export default function AutofarmHud() {
     return () => window.clearInterval(id);
   }, [visible, data.status]);
 
-  if (!visible && !report) return null;
+  if (!visible) return null;
 
   const status = STATUS_META[data.status] ?? STATUS_META.idle;
   const rarity = RARITY_META[normalizeRarity(data.rarity)];
@@ -257,49 +204,10 @@ export default function AutofarmHud() {
 
   return (
     <div className="fixed left-6 top-[55%] z-[99990] w-[300px] -translate-y-1/2 select-none pointer-events-none animate-autofarm-in font-sans">
-      {/* Session report (cancel) */}
-      {report && (
-        <div
-          className="mb-3 overflow-hidden rounded-2xl border bg-[#101012] shadow-[0_24px_60px_rgba(0,0,0,0.75)]"
-          style={{ borderColor: "rgba(225, 6, 0, 0.55)" }}
-        >
-          <div className="border-b border-[#e10600]/25 px-3.5 py-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#e10600]">Session Report</p>
-            <p className="mt-1 truncate text-[15px] font-black uppercase text-white">{report.zone}</p>
-          </div>
-          <div className="space-y-2.5 px-3.5 py-3.5">
-            <div className="flex items-center justify-between rounded-xl border border-white/8 bg-[#17171a] px-3 py-2.5">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/45">Gathered</p>
-                <p className="mt-0.5 text-[18px] font-black text-white">
-                  {report.gathered}{" "}
-                  <span className="text-[12px] font-bold uppercase text-white/50">{report.label}</span>
-                </p>
-              </div>
-              <Package className="h-5 w-5 text-[#e10600]" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-white/8 bg-[#17171a] px-3 py-2.5">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-white/45">Weight</p>
-                <p className="mt-1 text-[14px] font-black text-white">{formatWeight(report.weightGained)}</p>
-              </div>
-              <div className="rounded-xl border border-white/8 bg-[#17171a] px-3 py-2.5">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-white/45">Time</p>
-                <p className="mt-1 text-[14px] font-black text-white">{formatDuration(report.durationSeconds)}</p>
-              </div>
-            </div>
-            <p className="text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
-              Auto-closes
-            </p>
-          </div>
-        </div>
-      )}
-
-      {visible && (
-        <div
-          className="overflow-hidden rounded-2xl border bg-[#101012] shadow-[0_24px_60px_rgba(0,0,0,0.75)]"
-          style={{ borderColor: "rgba(225, 6, 0, 0.55)" }}
-        >
+      <div
+        className="overflow-hidden rounded-2xl border bg-[#101012] shadow-[0_24px_60px_rgba(0,0,0,0.75)]"
+        style={{ borderColor: "rgba(225, 6, 0, 0.55)" }}
+      >
           {/* Header */}
           <div className="flex items-center gap-2.5 border-b border-[#e10600]/25 px-3.5 py-3">
             <div
@@ -494,11 +402,10 @@ export default function AutofarmHud() {
                   </kbd>
                   Cancel
                 </span>
-              </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

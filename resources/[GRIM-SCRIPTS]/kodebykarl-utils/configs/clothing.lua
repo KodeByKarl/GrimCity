@@ -1,7 +1,7 @@
 return {
     menu = {
         KeyMapping = 'U',
-        KeyMappingLabel = '~o~>~w~ Open Clothing Menu',
+        KeyMappingLabel = 'Open Clothing Menu',
         Command = 'clothes_menu'
     },
     -- Male undress (from pedmenu): jacket 15, shirt 15, hands 219, legs 61, shoes 253

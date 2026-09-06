@@ -136,6 +136,19 @@ return {
 	['lockpick'] = {
 		label = 'Lockpick',
 		weight = 160,
+		description = 'A lockpick tool used for picking house doors and locks.',
+		server = {
+			export = 'ox_inventory.lockpick'
+		}
+	},
+
+	['advancedlockpick'] = {
+		label = 'Advanced Lockpick',
+		weight = 160,
+		description = 'A high quality lockpick with improved durability.',
+		server = {
+			export = 'ox_inventory.advancedlockpick'
+		}
 	},
 
 	['phone'] = {
@@ -488,6 +501,11 @@ return {
 		weight = 3500,
 	},
 
+	['car_transmission'] = {
+		label = 'Transmission',
+		weight = 4500,
+	},
+
 	['brake_pads'] = {
 		label = 'Brake Pads',
 		weight = 1200,
@@ -496,6 +514,35 @@ return {
 	['spark_plugs'] = {
 		label = 'Spark Plugs',
 		weight = 500,
+	},
+
+	['vehicle_shell'] = {
+		label = 'Vehicle Shell',
+		weight = 8000,
+		stack = false,
+		close = true,
+		consume = 0,
+		client = {
+			image = 'car_hood.png',
+			event = 'kodebykarl-projectcars:client:useShell',
+		},
+	},
+
+	['project_parts_box'] = {
+		label = 'Project Parts Box',
+		weight = 5000,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'Unpack a full set of project-car parts.',
+		client = {
+			image = 'car_engine_part.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 3500,
+		},
+		server = {
+			export = 'ox_inventory.project_parts_box'
+		}
 	},
 
 	-- University & Starter
@@ -557,6 +604,85 @@ return {
 		},
 		server = {
 			export = 'ox_inventory.police_drink'
+		}
+	},
+
+	['grimpolicecoin'] = {
+		label = 'Grim Police Coin',
+		weight = 0,
+		description = 'Official Grim City Police Department commendation coin. Used as currency in the Police Armoury.',
+		stack = true,
+		close = true,
+		client = {
+			image = 'grimpolicecoin.png',
+		}
+	},
+
+	['pd_ammo_box_9'] = {
+		label = 'PD 9mm Ammo Box',
+		weight = 350,
+		description = 'Tactical ammo box containing 50 rounds of 9mm ammunition for police sidearms and SMGs.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'pd_ammo_box_9.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.pd_ammo_box_9'
+		}
+	},
+
+	['pd_ammo_box_rifle'] = {
+		label = 'PD 5.56 Rifle Ammo Box',
+		weight = 400,
+		description = 'Tactical ammo box containing 60 rounds of 5.56x45mm ammunition for police patrol rifles.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'pd_ammo_box_rifle.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.pd_ammo_box_rifle'
+		}
+	},
+
+	['pd_ammo_box_rifle2'] = {
+		label = 'PD 7.62 Rifle Ammo Box',
+		weight = 500,
+		description = 'Heavy tactical ammo box containing 60 rounds of 7.62x39mm ammunition for heavy police rifles.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'pd_ammo_box_rifle2.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.pd_ammo_box_rifle2'
+		}
+	},
+
+	['pd_ammo_box_shotgun'] = {
+		label = 'PD 12G Shotgun Ammo Box',
+		weight = 450,
+		description = 'Tactical ammo box containing 30 rounds of 12-gauge shotgun shells for police shotguns.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'pd_ammo_box_shotgun.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.pd_ammo_box_shotgun'
 		}
 	},
 
@@ -733,5 +859,173 @@ return {
 			usetime = 3500,
 			notification = 'You ate a hearty burger'
 		}
+	},
+
+	["alive_chicken"] = {
+		label = "Living chicken",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["blowpipe"] = {
+		label = "Blowtorch",
+		weight = 2,
+		stack = true,
+		close = true,
+	},
+
+	["bread"] = {
+		label = "Bread",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["cannabis"] = {
+		label = "Cannabis",
+		weight = 3,
+		stack = true,
+		close = true,
+	},
+
+	["carokit"] = {
+		label = "Body Kit",
+		weight = 3,
+		stack = true,
+		close = true,
+	},
+
+	["carotool"] = {
+		label = "Tools",
+		weight = 2,
+		stack = true,
+		close = true,
+	},
+
+	["clothe"] = {
+		label = "Cloth",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["cutted_wood"] = {
+		label = "Cut wood",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["essence"] = {
+		label = "Gas",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["fabric"] = {
+		label = "Fabric",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["fish"] = {
+		label = "Fish",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["fixkit"] = {
+		label = "Repair Kit",
+		weight = 3,
+		stack = true,
+		close = true,
+	},
+
+	["fixtool"] = {
+		label = "Repair Tools",
+		weight = 2,
+		stack = true,
+		close = true,
+	},
+
+	["gazbottle"] = {
+		label = "Gas Bottle",
+		weight = 2,
+		stack = true,
+		close = true,
+	},
+
+	["gold"] = {
+		label = "Gold",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["marijuana"] = {
+		label = "Marijuana",
+		weight = 2,
+		stack = true,
+		close = true,
+	},
+
+	["medikit"] = {
+		label = "Medikit",
+		weight = 2,
+		stack = true,
+		close = true,
+	},
+
+	["packaged_chicken"] = {
+		label = "Chicken fillet",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["packaged_plank"] = {
+		label = "Packaged wood",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["petrol"] = {
+		label = "Oil",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["petrol_raffin"] = {
+		label = "Processed oil",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["slaughtered_chicken"] = {
+		label = "Slaughtered chicken",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["washed_stone"] = {
+		label = "Washed stone",
+		weight = 1,
+		stack = true,
+		close = true,
+	},
+
+	["wool"] = {
+		label = "Wool",
+		weight = 1,
+		stack = true,
+		close = true,
 	},
 }

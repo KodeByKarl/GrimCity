@@ -3,7 +3,6 @@
 local ESX = exports['es_extended']:getSharedObject()
 local Inventory = require 'modules.inventory.server'
 local Items = require 'modules.items.server'
-local cacheFreeCars = {}
 local cacheBetaCars = {}
 
 local function notify(src, title, message, nType, duration)
@@ -28,11 +27,6 @@ local function hasGroup(src, groups)
 	return false
 end
 
-local function uiResource()
-	if GetResourceState('kodebykarl-ui') == 'started' then return 'kodebykarl-ui' end
-	if GetResourceState('cfx-keydi-ui') == 'started' then return 'cfx-keydi-ui' end
-end
-
 --- Authorize health/armor gains so StatusSecure does not flag legit item use.
 local function grantHealthArmor(playerId, healthDelta, armorDelta)
 	pcall(function()
@@ -40,7 +34,7 @@ local function grantHealthArmor(playerId, healthDelta, armorDelta)
 	end)
 end
 
--- Beta car pool (independent from new-player freecar claims)
+-- Beta car pool
 local BetaCarPool = {
 	{ model = 'sultan',  label = 'Karin Sultan',   chance = 32.333 },
 	{ model = 'kuruma',  label = 'Karin Kuruma',   chance = 32.333 },
@@ -115,13 +109,6 @@ CreateThread(function()
 			UNIQUE KEY `identifier` (`identifier`)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	]])
-
-	local freeCars = MySQL.query.await('SELECT `identifier` FROM `cfx-keydi-freecars`', {})
-	if freeCars then
-		for i = 1, #freeCars do
-			cacheFreeCars[freeCars[i].identifier] = true
-		end
-	end
 
 	local betaCars = MySQL.query.await('SELECT `identifier` FROM `cfx-keydi-betacars`', {})
 	if betaCars then
@@ -241,6 +228,95 @@ end)
 exports('ammo_box5', function(event, item, inventory, slot, data)
 	if event == 'usedItem' then
 		Inventory.AddItem(inventory.id, 'ammo-45', 200)
+		return true
+	end
+end)
+
+exports('pd_ammo_box_9', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-9', 50) then
+			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-9', 50)
+		notify(inventory.id, 'PD Armory', 'Unpacked 50 rounds of 9mm Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('pd_ammo_box_rifle', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle', 60) then
+			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-rifle', 60)
+		notify(inventory.id, 'PD Armory', 'Unpacked 60 rounds of 5.56 Rifle Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('pd_ammo_box_rifle2', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle2', 60) then
+			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-rifle2', 60)
+		notify(inventory.id, 'PD Armory', 'Unpacked 60 rounds of 7.62 Rifle Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('pd_ammo_box_shotgun', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-shotgun', 30) then
+			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-shotgun', 30)
+		notify(inventory.id, 'PD Armory', 'Unpacked 30 rounds of 12G Shotgun Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+local ProjectPartsBoxContents = {
+	{ item = 'car_battery', count = 1 },
+	{ item = 'car_alternator', count = 1 },
+	{ item = 'car_radiator', count = 1 },
+	{ item = 'car_engine_part', count = 1 },
+	{ item = 'spark_plugs', count = 1 },
+	{ item = 'car_transmission', count = 1 },
+	{ item = 'car_hood', count = 1 },
+	{ item = 'car_door', count = 4 },
+	{ item = 'brake_pads', count = 4 },
+	{ item = 'car_wheel', count = 4 },
+}
+
+exports('project_parts_box', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		for i = 1, #ProjectPartsBoxContents do
+			local entry = ProjectPartsBoxContents[i]
+			if not Inventory.CanCarryItem(inventory.id, entry.item, entry.count) then
+				notify(inventory.id, 'PROJECT PARTS', 'Inventory is too full to unpack this parts box.', 'error', 5000)
+				return false
+			end
+		end
+		return true
+	elseif event == 'usedItem' then
+		for i = 1, #ProjectPartsBoxContents do
+			local entry = ProjectPartsBoxContents[i]
+			Inventory.AddItem(inventory.id, entry.item, entry.count)
+		end
+		notify(inventory.id, 'PROJECT PARTS', 'Unpacked a full project-car parts kit.', 'success', 5000)
 		return true
 	end
 end)
@@ -437,8 +513,17 @@ end)
 
 exports('lockpick', function(event, item, inventory, slot, data)
 	if event == 'usedItem' then
-		if GetResourceState('cfx-cs-robbery') == 'started' then
+		if GetResourceState('kodebykarl-robbery') == 'started' or GetResourceState('cfx-cs-robbery') == 'started' then
 			TriggerClientEvent('cfx-cs-robbery:houserob:UseLockpick', inventory.id, false)
+		end
+		return true
+	end
+end)
+
+exports('advancedlockpick', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		if GetResourceState('kodebykarl-robbery') == 'started' or GetResourceState('cfx-cs-robbery') == 'started' then
+			TriggerClientEvent('cfx-cs-robbery:houserob:UseLockpick', inventory.id, true)
 		end
 		return true
 	end
@@ -472,62 +557,7 @@ exports('reskin_card', function(event, item, inventory, slot, data)
 	end
 end)
 
-exports('item_free_car', function(event, item, inventory, slot, data)
-	if event == 'usingItem' then
-		local xPlayer = ESX.GetPlayerFromId(inventory.id)
-		if not xPlayer then return false end
-
-		local alreadyClaimed = cacheFreeCars[xPlayer.identifier]
-		local ui = uiResource()
-		if not alreadyClaimed and ui then
-			local ok, claimed = pcall(function()
-				return exports[ui]:HasClaimedFreeCar(xPlayer.source)
-			end)
-			alreadyClaimed = ok and claimed
-		end
-
-		if alreadyClaimed then
-			notify(xPlayer.source, 'FREE CAR', 'You have already claimed your free vehicle!', 'error', 5000)
-			return false
-		end
-
-		if ui then
-			TriggerClientEvent('cfx-keydi-freecar:client:open', xPlayer.source)
-			return false
-		end
-
-		return true
-	end
-
-	if event == 'usedItem' then
-		-- Claim is handled by the FreeCar roulette UI spin (opened in usingItem).
-		-- Keep a fallback only if the UI module is not running.
-		if uiResource() then
-			return false
-		end
-
-		local xPlayer = ESX.GetPlayerFromId(inventory.id)
-		if not xPlayer then return false end
-		if cacheFreeCars[xPlayer.identifier] then
-			notify( xPlayer.source, 'FREE CAR', 'You have already claimed your free vehicle!', 'error', 5000)
-			return false
-		end
-
-		local plate1 = generateVehiclePlate()
-		local plate2 = generateVehiclePlate()
-		local id = MySQL.insert.await('INSERT INTO `cfx-keydi-freecars` (identifier) VALUES (?)', {xPlayer.identifier})
-		if id then
-			notify( xPlayer.source, 'FREE CAR', 'Both vehicles are in your garage!', 'success', 10000)
-			MySQL.insert.await('INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `name`) VALUES (?, ?, ?, ?, ?)', {xPlayer.identifier, plate1, ('{"model":%s,"plate":"%s"}'):format(`sultan`, plate1), true, ('FREE-SULTAN-%s'):format(plate1:upper())})
-			MySQL.insert.await('INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `name`) VALUES (?, ?, ?, ?, ?)', {xPlayer.identifier, plate2, ('{"model":%s,"plate":"%s"}'):format(`burrito`, plate2), true, ('FREE-BURRITO-%s'):format(plate2:upper())})
-			cacheFreeCars[xPlayer.identifier] = true
-			return true
-		end
-		return false
-	end
-end)
-
--- Beta box car token — uses cfx-keydi-betacars (NOT freecars), so new-player claim does not block it
+-- Beta box car token — uses cfx-keydi-betacars
 exports('item_beta_car', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
 		local xPlayer = ESX.GetPlayerFromId(inventory.id)
@@ -798,10 +828,9 @@ local ItemBoxes = {
 		{ item = 'lockpick', amount = 5 },
 		{ item = 'reskin_card', amount = 1 },
 		{ item = 'new_player_card', amount = 1 },
-		{ item = 'item_free_car', amount = 1 },
 	},
 	['betabox'] = {
-		{ item = 'item_beta_car', amount = 1 }, -- separate claim table from new-player freecar
+		{ item = 'item_beta_car', amount = 1 },
 		{ item = 'money', amount = 50000 },
 		{ item = 'ayuda_box', amount = 1 },
 	},
