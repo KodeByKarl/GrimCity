@@ -1,13 +1,13 @@
-server_script '@Pandorangani/src/include/server.lua'
-client_script '@Pandorangani/src/include/client.lua'
 fx_version 'cerulean'
-
-games {'gta5'}
-author 'clxsx'
-name 'cfx-keydi-utils'
-description 'cfx-keydi-utils'
-version '2.0.0'
+game 'gta5'
 lua54 'yes'
+
+author 'clxsx / KodeByKarl'
+name 'kodebykarl-utils'
+description 'Grim City utility modules (clothing, illegal menu, mechanic, etc.)'
+version '2.0.0'
+
+provide 'cfx-keydi-utils'
 
 dependencies {
     'ox_lib',
@@ -18,32 +18,31 @@ dependencies {
 
 ui_page 'build/index.html'
 
-shared_scripts{
+shared_scripts {
     '@ox_lib/init.lua',
-    'init.lua' 
+    'init.lua',
 }
 
-client_scripts{
-    'configs/*.lua',
+client_scripts {
     'modules/**/client.lua',
 }
 
-server_scripts{
+server_scripts {
     '@oxmysql/lib/MySQL.lua',
-    'configs/*.lua',
-    'modules/**/server.lua'
+    'modules/**/server.lua',
 }
 
 files {
     'helpers/*.lua',
     'configs/*.lua',
     'build/assets/*',
-    'build/index.html'
+    'build/index.html',
 }
 
-escrow_ignore{
+escrow_ignore {
     'helpers/*.lua',
     'configs/*.lua',
     'init.lua',
-    'modules/**/server.lua'
+    'modules/**/client.lua',
+    'modules/**/server.lua',
 }

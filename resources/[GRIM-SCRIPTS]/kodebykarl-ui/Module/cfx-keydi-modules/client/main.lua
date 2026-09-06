@@ -43,6 +43,29 @@ end
 -- Export for toggling from other resources
 exports('ToggleModules', ToggleModules)
 
+-- Rental menu fallback export delegating to kodebykarl-utils
+exports('OpenRentalMenu', function(location)
+    if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+        return exports['kodebykarl-utils']:OpenRentalMenu(location)
+    end
+    TriggerEvent('cfx-keydi-utils:rental:open', location)
+end)
+
+-- Identification & Name change exports
+exports('RequestLicense', function()
+    TriggerServerEvent('cfx-keydi-identification:server:giveIdItem')
+end)
+
+exports('OpenChangeNameMenu', function()
+    local input = lib.inputDialog('City Hall - Change Name', {
+        { type = 'input', label = 'First Name', placeholder = 'Enter first name...', required = true },
+        { type = 'input', label = 'Last Name', placeholder = 'Enter last name...', required = true }
+    })
+    if input and input[1] and input[2] then
+        TriggerServerEvent('cfx-keydi-identification:server:changeName', input[1], input[2])
+    end
+end)
+
 -- Register Command & Key Mapping
 RegisterCommand(ConfigModules.OpenCommand, function()
     ToggleModules(not isVisible)

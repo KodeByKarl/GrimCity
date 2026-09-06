@@ -21,7 +21,11 @@ return {
                     icon = 'fa-solid fa-book',
                     label = 'Driving School',
                     onSelect = function()
-                        exports['cfx-keydi-utils']:openDMV()
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].openDMV then
+                            exports['kodebykarl-utils']:openDMV()
+                        elseif exports['cfx-keydi-utils'] and exports['cfx-keydi-utils'].openDMV then
+                            exports['cfx-keydi-utils']:openDMV()
+                        end
                     end,
                     distance = 2.5
                 }
@@ -91,7 +95,11 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['kodebykarl-ui']:OpenRentalMenu('airport')
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+                            exports['kodebykarl-utils']:OpenRentalMenu('airport')
+                        else
+                            exports['kodebykarl-ui']:OpenRentalMenu('airport')
+                        end
                     end,
                     distance = 3.0
                 },
@@ -128,7 +136,11 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['kodebykarl-ui']:OpenRentalMenu('rockford')
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+                            exports['kodebykarl-utils']:OpenRentalMenu('rockford')
+                        else
+                            exports['kodebykarl-ui']:OpenRentalMenu('rockford')
+                        end
                     end,
                     distance = 3.0
                 }
@@ -157,7 +169,11 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['kodebykarl-ui']:OpenRentalMenu('boat_lsia')
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+                            exports['kodebykarl-utils']:OpenRentalMenu('boat_lsia')
+                        else
+                            exports['kodebykarl-ui']:OpenRentalMenu('boat_lsia')
+                        end
                     end,
                     distance = 3.0
                 }
@@ -186,7 +202,11 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['kodebykarl-ui']:OpenRentalMenu('boat_terminal')
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+                            exports['kodebykarl-utils']:OpenRentalMenu('boat_terminal')
+                        else
+                            exports['kodebykarl-ui']:OpenRentalMenu('boat_terminal')
+                        end
                     end,
                     distance = 3.0
                 }
@@ -215,7 +235,11 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['kodebykarl-ui']:OpenRentalMenu('boat_delperro')
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+                            exports['kodebykarl-utils']:OpenRentalMenu('boat_delperro')
+                        else
+                            exports['kodebykarl-ui']:OpenRentalMenu('boat_delperro')
+                        end
                     end,
                     distance = 3.0
                 }
@@ -244,7 +268,11 @@ return {
                     icon = 'fa-solid fa-shop',
                     label = 'Open Rental',
                     onSelect = function ()
-                        exports['kodebykarl-ui']:OpenRentalMenu('boat_paleto')
+                        if exports['kodebykarl-utils'] and exports['kodebykarl-utils'].OpenRentalMenu then
+                            exports['kodebykarl-utils']:OpenRentalMenu('boat_paleto')
+                        else
+                            exports['kodebykarl-ui']:OpenRentalMenu('boat_paleto')
+                        end
                     end,
                     distance = 3.0
                 }
@@ -279,6 +307,36 @@ return {
                         else
                             TriggerEvent('cfx-keydi-market:client:open')
                         end
+                    end,
+                    distance = 2.5
+                }
+            },
+        }
+    },
+    {
+        -- Free Sunrise1 after 6h total playtime
+        model = 'a_m_y_business_03',
+        coords = vec4(-260.5113, -965.4332, 31.2244, 116.3138),
+        minusOne = false,
+        freeze = true,
+        invincible = true,
+        blockevents = true,
+        scenario = 'WORLD_HUMAN_CLIPBOARD',
+        currentpednumber = 0,
+        blip = {
+            sprite = 225,
+            color = 5,
+            scale = 0.7,
+            label = 'Playtime Reward',
+            data = 0,
+        },
+        target = {
+            options = {
+                {
+                    icon = 'fa-solid fa-car',
+                    label = 'Claim Free Sunrise (6h Playtime)',
+                    onSelect = function()
+                        TriggerServerEvent('cfx-keydi-utils:playtimereward:server:claim')
                     end,
                     distance = 2.5
                 }
