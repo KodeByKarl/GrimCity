@@ -68,6 +68,16 @@ return {
 		label = 'Dirty Money',
 	},
 
+	['recmats'] = {
+		label = 'Recycling Materials',
+		weight = 50,
+		stack = true,
+		description = 'Sorted scrap ready for recycling.',
+		client = {
+			image = 'recmats.png',
+		},
+	},
+
 	['burger'] = {
 		label = 'Burger',
 		weight = 220,
@@ -523,7 +533,7 @@ return {
 		close = true,
 		consume = 0,
 		client = {
-			image = 'car_hood.png',
+			image = 'vehicle_shell.png',
 			event = 'kodebykarl-projectcars:client:useShell',
 		},
 	},
@@ -536,12 +546,129 @@ return {
 		consume = 1,
 		description = 'Unpack a full set of project-car parts.',
 		client = {
-			image = 'car_engine_part.png',
+			image = 'project_parts_box.png',
 			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
 			usetime = 3500,
 		},
 		server = {
 			export = 'ox_inventory.project_parts_box'
+		}
+	},
+
+	['project_ayuda_box'] = {
+		label = 'Project Ayuda Box',
+		weight = 8000,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'Full project-car starter kit: shell, blueprints, and all parts.',
+		client = {
+			image = 'project_ayuda_box.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 4000,
+		},
+		server = {
+			export = 'ox_inventory.project_ayuda_box'
+		}
+	},
+
+	['car_blueprint'] = {
+		label = 'Car Blueprint',
+		weight = 100,
+		stack = true,
+		close = true,
+		description = 'Required to start assembling a project car (25 needed).',
+		client = {
+			image = 'car_blueprint.png',
+		},
+	},
+
+	['ayuda_box'] = {
+		label = 'Ayuda Box',
+		weight = 5000,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'Starter ayuda package with cash and project-car parts.',
+		client = {
+			image = 'car_engine_part.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 3500,
+		},
+		server = {
+			export = 'ox_inventory.itemBoxes'
+		}
+	},
+
+	['food_drinks_box'] = {
+		label = 'Food & Drinks Box',
+		weight = 1500,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'Open to receive Grim Tea and Grim Peas.',
+		client = {
+			image = 'food_drinks_box.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 3000,
+		},
+		server = {
+			export = 'ox_inventory.itemBoxes'
+		}
+	},
+
+	['grim_tea'] = {
+		label = 'Grim Tea',
+		weight = 350,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'Iced Grim City tea. Restores 50% thirst.',
+		client = {
+			image = 'grim_tea.png',
+			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
+			prop = { model = `prop_plastic_cup_02`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
+			usetime = 3000,
+			notification = 'You drank Grim Tea',
+		},
+		server = {
+			export = 'ox_inventory.grim_tea'
+		}
+	},
+
+	['grim_peas'] = {
+		label = 'Grim Peas',
+		weight = 400,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'Canned Grim City peas. Restores 50% hunger.',
+		client = {
+			image = 'grim_peas.png',
+			anim = 'eating',
+			prop = { model = `prop_cs_burger_01`, pos = vec3(0.02, 0.02, -0.02), rot = vec3(0.0, 0.0, 0.0) },
+			usetime = 3500,
+			notification = 'You ate Grim Peas',
+		},
+		server = {
+			export = 'ox_inventory.grim_peas'
+		}
+	},
+
+	['stash_car'] = {
+		label = 'Stash Car',
+		weight = 10,
+		stack = false,
+		close = true,
+		consume = 1,
+		description = 'Redeem for a Burrito stash van in your garage.',
+		client = {
+			image = 'stash_car.png',
+			anim = { dict = 'mp_common', clip = 'givetake1_a' },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.stash_car'
 		}
 	},
 
@@ -615,6 +742,28 @@ return {
 		close = true,
 		client = {
 			image = 'grimpolicecoin.png',
+		}
+	},
+
+	['sheriff_coin'] = {
+		label = 'Sheriff Coin',
+		weight = 0,
+		description = 'Official Blaine County Sheriff commendation coin. Used as currency in the Sheriff Armoury.',
+		stack = true,
+		close = true,
+		client = {
+			image = 'sheriff_coin.png',
+		}
+	},
+
+	['sheriffcoin'] = {
+		label = 'Sheriff Coin',
+		weight = 0,
+		description = 'Official Blaine County Sheriff commendation coin. Used as currency in the Sheriff Armoury.',
+		stack = true,
+		close = true,
+		client = {
+			image = 'sheriff_coin.png',
 		}
 	},
 

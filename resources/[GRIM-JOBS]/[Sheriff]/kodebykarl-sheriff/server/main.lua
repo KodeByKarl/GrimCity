@@ -53,3 +53,81 @@ end)
 exports('GetOffDutyJobName', function()
     return ConfigSheriff.OffDutyJob or 'offsheriff'
 end)
+
+-- Sheriff Coin Harvest Server Callback
+local lastHarvest = {}
+
+lib.callback.register('kodebykarl-sheriff:server:harvestCoins', function(source)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer or not xPlayer.job then
+        return false
+    end
+
+    local allowedJob = (ConfigSheriff.CoinHarvest and ConfigSheriff.CoinHarvest.job) or 'sheriff'
+    if xPlayer.job.name ~= allowedJob then
+        TriggerClientEvent('ox_lib:notify', src, {
+            title = 'Sheriff Station',
+            description = 'Only Sheriff personnel can harvest Sheriff Coins!',
+            type = 'error'
+        })
+        return false
+    end
+
+    local harvestCfg = ConfigSheriff.CoinHarvest
+    if not harvestCfg or not harvestCfg.location then
+        return false
+    end
+
+    -- Distance check (anti-exploit)
+    local ped = GetPlayerPed(src)
+    local pCoords = GetEntityCoords(ped)
+    local targetCoords = vector3(harvestCfg.location.x, harvestCfg.location.y, harvestCfg.location.z)
+    if #(pCoords - targetCoords) > 4.5 then
+        return false
+    end
+
+    -- Rate limit
+    local now = GetGameTimer()
+    if lastHarvest[src] and (now - lastHarvest[src]) < 8500 then
+        return false
+    end
+    lastHarvest[src] = now
+
+    -- Calculate reward (1 to 10 chances)
+    local rewardConfig = harvestCfg.reward or {}
+    local itemName = rewardConfig.item or 'sheriff_coin'
+    local min = rewardConfig.min or 1
+    local max = rewardConfig.max or 10
+    local amount = math.random(min, max)
+
+    -- Inventory capacity check
+    local canCarry = exports.ox_inventory:CanCarryItem(src, itemName, amount)
+    if not canCarry then
+        TriggerClientEvent('ox_lib:notify', src, {
+            title = 'Sheriff Station',
+            description = 'Your inventory is full! You cannot carry more Sheriff Coins.',
+            type = 'error',
+            duration = 4000
+        })
+        return false
+    end
+
+    local success = exports.ox_inventory:AddItem(src, itemName, amount)
+    if success then
+        TriggerClientEvent('ox_lib:notify', src, {
+            title = 'Sheriff Station',
+            description = ('Harvested %d Sheriff Coin%s!'):format(amount, amount > 1 and 's' or ''),
+            type = 'success',
+            duration = 3500
+        })
+        return true
+    end
+
+    return false
+end)
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    lastHarvest[src] = nil
+end)

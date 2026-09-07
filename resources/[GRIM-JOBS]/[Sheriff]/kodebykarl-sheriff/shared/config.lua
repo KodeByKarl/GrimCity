@@ -67,7 +67,40 @@ ConfigSheriff.Station = {
         label = 'Sheriff Helipad',
         garageId = 'Sheriff Helipad',
     },
+    Garage = {
+        access = vector3(1905.4390, 3653.8381, 33.5470),
+        heading = 27.1404,
+        spawn = {
+            vector4(1909.2976, 3662.1689, 33.5957, 220.0816),
+            vector4(1912.3215, 3663.3765, 33.5945, 275.5710),
+            vector4(1914.9451, 3664.5029, 33.5897, 235.3427),
+            vector4(1917.3188, 3666.3179, 33.5876, 236.6252),
+        },
+        label = 'Sheriff Garage',
+        garageId = 'Sheriff Garage',
+    },
 }
 
 -- Minimum grade for /givescs (boss = 6)
 ConfigSheriff.CallsignBossGradeName = 'boss'
+
+-- Sheriff Coin Harvesting / Auto-Farm --
+ConfigSheriff.CoinHarvest = {
+    enabled = true,
+    job = 'sheriff',
+    prop = 'prop_cs_cardbox_01', -- cartoon / cardboard box prop
+    location = vector4(1894.1588, 3635.4587, 34.1129, 215.6584),
+    interactDistance = 1.8,
+    drawDistance = 6.0,
+    duration = 10000, -- 10 seconds progress bar
+    reward = {
+        item = 'sheriff_coin',
+        min = 1,
+        max = 10,
+    },
+    anim = {
+        dict = 'anim@heists@prison_heiststation@cop_reactions',
+        clip = 'cop_b_idle',
+        flag = 1,
+    },
+}

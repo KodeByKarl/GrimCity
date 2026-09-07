@@ -144,12 +144,317 @@ local function setupHelipad()
     end
 end
 
+local function setupGarage()
+    local garageCfg = ConfigSheriff.Station and ConfigSheriff.Station.Garage
+    if not garageCfg or not garageCfg.access then return end
+
+    if GetResourceState('ox_target') == 'started' then
+        exports.ox_target:addBoxZone({
+            coords = garageCfg.access,
+            size = vector3(2.0, 2.0, 2.0),
+            rotation = garageCfg.heading or 0.0,
+            debug = false,
+            options = {
+                {
+                    name = 'sheriff_garage_access',
+                    icon = 'fa-solid fa-warehouse',
+                    label = garageCfg.label or 'Sheriff Garage',
+                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0, ['police'] = 0 },
+                    onSelect = function()
+                        if cache.vehicle and GetPedInVehicleSeat(cache.vehicle, -1) == cache.ped then
+                            TriggerEvent('jg-advancedgarages:client:store-vehicle', garageCfg.garageId or 'Sheriff Garage', 'car', false)
+                        else
+                            TriggerEvent('jg-advancedgarages:client:open-garage', garageCfg.garageId or 'Sheriff Garage', 'car', false)
+                        end
+                    end,
+                    distance = 3.5
+                },
+                {
+                    name = 'sheriff_garage_store',
+                    icon = 'fa-solid fa-parking',
+                    label = 'Store Patrol Vehicle',
+                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0, ['police'] = 0 },
+                    canInteract = function()
+                        return cache.vehicle and GetPedInVehicleSeat(cache.vehicle, -1) == cache.ped
+                    end,
+                    onSelect = function()
+                        TriggerEvent('jg-advancedgarages:client:store-vehicle', garageCfg.garageId or 'Sheriff Garage', 'car', false)
+                    end,
+                    distance = 12.0
+                }
+            }
+        })
+    end
+end
+
+local isFarming = false
+local farmTextState = nil
+local spawnedBox = nil
+
+local function updateCoinFarmText(state)
+    if farmTextState == state then return end
+    farmTextState = state
+    if state == 'start' then
+        lib.showTextUI('[E] - Start Auto-Farming Sheriff Coins', {
+            icon = 'coins',
+            position = 'right-center'
+        })
+    elseif state == 'stop' then
+        lib.showTextUI('[E] or [X] - Stop Auto-Farming Sheriff Coins', {
+            icon = 'hand',
+            position = 'right-center'
+        })
+    else
+        lib.hideTextUI()
+    end
+end
+
+local function stopAutoFarm(notifyUser)
+    if not isFarming then return end
+    isFarming = false
+    lib.cancelProgress()
+    updateCoinFarmText('start')
+    if notifyUser then
+        lib.notify({
+            title = 'Sheriff Station',
+            description = 'Auto-farming stopped.',
+            type = 'inform',
+            duration = 3000
+        })
+    end
+end
+
+local function startAutoFarm()
+    if isFarming then return end
+    local harvestCfg = ConfigSheriff.CoinHarvest
+    if not harvestCfg or not harvestCfg.enabled or not harvestCfg.location then return end
+
+    if not isSheriff() then
+        lib.notify({
+            title = 'Sheriff Station',
+            description = 'Only Sheriff personnel can harvest Sheriff Coins!',
+            type = 'error',
+            duration = 4000
+        })
+        return
+    end
+
+    isFarming = true
+    updateCoinFarmText('stop')
+    lib.notify({
+        title = 'Sheriff Station',
+        description = 'Started auto-farming Sheriff Coins. Press [E] or [X] anytime to stop.',
+        type = 'success',
+        duration = 4000
+    })
+
+    CreateThread(function()
+        local animConfig = harvestCfg.anim or {
+            dict = 'anim@heists@prison_heiststation@cop_reactions',
+            clip = 'cop_b_idle',
+            flag = 1
+        }
+
+        if animConfig.dict then
+            lib.requestAnimDict(animConfig.dict)
+        end
+
+        local loc = harvestCfg.location
+        while isFarming do
+            local ped = cache.ped or PlayerPedId()
+            if IsEntityDead(ped) then
+                stopAutoFarm(false)
+                break
+            end
+
+            local pCoords = GetEntityCoords(ped)
+            local targetCoords = vector3(loc.x, loc.y, loc.z)
+            if #(pCoords - targetCoords) > ((harvestCfg.interactDistance or 1.8) + 1.2) then
+                lib.notify({
+                    title = 'Sheriff Station',
+                    description = 'You moved away from the carton. Auto-farming stopped.',
+                    type = 'warning',
+                    duration = 4000
+                })
+                stopAutoFarm(false)
+                break
+            end
+
+            if loc.w then
+                SetEntityHeading(ped, loc.w)
+            end
+
+            local success = lib.progressBar({
+                duration = harvestCfg.duration or 10000,
+                label = 'Harvesting Sheriff Coins...',
+                useWhileDead = false,
+                canCancel = true,
+                disable = {
+                    car = true,
+                    move = true,
+                    combat = true,
+                    sprint = true
+                },
+                anim = {
+                    dict = animConfig.dict,
+                    clip = animConfig.clip,
+                    flag = animConfig.flag or 1
+                }
+            })
+
+            if success and isFarming then
+                local awarded = lib.callback.await('kodebykarl-sheriff:server:harvestCoins', false)
+                if not awarded then
+                    stopAutoFarm(false)
+                    break
+                end
+                Wait(500)
+            else
+                if isFarming then
+                    stopAutoFarm(true)
+                end
+                break
+            end
+        end
+
+        if not isFarming then
+            updateCoinFarmText('start')
+        end
+    end)
+end
+
+local function setupCoinHarvest()
+    local harvestCfg = ConfigSheriff.CoinHarvest
+    if not harvestCfg or not harvestCfg.enabled or not harvestCfg.location then return end
+
+    local loc = harvestCfg.location
+    local propModel = harvestCfg.prop or 'prop_cs_cardbox_01'
+
+    -- Spawn the physical carton box prop
+    CreateThread(function()
+        local modelHash = GetHashKey(propModel)
+        lib.requestModel(modelHash)
+        spawnedBox = CreateObject(modelHash, loc.x, loc.y, loc.z, false, false, false)
+        SetEntityHeading(spawnedBox, loc.w or 0.0)
+        PlaceObjectOnGroundProperly(spawnedBox)
+        FreezeEntityPosition(spawnedBox, true)
+        SetEntityInvincible(spawnedBox, true)
+        SetModelAsNoLongerNeeded(modelHash)
+    end)
+
+    -- ox_target interaction on the carton box
+    if GetResourceState('ox_target') == 'started' then
+        exports.ox_target:addBoxZone({
+            name = 'sheriff_coin_cartoon_harvest',
+            coords = vector3(loc.x, loc.y, loc.z),
+            size = vector3(1.2, 1.2, 1.2),
+            rotation = loc.w or 0.0,
+            debug = false,
+            options = {
+                {
+                    name = 'sheriff_coin_harvest_start',
+                    icon = 'fas fa-coins',
+                    label = 'Start Auto-Farming Sheriff Coins',
+                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0 },
+                    canInteract = function()
+                        return not isFarming
+                    end,
+                    onSelect = function()
+                        startAutoFarm()
+                    end,
+                    distance = harvestCfg.interactDistance or 1.8
+                },
+                {
+                    name = 'sheriff_coin_harvest_stop',
+                    icon = 'fas fa-hand',
+                    label = 'Stop Auto-Farming Sheriff Coins',
+                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0 },
+                    canInteract = function()
+                        return isFarming
+                    end,
+                    onSelect = function()
+                        stopAutoFarm(true)
+                    end,
+                    distance = harvestCfg.interactDistance or 1.8
+                }
+            }
+        })
+    end
+
+    -- Proximity marker and [E] prompt loop
+    CreateThread(function()
+        local drawDist = harvestCfg.drawDistance or 6.0
+        local interactDist = harvestCfg.interactDistance or 1.8
+        local locVec = vector3(loc.x, loc.y, loc.z)
+
+        while true do
+            local sleep = 1000
+            local ped = cache.ped or PlayerPedId()
+
+            if isSheriff() and not IsEntityDead(ped) then
+                local pCoords = GetEntityCoords(ped)
+                local dist = #(pCoords - locVec)
+
+                if dist <= drawDist then
+                    sleep = 0
+                    DrawMarker(2, loc.x, loc.y, loc.z + 0.3, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 0.25, 0.25, 0.25, 255, 215, 0, 180, false, true, 2, false, nil, nil, false)
+
+                    if dist <= interactDist then
+                        if isFarming then
+                            updateCoinFarmText('stop')
+                        else
+                            updateCoinFarmText('start')
+                        end
+
+                        if IsControlJustReleased(0, 38) then -- E key
+                            if isFarming then
+                                stopAutoFarm(true)
+                            else
+                                startAutoFarm()
+                            end
+                        end
+                    else
+                        if not isFarming then
+                            updateCoinFarmText(nil)
+                        end
+                    end
+                else
+                    if not isFarming then
+                        updateCoinFarmText(nil)
+                    end
+                end
+            else
+                if not isFarming then
+                    updateCoinFarmText(nil)
+                end
+            end
+
+            Wait(sleep)
+        end
+    end)
+end
+
+AddEventHandler('onResourceStop', function(res)
+    if res == GetCurrentResourceName() then
+        if isFarming then
+            isFarming = false
+            lib.cancelProgress()
+        end
+        lib.hideTextUI()
+        if spawnedBox and DoesEntityExist(spawnedBox) then
+            DeleteEntity(spawnedBox)
+        end
+    end
+end)
+
 CreateThread(function()
     while not ESX.IsPlayerLoaded() do Wait(200) end
     ESX.PlayerData = ESX.GetPlayerData()
     createStationBlip()
     setupWardrobe()
     setupHelipad()
+    setupGarage()
+    setupCoinHarvest()
 end)
 
 -- F6 / LEO tools live on kodebykarl-police (HasGroup includes sheriff).

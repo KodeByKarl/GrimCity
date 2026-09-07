@@ -831,6 +831,27 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
+  ["Sheriff Garage"] = {
+    coords = vector3(1905.4390, 3653.8381, 33.5470),
+    spawn = {
+      vector4(1909.2976, 3662.1689, 33.5957, 220.0816),
+      vector4(1912.3215, 3663.3765, 33.5945, 275.5710),
+      vector4(1914.9451, 3664.5029, 33.5897, 235.3427),
+      vector4(1917.3188, 3666.3179, 33.5876, 236.6252),
+    },
+    distance = 3.0,
+    type = "car",
+    job = {"sheriff", "bcso", "police"},
+    vehiclesType = "owned",
+    hideBlip = false,
+    blip = {
+      id = 357,
+      color = 5,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
 }
 
 -- Gang Garages (unused — HQ spots are public in Config.GarageLocations)
