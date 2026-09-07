@@ -119,9 +119,20 @@ return {
 	['paperbag'] = {
 		label = 'Paper Bag',
 		weight = 1,
-		stack = false,
+		stack = true,
 		close = false,
 		consume = 0
+	},
+
+	['paper_bags'] = {
+		label = 'Paper Bag',
+		weight = 10,
+		stack = true,
+		close = true,
+		description = 'Paper bags used for packaging and rolling joints.',
+		client = {
+			image = 'paperbag.png'
+		}
 	},
 
 	['identification'] = {
@@ -238,6 +249,17 @@ return {
 		weight = 10,
 		client = {
 			image = 'card_bank.png'
+		}
+	},
+
+	['pendrive'] = {
+		label = 'Encrypted Pendrive',
+		description = 'Used to crack Fleeca Bank vault systems.',
+		weight = 50,
+		stack = true,
+		close = true,
+		client = {
+			image = 'pendrive.png'
 		}
 	},
 

@@ -23,6 +23,14 @@ local function GetItemCount(src, item)
         end
         return 0
     end
+    if item == 'paper_bags' then
+        if GetResourceState('ox_inventory') ~= 'started' then return 0 end
+        local count1 = 0
+        local count2 = 0
+        pcall(function() count1 = exports.ox_inventory:GetItemCount(src, 'paper_bags') or 0 end)
+        pcall(function() count2 = exports.ox_inventory:GetItemCount(src, 'paperbag') or 0 end)
+        return (type(count1) == 'number' and count1 or 0) + (type(count2) == 'number' and count2 or 0)
+    end
     if GetResourceState('ox_inventory') ~= 'started' then return 0 end
     local ok, count = pcall(function()
         return exports.ox_inventory:GetItemCount(src, item)
@@ -48,6 +56,27 @@ local function RemoveItem(src, item, amount)
             end
         end
         return false
+    end
+    if item == 'paper_bags' then
+        if GetResourceState('ox_inventory') ~= 'started' then return false end
+        local count1 = 0
+        pcall(function() count1 = exports.ox_inventory:GetItemCount(src, 'paper_bags') or 0 end)
+        if count1 >= amount then
+            local ok, res = pcall(function() return exports.ox_inventory:RemoveItem(src, 'paper_bags', amount) end)
+            if ok and res then return true end
+        else
+            local from1 = math.min(count1, amount)
+            local remaining = amount - from1
+            if from1 > 0 then
+                pcall(function() exports.ox_inventory:RemoveItem(src, 'paper_bags', from1) end)
+            end
+            local ok2, res2 = pcall(function() return exports.ox_inventory:RemoveItem(src, 'paperbag', remaining) end)
+            if ok2 and res2 then return true end
+            if from1 > 0 then
+                pcall(function() exports.ox_inventory:AddItem(src, 'paper_bags', from1) end)
+            end
+            return false
+        end
     end
     if GetResourceState('ox_inventory') ~= 'started' then return false end
     local ok, res = pcall(function()

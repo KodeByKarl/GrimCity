@@ -65,7 +65,7 @@ Config.WeedFarm = {
             input = { item = "packaged_weed", amount = 5, label = "Packaged Weed" },
             requires = {
                 { item = "rolling_paper", amount = 5, label = "Rolling Paper" },
-                { item = "paperbag", amount = 5, label = "Paper Bag" },
+                { item = "paper_bags", amount = 5, label = "Paper Bag" },
                 { item = "black_money", amount = 1000, label = "Dirty Money", isMoney = true },
             },
             output = { item = "joint", amount = 5, label = "Joint" },
