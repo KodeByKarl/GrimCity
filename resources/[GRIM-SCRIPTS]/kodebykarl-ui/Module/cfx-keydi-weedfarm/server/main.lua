@@ -112,10 +112,7 @@ local function IsPlayerBusy(src)
 end
 
 local function CanUseWeedfarm(src)
-    if type(ConfigServerLocations) ~= "table" or not ConfigServerLocations.CanUseFunction then
-        return true
-    end
-    return ConfigServerLocations.CanUseFunction("grind", src) or ConfigServerLocations.CanUseFunction("weedfarm", src)
+    return true
 end
 
 local function SessionElapsed(session)

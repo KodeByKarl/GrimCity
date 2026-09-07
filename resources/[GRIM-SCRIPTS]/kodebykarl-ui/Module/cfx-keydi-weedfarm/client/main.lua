@@ -13,25 +13,23 @@ local function IsBusy()
 end
 
 local function CanUseWeedfarm()
-    if type(ConfigServerLocations) ~= "table" or not ConfigServerLocations.CanUseFunction then
-        return true
-    end
-    return ConfigServerLocations.CanUseFunction("grind") or ConfigServerLocations.CanUseFunction("weedfarm")
+    return true
 end
 
 -- Helper Function for 3D Text Render
 local function DrawText3D(x, y, z, text)
     SetTextScale(0.35, 0.35)
     SetTextFont(4)
-    SetTextProportional(1)
+    SetTextProportional(true)
     SetTextColour(255, 255, 255, 215)
-    SetTextEntry("STRING")
+    SetTextOutline()
+    BeginTextCommandDisplayText("STRING")
     SetTextCentre(true)
-    AddTextComponentString(text)
+    AddTextComponentSubstringPlayerName(text)
     SetDrawOrigin(x, y, z, 0)
-    DrawText(0.0, 0.0)
-    local factor = (string.len(text)) / 370
-    DrawRect(0.0, 0.0 + 0.0125, 0.015 + factor, 0.03, 5, 25, 47, 190)
+    EndTextCommandDisplayText(0.0, 0.0)
+    local factor = (#text) / 370
+    DrawRect(0.0, 0.0125, 0.017 + factor, 0.03, 0, 0, 0, 120)
     ClearDrawOrigin()
 end
 
@@ -85,29 +83,25 @@ end
 
 -- Proximity & 3D Text Loop (plants + collect + process)
 CreateThread(function()
-    Wait(1000)
-    if CanUseWeedfarm() then
-        SpawnPlantProps()
-    end
+    Wait(500)
+    SpawnPlantProps()
 
     while true do
         local sleep = 1000
-        if not CanUseWeedfarm() then
-            Wait(1500)
-        else
         local ped = PlayerPedId()
         local pCoords = GetEntityCoords(ped)
 
+        -- 1. Weed Plant Harvest Spots
         for i, loc in ipairs(Config.WeedFarm.Locations) do
             local dist = #(pCoords - loc)
-            if dist <= 2.5 then
+            if dist <= 6.0 then
                 sleep = 0
                 if IsBusy() then
-                    DrawText3D(loc.x, loc.y, loc.z + 0.5, "~y~Harvesting...")
+                    DrawText3D(loc.x, loc.y, loc.z + 0.6, "~y~Harvesting...")
                 else
-                    DrawText3D(loc.x, loc.y, loc.z + 0.5, "~g~[E]~s~ Harvest Weed")
+                    DrawText3D(loc.x, loc.y, loc.z + 0.6, "~g~[E]~s~ Harvest Weed")
 
-                    if IsControlJustReleased(0, 38) then
+                    if dist <= 2.2 and IsControlJustReleased(0, 38) then
                         TriggerServerEvent("cfx-keydi-weedfarm:server:startHarvest", i)
                         Wait(500)
                     end
@@ -115,21 +109,22 @@ CreateThread(function()
             end
         end
 
+        -- 2. Collect Stations (if any configured)
         for i, station in ipairs(Config.WeedFarm.CollectStations or {}) do
             local c = station.coords
             local stationPos = vector3(c.x, c.y, c.z)
             local dist = #(pCoords - stationPos)
-            local range = station.interactionDistance or 2.0
-            if dist <= range then
+            if dist <= 6.0 then
                 sleep = 0
+                local zPos = c.z + 0.95
                 if collectCooldowns[i] then
-                    DrawText3D(c.x, c.y, c.z + 0.35, "~r~Cooling down...")
+                    DrawText3D(c.x, c.y, zPos, "~r~Cooling down...")
                 elseif IsBusy() then
-                    DrawText3D(c.x, c.y, c.z + 0.35, "~y~Busy...")
+                    DrawText3D(c.x, c.y, zPos, "~y~Busy...")
                 else
-                    DrawText3D(c.x, c.y, c.z + 0.35, ("~g~[E]~s~ %s"):format(station.label or "Collect"))
+                    DrawText3D(c.x, c.y, zPos, ("~g~[E]~s~ %s"):format(station.label or "Collect"))
 
-                    if IsControlJustReleased(0, 38) then
+                    if dist <= 2.2 and IsControlJustReleased(0, 38) then
                         TriggerServerEvent("cfx-keydi-weedfarm:server:startCollect", i)
                         Wait(500)
                     end
@@ -137,15 +132,16 @@ CreateThread(function()
             end
         end
 
+        -- 3. Process Stations (Packaging & Rolling Benches)
         for i, station in ipairs(Config.WeedFarm.ProcessStations or {}) do
             local c = station.coords
             local stationPos = vector3(c.x, c.y, c.z)
             local dist = #(pCoords - stationPos)
-            local range = station.interactionDistance or 2.0
-            if dist <= range then
+            if dist <= 8.0 then
                 sleep = 0
+                local zPos = c.z + 0.95
                 if IsBusy() then
-                    DrawText3D(c.x, c.y, c.z + 0.35, "~y~Processing...")
+                    DrawText3D(c.x, c.y, zPos, "~y~Processing...")
                 else
                     local hint
                     local reqList = station.requires or (station.require and { station.require }) or {}
@@ -163,9 +159,9 @@ CreateThread(function()
                     else
                         hint = ("~g~[E]~s~ %s"):format(station.label or "Process")
                     end
-                    DrawText3D(c.x, c.y, c.z + 0.35, hint)
+                    DrawText3D(c.x, c.y, zPos, hint)
 
-                    if IsControlJustReleased(0, 38) then
+                    if dist <= 2.5 and IsControlJustReleased(0, 38) then
                         TriggerServerEvent("cfx-keydi-weedfarm:server:startProcess", i)
                         Wait(500)
                     end
@@ -174,7 +170,6 @@ CreateThread(function()
         end
 
         Wait(sleep)
-        end
     end
 end)
 
@@ -318,12 +313,10 @@ AddEventHandler("onResourceStop", function(resourceName)
 end)
 
 AddEventHandler("cfx-keydi-serverlocations:changed", function(location)
-    local enabled = ConfigServerLocations.LocationAllows
-        and ConfigServerLocations.LocationAllows(location, "weedfarm")
-        or CanUseWeedfarm()
-    if enabled then
-        SpawnPlantProps()
-    else
-        DeletePlantProps()
-    end
+    SpawnPlantProps()
+end)
+
+RegisterNetEvent("esx:playerLoaded", function()
+    Wait(1000)
+    SpawnPlantProps()
 end)
