@@ -63,8 +63,12 @@ local function rotateActiveTrapHouse()
     local activeData = {
         id = zone.id,
         label = zone.label,
-        coords = zone.coords,
-        radius = zone.radius,
+        coords = {
+            x = zone.coords.x + 0.0,
+            y = zone.coords.y + 0.0,
+            z = zone.coords.z + 0.0
+        },
+        radius = (tonumber(zone.radius) or 200.0) + 0.0,
         blip = zone.blip,
         expires = expires
     }
@@ -80,10 +84,15 @@ end
 local function getActiveTrapZone(coords)
     if not coords then return nil end
     local activeZone = GlobalState.traphouse_active_zone
-    if not activeZone then return nil end
+    if not activeZone or not activeZone.coords then return nil end
 
-    local dist = #(coords - activeZone.coords)
-    if dist <= activeZone.radius then
+    local zoneCoords = vector3(
+        tonumber(activeZone.coords.x) or 0.0,
+        tonumber(activeZone.coords.y) or 0.0,
+        tonumber(activeZone.coords.z) or 0.0
+    )
+    local dist = #(coords - zoneCoords)
+    if dist <= ((tonumber(activeZone.radius) or 200.0) + 0.0) then
         return activeZone
     end
     return nil
@@ -201,6 +210,12 @@ local function handleTrapHouseKill(victimSrc, killerSrc, deathData)
         xKiller.name, killerSrc, killerGang, xVictim.name, victimSrc, victimGang, zone.label, summaryStr
     )
     Webhook.SendLog('TRAPHOUSE REDZONE KILL', 65280, logMsg)
+
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        pcall(function()
+            exports['kodebykarl-ui']:LeaderboardRecordTrapKill(killerSrc, victimSrc)
+        end)
+    end
 end
 
 -- ESX Death Listener
@@ -228,3 +243,8 @@ CreateThread(function()
         end
     end
 end)
+
+exports('GetActiveTrapHouseZone', function()
+    return GlobalState.traphouse_active_zone
+end)
+

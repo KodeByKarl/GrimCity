@@ -1,8 +1,39 @@
 local ESX = exports['es_extended']:getSharedObject()
 local isInRedZone = false
 local currentZoneLabel = nil
+local currentActiveZone = nil
 local activeSphere = nil
-local activeBlips = {}
+local activeRadiusBlip = nil
+local activeMarkerBlip = nil
+
+-- Helper: Set RedZone In/Out state and TextUI
+local function setRedZoneState(state, label)
+    if state == isInRedZone then return end
+    isInRedZone = state
+    currentZoneLabel = label
+
+    if isInRedZone then
+        DisplayRadar(true)
+        DisplayHud(true)
+
+        lib.showTextUI('TRAPHOUSE REDZONE • KILL ON SIGHT', {
+            position = 'top-center',
+            icon = 'fa-solid fa-skull',
+            style = {
+                borderRadius = '6px',
+                backgroundColor = 'rgba(13, 13, 18, 0.9)',
+                color = '#ff4d4d',
+                border = '1px solid rgba(255, 58, 58, 0.4)',
+                padding = '6px 12px',
+                fontSize = '12px',
+                fontWeight = '600',
+                letterSpacing = '0.5px'
+            }
+        })
+    else
+        lib.hideTextUI()
+    end
+end
 
 -- Helper: Clean up existing blips & sphere zone
 local function clearActiveTrapHouseZone()
@@ -11,89 +42,173 @@ local function clearActiveTrapHouseZone()
         activeSphere = nil
     end
 
-    for _, blip in ipairs(activeBlips) do
-        if DoesBlipExist(blip) then
-            RemoveBlip(blip)
-        end
+    if activeRadiusBlip and DoesBlipExist(activeRadiusBlip) then
+        RemoveBlip(activeRadiusBlip)
     end
-    activeBlips = {}
+    activeRadiusBlip = nil
 
-    if isInRedZone then
-        isInRedZone = false
-        currentZoneLabel = nil
-        lib.hideTextUI()
+    if activeMarkerBlip and DoesBlipExist(activeMarkerBlip) then
+        RemoveBlip(activeMarkerBlip)
+    end
+    activeMarkerBlip = nil
+
+    currentActiveZone = nil
+    setRedZoneState(false, nil)
+end
+
+-- Helper: Create or restore 2D Radius Blip and Skull Marker Blip
+local function createActiveBlips(zoneData)
+    if not zoneData or not zoneData.coords then return end
+
+    local cx = tonumber(zoneData.coords.x) or 0.0
+    local cy = tonumber(zoneData.coords.y) or 0.0
+    local cz = tonumber(zoneData.coords.z) or 0.0
+    local radius = (tonumber(zoneData.radius) or 200.0) + 0.0
+
+    -- 1. Create/Restore 2D RedZone Radius Blip on Map and Minimap
+    if not activeRadiusBlip or not DoesBlipExist(activeRadiusBlip) then
+        activeRadiusBlip = AddBlipForRadius(cx, cy, cz, radius)
+        SetBlipColour(activeRadiusBlip, (zoneData.blip and zoneData.blip.color) or 1)
+        SetBlipAlpha(activeRadiusBlip, (zoneData.blip and zoneData.blip.alpha) or 110)
+        SetBlipHighDetail(activeRadiusBlip, true)
+        SetBlipAsShortRange(activeRadiusBlip, false)
+        SetBlipRotation(activeRadiusBlip, 0)
+        SetBlipDisplay(activeRadiusBlip, 4)
+    end
+
+    -- 2. Create/Restore Marker Skull Blip
+    if not activeMarkerBlip or not DoesBlipExist(activeMarkerBlip) then
+        activeMarkerBlip = AddBlipForCoord(cx, cy, cz)
+        SetBlipSprite(activeMarkerBlip, 310)
+        SetBlipColour(activeMarkerBlip, 1)
+        SetBlipScale(activeMarkerBlip, 0.85)
+        SetBlipAsShortRange(activeMarkerBlip, false)
+        SetBlipDisplay(activeMarkerBlip, 4)
+        BeginTextCommandSetBlipName("STRING")
+        AddTextComponentString(('TRAPHOUSE: %s'):format(zoneData.label or 'Zone'))
+        EndTextCommandSetBlipName(activeMarkerBlip)
     end
 end
 
 -- Helper: Load and activate single active TrapHouse zone
 local function updateActiveTrapHouseZone(zoneData)
+    if not zoneData or not zoneData.coords then
+        clearActiveTrapHouseZone()
+        return
+    end
+
+    -- If the zone is already active and blips are healthy, avoid redundant recreate
+    if currentActiveZone and currentActiveZone.id == zoneData.id and activeRadiusBlip and DoesBlipExist(activeRadiusBlip) and activeMarkerBlip and DoesBlipExist(activeMarkerBlip) then
+        currentActiveZone = zoneData
+        return
+    end
+
     clearActiveTrapHouseZone()
-    if not zoneData or not zoneData.coords then return end
+    currentActiveZone = zoneData
 
-    -- Create Radius Blip for Active TrapHouse
-    local radiusBlip = AddBlipForRadius(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z, zoneData.radius)
-    SetBlipColour(radiusBlip, (zoneData.blip and zoneData.blip.color) or 1)
-    SetBlipAlpha(radiusBlip, (zoneData.blip and zoneData.blip.alpha) or 110)
+    local cx = tonumber(zoneData.coords.x) or 0.0
+    local cy = tonumber(zoneData.coords.y) or 0.0
+    local cz = tonumber(zoneData.coords.z) or 0.0
+    local radius = (tonumber(zoneData.radius) or 200.0) + 0.0
+    local zoneCoords = vector3(cx, cy, cz)
 
-    -- Create Marker Skull Blip for Active TrapHouse
-    local markerBlip = AddBlipForCoord(zoneData.coords.x, zoneData.coords.y, zoneData.coords.z)
-    SetBlipSprite(markerBlip, 310)
-    SetBlipColour(markerBlip, 1)
-    SetBlipScale(markerBlip, 0.85)
-    SetBlipAsShortRange(markerBlip, true)
-    BeginTextCommandSetBlipName("STRING")
-    AddTextComponentString(('TRAPHOUSE: %s'):format(zoneData.label))
-    EndTextCommandSetBlipName(markerBlip)
+    createActiveBlips(zoneData)
 
-    activeBlips[#activeBlips + 1] = radiusBlip
-    activeBlips[#activeBlips + 1] = markerBlip
-
-    -- Create Sphere Zone for Active TrapHouse ONLY
+    -- Create Sphere Zone for Active TrapHouse
     activeSphere = lib.zones.sphere({
-        coords = zoneData.coords,
-        radius = zoneData.radius,
+        coords = zoneCoords,
+        radius = radius,
         debug = false,
         onEnter = function()
-            isInRedZone = true
-            currentZoneLabel = zoneData.label
-
-            DisplayRadar(true)
-            DisplayHud(true)
-
-            lib.showTextUI('TRAPHOUSE REDZONE • KILL ON SIGHT', {
-                position = 'top-center',
-                icon = 'fa-solid fa-skull',
-                style = {
-                    borderRadius = '6px',
-                    backgroundColor = 'rgba(13, 13, 18, 0.9)',
-                    color = '#ff4d4d',
-                    border = '1px solid rgba(255, 58, 58, 0.4)',
-                    padding = '6px 12px',
-                    fontSize = '12px',
-                    fontWeight = '600',
-                    letterSpacing = '0.5px'
-                }
-            })
+            setRedZoneState(true, zoneData.label)
         end,
         onExit = function()
-            isInRedZone = false
-            currentZoneLabel = nil
-            lib.hideTextUI()
+            setRedZoneState(false, nil)
         end
     })
+
+    -- Immediate position check in case player is already inside zone
+    local ped = PlayerPedId()
+    if DoesEntityExist(ped) then
+        local pCoords = GetEntityCoords(ped)
+        if #(pCoords - zoneCoords) <= radius then
+            setRedZoneState(true, zoneData.label)
+        end
+    end
 end
+
+-- Synchronize active zone from GlobalState
+local function refreshActiveTrapHouseZone()
+    local activeZone = GlobalState.traphouse_active_zone
+    if activeZone and activeZone.coords then
+        updateActiveTrapHouseZone(activeZone)
+    end
+end
+
+-- Watchdog Heartbeat: Guarantees 2D redzone blip and state consistency (self-healing)
+CreateThread(function()
+    while true do
+        Wait(2500)
+        local activeZone = GlobalState.traphouse_active_zone
+        if activeZone and activeZone.coords then
+            -- Re-assert blips if missing/wiped by engine
+            if not activeRadiusBlip or not DoesBlipExist(activeRadiusBlip) or not activeMarkerBlip or not DoesBlipExist(activeMarkerBlip) then
+                createActiveBlips(activeZone)
+            end
+
+            -- Ensure zone state is 100% accurate relative to player coords
+            local ped = PlayerPedId()
+            if DoesEntityExist(ped) then
+                local cx = tonumber(activeZone.coords.x) or 0.0
+                local cy = tonumber(activeZone.coords.y) or 0.0
+                local cz = tonumber(activeZone.coords.z) or 0.0
+                local radius = (tonumber(activeZone.radius) or 200.0) + 0.0
+                local dist = #(GetEntityCoords(ped) - vector3(cx, cy, cz))
+
+                if dist <= radius then
+                    if not isInRedZone then
+                        setRedZoneState(true, activeZone.label)
+                    end
+                else
+                    if isInRedZone then
+                        setRedZoneState(false, nil)
+                    end
+                end
+            end
+        elseif currentActiveZone then
+            clearActiveTrapHouseZone()
+        end
+    end
+end)
 
 -- Listen to GlobalState change for instant rotation
 AddStateBagChangeHandler('traphouse_active_zone', 'global', function(bagName, key, value)
     updateActiveTrapHouseZone(value)
 end)
 
--- Initial Load on Client Start
+-- Player Lifecycle Handlers: Refresh on spawn, load, or dimension change
+RegisterNetEvent('esx:playerLoaded', function()
+    Wait(1000)
+    refreshActiveTrapHouseZone()
+end)
+
+RegisterNetEvent('esx:onPlayerSpawn', function()
+    Wait(1000)
+    refreshActiveTrapHouseZone()
+end)
+
+AddEventHandler('playerSpawned', function()
+    Wait(1000)
+    refreshActiveTrapHouseZone()
+end)
+
+-- Initial Load on Client Start (Waits for player activation to avoid premature radar wipe)
 CreateThread(function()
-    while not GlobalState.traphouse_active_zone do
+    while not NetworkIsPlayerActive(PlayerId()) do
         Wait(500)
     end
-    updateActiveTrapHouseZone(GlobalState.traphouse_active_zone)
+    Wait(1500) -- Allow radar subsystem to settle
+    refreshActiveTrapHouseZone()
 end)
 
 -- Optional Vehicle Cleanup Thread inside Active TrapHouse Zone
@@ -129,12 +244,17 @@ CreateThread(function()
     end
 end)
 
--- Global Export for compatibility with other resources
+-- Global Exports
 function InRedZoneField()
     return isInRedZone
 end
 
+function GetActiveTrapHouseZone()
+    return currentActiveZone or GlobalState.traphouse_active_zone
+end
+
 exports('InRedZoneField', InRedZoneField)
+exports('GetActiveTrapHouseZone', GetActiveTrapHouseZone)
 
 -- Cleanup on Resource Stop
 AddEventHandler('onResourceStop', function(resName)
