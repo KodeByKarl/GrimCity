@@ -18,7 +18,7 @@ Config.WeedFarm = {
     ItemLabel = "Weed Bud",
     MinReward = 2,
     MaxReward = 5,
-    RegrowDuration = 30000,
+    RegrowDuration = 0, -- 0 ms: instant unlimited harvest at plant spots
 
     Locations = {
         vector3(2218.5346679688, 5577.3530273438, 52.85710144043),

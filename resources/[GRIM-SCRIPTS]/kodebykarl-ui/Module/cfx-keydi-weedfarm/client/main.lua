@@ -115,15 +115,12 @@ CreateThread(function()
             local dist = #(pCoords - loc)
             if dist <= 2.5 then
                 sleep = 0
-                if harvestedPlants[i] then
-                    DrawText3D(loc.x, loc.y, loc.z + 0.5, "~r~Plant Regrowing...")
-                elseif IsBusy() then
-                    DrawText3D(loc.x, loc.y, loc.z + 0.5, "~y~Busy...")
+                if IsBusy() then
+                    DrawText3D(loc.x, loc.y, loc.z + 0.5, "~y~Harvesting...")
                 else
                     DrawText3D(loc.x, loc.y, loc.z + 0.5, "~g~[E]~s~ Harvest Weed")
 
                     if IsControlJustReleased(0, 38) then
-                        harvestedPlants[i] = true
                         TriggerServerEvent("cfx-keydi-weedfarm:server:startHarvest", i)
                         Wait(500)
                     end
@@ -194,44 +191,21 @@ CreateThread(function()
     end
 end)
 
--- Weed plant harvest
+-- Weed plant harvest (No HUD popup container, instant repeat harvest)
 RegisterNetEvent("cfx-keydi-weedfarm:client:harvestStarted", function(plantIndex, duration)
     if IsBusy() then return end
     isHarvesting = true
-    harvestedPlants[plantIndex] = true
 
     duration = duration or Config.WeedFarm.HarvestDuration or 4000
     local itemLabel = Config.WeedFarm.ItemLabel or "Weed Bud"
-
-    local invWeight = (GetResourceState("ox_inventory") == "started" and exports.ox_inventory:GetPlayerWeight()) or 0
-    local maxWeight = (GetResourceState("ox_inventory") == "started" and exports.ox_inventory:GetPlayerMaxWeight()) or 24000
-    local collected = (GetResourceState("ox_inventory") == "started" and tonumber(exports.ox_inventory:Search("count", "weed_bud"))) or 0
-
-    SendWeedfarmHud("cfx-keydi-weedfarm:show", {
-        status = "active",
-        stage = "harvest",
-        label = itemLabel,
-        itemWeight = 50,
-        collected = collected,
-        weight = invWeight,
-        maxWeight = maxWeight,
-        progress = 0.05,
-        zone = "San Chianski Weed Farm",
-        rarity = "uncommon",
-        untilFull = math.max(0, math.floor((maxWeight - invWeight) / 50)),
-        etaSeconds = math.ceil(duration / 1000),
-    })
 
     local success = RunProgress(duration, ("Harvesting %s…"):format(itemLabel), {
         dict = "amb@world_human_gardener_plant@male@base",
         clip = "base",
     })
 
-    HideWeedfarmHud()
-
     if not success then
         isHarvesting = false
-        harvestedPlants[plantIndex] = nil
         TriggerServerEvent("cfx-keydi-weedfarm:server:cancelAction")
         return
     end
@@ -385,13 +359,9 @@ RegisterNetEvent("cfx-keydi-weedfarm:client:processDenied", function(reason, ite
     end
 end)
 
--- Server Sync for Plant Regrow Cooldown
+-- Server Sync for Plant Regrow Cooldown (disabled for unli harvest)
 RegisterNetEvent("cfx-keydi-weedfarm:client:syncCooldown", function(plantIndex, state)
-    if state then
-        harvestedPlants[plantIndex] = true
-    else
-        harvestedPlants[plantIndex] = nil
-    end
+    -- unli harvest enabled: plants do not lock out
 end)
 
 -- Clean up on resource stop

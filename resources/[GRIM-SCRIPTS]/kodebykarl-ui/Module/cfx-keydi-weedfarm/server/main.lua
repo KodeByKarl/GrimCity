@@ -115,12 +115,6 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:startHarvest", function(plantIndex)
         return
     end
 
-    local currentTime = os.time()
-    if plantCooldowns[plantIndex] and currentTime < plantCooldowns[plantIndex] then
-        TriggerClientEvent('esx:showNotification', src, "~r~This weed plant is currently regrowing.")
-        return
-    end
-
     if IsPlayerBusy(src) then
         return
     end
@@ -131,22 +125,10 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:startHarvest", function(plantIndex)
     end
 
     local duration = Config.WeedFarm.HarvestDuration or 4000
-    local regrowDuration = Config.WeedFarm.RegrowDuration or 30000
-    local totalCooldownSecs = math.floor((duration + regrowDuration) / 1000)
-
-    plantCooldowns[plantIndex] = currentTime + totalCooldownSecs
-    TriggerClientEvent("cfx-keydi-weedfarm:client:syncCooldown", -1, plantIndex, true)
-
-    SetTimeout(duration + regrowDuration, function()
-        if plantCooldowns[plantIndex] and os.time() >= plantCooldowns[plantIndex] then
-            plantCooldowns[plantIndex] = nil
-            TriggerClientEvent("cfx-keydi-weedfarm:client:syncCooldown", -1, plantIndex, false)
-        end
-    end)
 
     activeHarvesters[src] = {
         plantIndex = plantIndex,
-        startTime = currentTime,
+        startTime = os.time(),
         startAt = GetGameTimer(),
         durationMs = duration,
         durationSecs = math.floor(duration / 1000)
@@ -521,12 +503,6 @@ end)
 RegisterNetEvent("cfx-keydi-weedfarm:server:cancelAction", function()
     local src = source
     if type(src) ~= "number" or src < 1 then return end
-
-    local harvest = activeHarvesters[src]
-    if harvest and harvest.plantIndex then
-        plantCooldowns[harvest.plantIndex] = nil
-        TriggerClientEvent("cfx-keydi-weedfarm:client:syncCooldown", -1, harvest.plantIndex, false)
-    end
 
     activeHarvesters[src] = nil
     activeCollectors[src] = nil
