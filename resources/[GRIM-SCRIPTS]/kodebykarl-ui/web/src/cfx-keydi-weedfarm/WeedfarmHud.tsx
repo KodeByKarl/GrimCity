@@ -278,20 +278,20 @@ export default function WeedfarmHud() {
   const cycleOffset = RING_CIRCUMFERENCE * (1 - Math.min(Math.max(data.progress, 0), 1));
 
   return (
-    <div className="fixed left-8 top-1/2 z-[99990] w-[330px] -translate-y-1/2 select-none font-sans transition-all duration-300">
+    <div className="fixed left-6 top-[48%] z-[99990] w-[315px] -translate-y-1/2 select-none font-sans transition-all duration-300 pointer-events-none">
       <div
-        className="relative overflow-hidden rounded-2xl border bg-[#0b0f0d]/95 backdrop-blur-xl shadow-[0_24px_65px_rgba(0,0,0,0.85)]"
+        className="pointer-events-auto relative overflow-hidden rounded-2xl border shadow-[0_24px_65px_rgba(0,0,0,0.95)]"
         style={{
-          borderColor: "rgba(16, 185, 129, 0.45)",
-          boxShadow: "0 0 35px rgba(16, 185, 129, 0.15), 0 20px 50px rgba(0,0,0,0.8)",
+          backgroundColor: "#0d120f",
+          borderColor: "rgba(16, 185, 129, 0.55)",
+          boxShadow: "0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(16, 185, 129, 0.25)",
         }}
       >
-        {/* Subtle Ambient Green Herbal Glow */}
-        <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-36 w-36 rounded-full bg-emerald-600/10 blur-3xl" />
-
         {/* Top Header */}
-        <div className="relative flex items-center justify-between border-b border-emerald-500/20 px-4 py-3 bg-gradient-to-r from-emerald-950/40 via-[#0b0f0d] to-[#0b0f0d]">
+        <div
+          className="relative flex items-center justify-between border-b border-emerald-500/20 px-4 py-3"
+          style={{ backgroundColor: "#111814" }}
+        >
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-500/15 shadow-[inset_0_0_12px_rgba(16,185,129,0.2)]">
               <Sprout className="h-5 w-5 text-emerald-400" strokeWidth={2.4} />
@@ -326,7 +326,10 @@ export default function WeedfarmHud() {
         </div>
 
         {/* Interactive Stages Bar (Especially useful for browser preview) */}
-        <div className="border-b border-white/5 bg-black/40 px-3 py-2">
+        <div
+          className="border-b border-white/5 px-3 py-2"
+          style={{ backgroundColor: "#0a0e0c" }}
+        >
           <div className="flex items-center justify-between gap-1">
             {(["harvest", "package", "roll"] as const).map((stg) => {
               const cfg = STAGES_CONFIG[stg];
@@ -340,8 +343,8 @@ export default function WeedfarmHud() {
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer",
                     isCurrent
-                      ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.25)]"
-                      : "border-white/5 bg-[#121714] text-white/45 hover:border-white/20 hover:text-white/80"
+                      ? "border-emerald-500/60 bg-emerald-950 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.25)]"
+                      : "border-white/5 bg-[#141b16] text-white/45 hover:border-white/20 hover:text-white/80"
                   )}
                 >
                   <IconComp className="h-3.5 w-3.5 shrink-0" />
@@ -353,10 +356,13 @@ export default function WeedfarmHud() {
         </div>
 
         {/* Content Body */}
-        <div className="space-y-3.5 p-4">
+        <div className="space-y-3 p-3.5" style={{ backgroundColor: "#0d120f" }}>
           {/* Zone & Rarity Header */}
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-white/8 bg-[#131915] px-2.5 py-1.5">
+            <div
+              className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-white/8 px-2.5 py-1.5"
+              style={{ backgroundColor: "#111814" }}
+            >
               <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
               <span className="truncate text-[10.5px] font-bold uppercase tracking-wide text-white/90">
                 {data.zone}
@@ -371,9 +377,15 @@ export default function WeedfarmHud() {
           </div>
 
           {/* Core Item Progress Card */}
-          <div className="flex items-center gap-3.5 rounded-xl border border-white/5 bg-[#101512] p-3">
+          <div
+            className="flex items-center gap-3.5 rounded-xl border border-white/5 p-3"
+            style={{ backgroundColor: "#111814" }}
+          >
             {/* Animated Progress Radial Ring */}
-            <div className="relative flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-[#0b0e0c]">
+            <div
+              className="relative flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-xl border border-emerald-500/25"
+              style={{ backgroundColor: "#080c09" }}
+            >
               <svg className="absolute inset-1 -rotate-90" viewBox="0 0 100 100">
                 <circle
                   cx="50"
@@ -400,7 +412,10 @@ export default function WeedfarmHud() {
                 />
               </svg>
 
-              <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-black/60 shadow-inner">
+              <div
+                className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full shadow-inner"
+                style={{ backgroundColor: "#050806" }}
+              >
                 {data.image && !imageFailed ? (
                   <img
                     src={data.image}
@@ -413,7 +428,10 @@ export default function WeedfarmHud() {
                 )}
               </div>
 
-              <span className="absolute -bottom-1.5 rounded-full border border-emerald-500/40 bg-black/90 px-1.5 py-0.2 text-[8px] font-black text-emerald-400">
+              <span
+                className="absolute -bottom-1.5 rounded-full border border-emerald-500/40 px-1.5 py-0.2 text-[8px] font-black text-emerald-400"
+                style={{ backgroundColor: "#050806" }}
+              >
                 {progressPct}%
               </span>
             </div>
@@ -443,7 +461,10 @@ export default function WeedfarmHud() {
 
           {/* Recipe Requirements (for Packaging & Rolling) */}
           {data.recipe && (data.recipe.requires || data.recipe.requireLabel) && (
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-2.5 text-[10.5px] space-y-1.5 shadow-sm">
+            <div
+              className="rounded-xl border border-emerald-500/20 p-2.5 text-[10.5px] space-y-1.5 shadow-sm"
+              style={{ backgroundColor: "#111814" }}
+            >
               <div className="flex items-center justify-between text-white/70 font-semibold">
                 <span className="flex items-center gap-1.5">
                   <Layers className="h-3.5 w-3.5 text-emerald-400" />
@@ -452,7 +473,10 @@ export default function WeedfarmHud() {
                   </span>
                 </span>
                 {data.recipe.inputLabel && (
-                  <span className="rounded border border-emerald-500/30 bg-emerald-950/50 px-1.5 py-0.5 font-bold text-emerald-300">
+                  <span
+                    className="rounded border border-emerald-500/30 px-1.5 py-0.5 font-bold text-emerald-300"
+                    style={{ backgroundColor: "#080c09" }}
+                  >
                     {data.recipe.inputAmount}x {data.recipe.inputLabel}
                   </span>
                 )}
@@ -491,7 +515,10 @@ export default function WeedfarmHud() {
           )}
 
           {/* Inventory Capacity & Yield Forecast */}
-          <div className="rounded-xl border border-white/5 bg-[#101512] p-3 space-y-2">
+          <div
+            className="rounded-xl border border-white/5 p-3 space-y-2"
+            style={{ backgroundColor: "#111814" }}
+          >
             <div className="flex items-center justify-between text-[11px] font-bold">
               <span className="flex items-center gap-1.5 text-white/60">
                 <Weight className="h-3.5 w-3.5 text-emerald-400" />
@@ -504,7 +531,10 @@ export default function WeedfarmHud() {
             </div>
 
             {/* Custom emerald weight progress bar */}
-            <div className="h-2 w-full overflow-hidden rounded-full border border-white/5 bg-black/50">
+            <div
+              className="h-2 w-full overflow-hidden rounded-full border border-white/5"
+              style={{ backgroundColor: "#060907" }}
+            >
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{
@@ -519,14 +549,20 @@ export default function WeedfarmHud() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <div className="rounded-lg border border-white/5 bg-black/30 p-2 text-left">
+              <div
+                className="rounded-lg border border-white/5 p-2 text-left"
+                style={{ backgroundColor: "#080c09" }}
+              >
                 <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Gathered</p>
                 <p className="text-[13px] font-black text-white">
                   {data.collected}{" "}
                   <span className="text-[9.5px] font-normal text-emerald-400">units</span>
                 </p>
               </div>
-              <div className="rounded-lg border border-white/5 bg-black/30 p-2 text-left">
+              <div
+                className="rounded-lg border border-white/5 p-2 text-left"
+                style={{ backgroundColor: "#080c09" }}
+              >
                 <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Bag Full In</p>
                 <div className="flex items-center gap-1 text-[13px] font-black text-emerald-400">
                   <Clock className="h-3 w-3" />
@@ -537,7 +573,7 @@ export default function WeedfarmHud() {
           </div>
 
           {/* Quick Guidance Footer */}
-          <div className="flex items-center justify-between border-t border-white/5 pt-2 text-[9.5px] font-bold text-white/40">
+          <div className="flex items-center justify-between border-t border-white/8 pt-2 text-[9.5px] font-bold text-white/40">
             <span className="flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-emerald-400" />
               <span>+{data.untilFull} more can fit</span>
