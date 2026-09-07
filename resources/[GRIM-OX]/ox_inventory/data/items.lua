@@ -835,6 +835,124 @@ return {
 		}
 	},
 
+	['sheriff_vest'] = {
+		label = 'Sheriff Heavy Vest',
+		weight = 3000,
+		description = 'Tactical body armor issued to Blaine County Sheriff deputies. Restores 100 armor.',
+		allowArmed = true,
+		client = {
+			image = 'sheriff_vest.png',
+			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
+			usetime = 3500,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_vest'
+		}
+	},
+
+	['sheriff_vitamins'] = {
+		label = 'Sheriff Vitamins',
+		weight = 100,
+		description = 'Tactical BCSO vitamins: Cures bleeding, restores 100% health and full 100 armor.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'sheriff_vitamins.png',
+			anim = { dict = 'mp_suicide', clip = 'pill_fp' },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_vitamins'
+		}
+	},
+
+	['sheriff_drink'] = {
+		label = 'Sheriff Speed Drink',
+		weight = 250,
+		description = 'Tactical BCSO energy drink: Grants 2x sprint speed for 10 seconds.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'sheriff_drink.png',
+			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
+			prop = { model = `prop_ld_can_01`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_drink'
+		}
+	},
+
+	['sheriff_ammo_box_9'] = {
+		label = 'Sheriff 9mm Ammo Box',
+		weight = 350,
+		description = 'Tactical ammo box containing 50 rounds of 9mm ammunition for BCSO sidearms and SMGs.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'sheriff_ammo_box_9.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_ammo_box_9'
+		}
+	},
+
+	['sheriff_ammo_box_rifle'] = {
+		label = 'Sheriff 5.56 Rifle Ammo Box',
+		weight = 400,
+		description = 'Tactical ammo box containing 60 rounds of 5.56x45mm ammunition for BCSO patrol rifles.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'sheriff_ammo_box_rifle.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_ammo_box_rifle'
+		}
+	},
+
+	['sheriff_ammo_box_rifle2'] = {
+		label = 'Sheriff 7.62 Rifle Ammo Box',
+		weight = 500,
+		description = 'Heavy tactical ammo box containing 60 rounds of 7.62x39mm ammunition for heavy BCSO rifles.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'sheriff_ammo_box_rifle2.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_ammo_box_rifle2'
+		}
+	},
+
+	['sheriff_ammo_box_shotgun'] = {
+		label = 'Sheriff 12G Shotgun Ammo Box',
+		weight = 450,
+		description = 'Tactical ammo box containing 30 rounds of 12-gauge shotgun shells for BCSO shotguns.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'sheriff_ammo_box_shotgun.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.sheriff_ammo_box_shotgun'
+		}
+	},
+
 	-- Clothing items (kodebykarl-utils clothing menu / Keybind 'U')
 	['torso'] = {
 		label = 'Shirt / Top',

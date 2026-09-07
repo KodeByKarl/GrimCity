@@ -288,6 +288,110 @@ exports('pd_ammo_box_shotgun', function(event, item, inventory, slot, data)
 	end
 end)
 
+-- Sheriff Custom Items
+exports('sheriff_ammo_box_9', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-9', 50) then
+			notify(inventory.id, 'Sheriff Armoury', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-9', 50)
+		notify(inventory.id, 'Sheriff Armoury', 'Unpacked 50 rounds of 9mm Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('sheriff_ammo_box_rifle', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle', 60) then
+			notify(inventory.id, 'Sheriff Armoury', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-rifle', 60)
+		notify(inventory.id, 'Sheriff Armoury', 'Unpacked 60 rounds of 5.56 Rifle Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('sheriff_ammo_box_rifle2', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle2', 60) then
+			notify(inventory.id, 'Sheriff Armoury', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-rifle2', 60)
+		notify(inventory.id, 'Sheriff Armoury', 'Unpacked 60 rounds of 7.62 Rifle Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('sheriff_ammo_box_shotgun', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-shotgun', 30) then
+			notify(inventory.id, 'Sheriff Armoury', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-shotgun', 30)
+		notify(inventory.id, 'Sheriff Armoury', 'Unpacked 30 rounds of 12G Shotgun Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('sheriff_vitamins', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not hasGroup(inventory.id, {'sheriff', 'police'}) then
+			notify(inventory.id, 'INVENTORY', 'You are not an active sheriff deputy.', 'error', 5000)
+			return false
+		end
+		return true
+	end
+	if event == 'usedItem' then
+		grantHealthArmor(inventory.id, 200, 100)
+		TriggerClientEvent('cfx-keydi-ambulance:client:RemoveBleed', inventory.id)
+		TriggerClientEvent('ox_items:UsedItem', inventory.id, 'sheriff_vitamins')
+		return true
+	end
+end)
+
+exports('sheriff_drink', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not hasGroup(inventory.id, {'sheriff', 'police'}) then
+			notify(inventory.id, 'INVENTORY', 'You are not an active sheriff deputy.', 'error', 5000)
+			return false
+		end
+		return true
+	end
+	if event == 'usedItem' then
+		TriggerClientEvent('ox_items:UsedItem', inventory.id, 'sheriff_drink')
+		return true
+	end
+end)
+
+exports('sheriff_vest', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not hasGroup(inventory.id, {'sheriff', 'police'}) then
+			notify(inventory.id, 'Inventory', 'You can\'t use this item.', 'error', 5000)
+			return false
+		end
+	end
+	if event == 'usedItem' then
+		grantHealthArmor(inventory.id, 0, 100)
+		local ped = GetPlayerPed(inventory.id)
+		local currentAmour = GetPedArmour(ped) + 100
+		if currentAmour > 100 then currentAmour = 100 end
+		SetPedArmour(ped, currentAmour)
+		return true
+	end
+end)
+
 local ProjectPartsBoxContents = {
 	{ item = 'car_battery', count = 1 },
 	{ item = 'car_alternator', count = 1 },
@@ -301,22 +405,113 @@ local ProjectPartsBoxContents = {
 	{ item = 'car_wheel', count = 4 },
 }
 
+local function resolveProjectModel(metadata)
+	if type(metadata) == 'table' and metadata.model and metadata.model ~= '' then
+		return tostring(metadata.model):lower():gsub('%s+', '')
+	end
+	return 'ody18'
+end
+
+local function buildPartMeta(itemName, model)
+	if GetResourceState('kodebykarl-projectcars') == 'started' then
+		local ok, meta = pcall(function()
+			return exports['kodebykarl-projectcars']:BuildPartMetadata(itemName, model)
+		end)
+		if ok and type(meta) == 'table' then
+			return meta
+		end
+	end
+	return {
+		model = model,
+		vehicle = model:upper(),
+		label = itemName == 'vehicle_shell' and (model:upper() .. ' Shell') or ('Project Vehicle Part'),
+		description = ('Fits %s project cars only.'):format(model:upper()),
+	}
+end
+
+-- Full ayuda kit: shell + 25 blueprints + all install parts (vehicle-tagged)
+local function buildAyudaContents(model)
+	return {
+		{ item = 'vehicle_shell', count = 1, metadata = buildPartMeta('vehicle_shell', model) },
+		{ item = 'car_blueprint', count = 25, metadata = buildPartMeta('car_blueprint', model) },
+		{ item = 'car_battery', count = 1, metadata = buildPartMeta('car_battery', model) },
+		{ item = 'car_alternator', count = 1, metadata = buildPartMeta('car_alternator', model) },
+		{ item = 'car_radiator', count = 1, metadata = buildPartMeta('car_radiator', model) },
+		{ item = 'car_engine_part', count = 1, metadata = buildPartMeta('car_engine_part', model) },
+		{ item = 'spark_plugs', count = 1, metadata = buildPartMeta('spark_plugs', model) },
+		{ item = 'car_transmission', count = 1, metadata = buildPartMeta('car_transmission', model) },
+		{ item = 'car_hood', count = 1, metadata = buildPartMeta('car_hood', model) },
+		{ item = 'car_door', count = 4, metadata = buildPartMeta('car_door', model) },
+		{ item = 'brake_pads', count = 4, metadata = buildPartMeta('brake_pads', model) },
+		{ item = 'car_wheel', count = 4, metadata = buildPartMeta('car_wheel', model) },
+	}
+end
+
+local function canCarryProjectContents(invId, contents)
+	for i = 1, #contents do
+		local entry = contents[i]
+		if not Inventory.CanCarryItem(invId, entry.item, entry.count) then
+			return false
+		end
+	end
+	return true
+end
+
+local function giveProjectContents(invId, contents)
+	for i = 1, #contents do
+		local entry = contents[i]
+		Inventory.AddItem(invId, entry.item, entry.count, entry.metadata)
+	end
+end
+
 exports('project_parts_box', function(event, item, inventory, slot, data)
-	if event == 'usingItem' then
-		for i = 1, #ProjectPartsBoxContents do
-			local entry = ProjectPartsBoxContents[i]
-			if not Inventory.CanCarryItem(inventory.id, entry.item, entry.count) then
-				notify(inventory.id, 'PROJECT PARTS', 'Inventory is too full to unpack this parts box.', 'error', 5000)
-				return false
+	local contents = {}
+	for i = 1, #ProjectPartsBoxContents do
+		local entry = ProjectPartsBoxContents[i]
+		for _ = 1, (entry.count or 1) do
+			local model = 'ody18'
+			if GetResourceState('kodebykarl-projectcars') == 'started' then
+				local ok, rolled = pcall(function()
+					return exports['kodebykarl-projectcars']:PickRandomProjectModel()
+				end)
+				if ok and type(rolled) == 'string' and rolled ~= '' then
+					model = rolled
+				end
 			end
+			contents[#contents + 1] = {
+				item = entry.item,
+				count = 1,
+				metadata = buildPartMeta(entry.item, model),
+			}
+		end
+	end
+
+	if event == 'usingItem' then
+		if not canCarryProjectContents(inventory.id, contents) then
+			notify(inventory.id, 'PROJECT PARTS', 'Inventory is too full to unpack this parts box.', 'error', 5000)
+			return false
 		end
 		return true
 	elseif event == 'usedItem' then
-		for i = 1, #ProjectPartsBoxContents do
-			local entry = ProjectPartsBoxContents[i]
-			Inventory.AddItem(inventory.id, entry.item, entry.count)
+		giveProjectContents(inventory.id, contents)
+		notify(inventory.id, 'PROJECT PARTS', 'Unpacked mixed project-car parts. Check each item for which vehicle it fits.', 'success', 5000)
+		return true
+	end
+end)
+
+exports('project_ayuda_box', function(event, item, inventory, slot, data)
+	local model = resolveProjectModel(item and item.metadata)
+	local contents = buildAyudaContents(model)
+
+	if event == 'usingItem' then
+		if not canCarryProjectContents(inventory.id, contents) then
+			notify(inventory.id, 'PROJECT AYUDA', 'Inventory is too full to unpack this ayuda box.', 'error', 5000)
+			return false
 		end
-		notify(inventory.id, 'PROJECT PARTS', 'Unpacked a full project-car parts kit.', 'success', 5000)
+		return true
+	elseif event == 'usedItem' then
+		giveProjectContents(inventory.id, contents)
+		notify(inventory.id, 'PROJECT AYUDA', ('Unpacked shell, blueprints, and %s parts.'):format(model:upper()), 'success', 6000)
 		return true
 	end
 end)
@@ -846,6 +1041,11 @@ local ItemBoxes = {
 		{ item = 'money', amount = 300000 },
 		{ item = 'lockpick', amount = 10 },
 		{ item = 'joint', amount = 5 },
+		{ item = 'project_ayuda_box', amount = 1 },
+	},
+	['food_drinks_box'] = {
+		{ item = 'grim_tea', amount = 1 },
+		{ item = 'grim_peas', amount = 1 },
 	},
 	['hightable_box1'] = {
 		{ item = 'WEAPON_PISTOL50', amount = 3 },
@@ -955,6 +1155,10 @@ exports('itemBoxes', function(event, item, inventory, slot, data)
 		end
 	end
 
+	if item.name == 'food_drinks_box' then
+		notify(invId, 'FOOD & DRINKS', 'Unpacked Grim Tea and Grim Peas.', 'success', 4000)
+	end
+
 	return true
 end)
 
@@ -985,10 +1189,34 @@ end)
 exports('stash_car', function(event, item, inventory, slot, data)
 	if event == 'usedItem' then
 		local xPlayer = ESX.GetPlayerFromId(inventory.id)
+		if not xPlayer then return false end
 		local plate = generateVehiclePlate()
-		notify( xPlayer.source, 'SYSTEM', 'Please get your vehicle for free at your nearest garage!', 'success', 10000)
-		notify( xPlayer.source, 'SYSTEM', ('You have received your stash car with plate: %s'):format(plate:upper()), 'success', 10000)
-		MySQL.insert.await('INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `nickname`) VALUES (?, ?, ?, ?, ?)', {xPlayer.identifier, plate, ('{"model":%s,"plate":"%s"}'):format(`moonbeam`, plate), true, ('STASH-%s'):format(plate:upper())})
+		notify(xPlayer.source, 'STASH CAR', 'Your Burrito stash van is waiting at your nearest garage!', 'success', 10000)
+		notify(xPlayer.source, 'STASH CAR', ('Plate: %s'):format(plate:upper()), 'success', 10000)
+		MySQL.insert.await(
+			'INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `nickname`) VALUES (?, ?, ?, ?, ?)',
+			{
+				xPlayer.identifier,
+				plate,
+				('{"model":%s,"plate":"%s"}'):format(`burrito`, plate),
+				true,
+				('STASH-%s'):format(plate:upper()),
+			}
+		)
+		return true
+	end
+end)
+
+exports('grim_tea', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { thirst = 50 })
+		return true
+	end
+end)
+
+exports('grim_peas', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { hunger = 50 })
 		return true
 	end
 end)

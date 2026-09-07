@@ -555,9 +555,9 @@ local energyDrinkBoost = false
 local policeDrinkBoost = false
 
 lib.callback.register('ox_inventory:canUseBandage', function()
-    if GetResourceState('cfx-keydi-ambulance') == 'started' then
+    if GetResourceState('kodebykarl-ambulance') == 'started' then
         local ok, dead = pcall(function()
-            return exports['cfx-keydi-ambulance']:isDead()
+            return exports['kodebykarl-ambulance']:isDead()
         end)
         if ok and dead then
             return false, 'You cannot use a bandage while dead.'
@@ -578,12 +578,12 @@ lib.callback.register('ox_inventory:canUseBandage', function()
 end)
 
 lib.callback.register('ox_inventory:isPlayerBleeding', function()
-    if GetResourceState('cfx-keydi-ambulance') ~= 'started' then
+    if GetResourceState('kodebykarl-ambulance') ~= 'started' then
         return false
     end
 
     local ok, bleeding = pcall(function()
-        return exports['cfx-keydi-ambulance']:IsBleeding()
+        return exports['kodebykarl-ambulance']:IsBleeding()
     end)
 
     return ok and bleeding or false
@@ -663,17 +663,17 @@ RegisterNetEvent('ox_items:UsedItem', function(item)
         if not maxHealth or maxHealth < 200 then maxHealth = 200 end
         SetEntityHealth(ped, maxHealth)
         SetPedArmour(ped, 100)
-    elseif item == 'police_vitamins' then
+    elseif item == 'police_vitamins' or item == 'sheriff_vitamins' then
         local ped = cache.ped
         TriggerEvent('cfx-keydi-ambulance:client:RemoveBleed')
-        if GetResourceState('cfx-keydi-ambulance') == 'started' then
-            pcall(function() exports['cfx-keydi-ambulance']:RemoveBleed() end)
+        if GetResourceState('kodebykarl-ambulance') == 'started' then
+            pcall(function() exports['kodebykarl-ambulance']:RemoveBleed() end)
         end
         local maxHealth = GetEntityMaxHealth(ped)
         if not maxHealth or maxHealth < 200 then maxHealth = 200 end
         SetEntityHealth(ped, maxHealth)
         SetPedArmour(ped, 100)
-    elseif item == 'police_drink' then
+    elseif item == 'police_drink' or item == 'sheriff_drink' then
         policeDrinkBoost = true
         SetTimeout(10000, function()
             policeDrinkBoost = false
