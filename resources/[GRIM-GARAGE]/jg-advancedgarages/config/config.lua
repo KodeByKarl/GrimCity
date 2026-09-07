@@ -796,7 +796,7 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     type = "car",
     job = {"police", "lspd", "bcso", "sheriff"},
     vehiclesType = "owned",
-    hideBlip = false,
+    hideBlip = true,
     blip = {
       id = 357,
       color = 3,
@@ -822,7 +822,7 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
         maxMods = true,
       },
     },
-    hideBlip = false,
+    hideBlip = true,
     blip = {
       id = 43,
       color = 5,
@@ -843,7 +843,7 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     type = "car",
     job = {"sheriff", "bcso", "police"},
     vehiclesType = "owned",
-    hideBlip = false,
+    hideBlip = true,
     blip = {
       id = 357,
       color = 5,
