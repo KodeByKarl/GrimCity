@@ -67,9 +67,10 @@ local function createActiveBlips(zoneData)
 
     -- 1. Create/Restore 2D RedZone Radius Blip on Map and Minimap
     if not activeRadiusBlip or not DoesBlipExist(activeRadiusBlip) then
-        activeRadiusBlip = AddBlipForRadius(cx, cy, cz, radius)
+        activeRadiusBlip = AddBlipForRadius(cx + 0.0, cy + 0.0, cz + 0.0, radius)
+        SetBlipSprite(activeRadiusBlip, 9)
         SetBlipColour(activeRadiusBlip, (zoneData.blip and zoneData.blip.color) or 1)
-        SetBlipAlpha(activeRadiusBlip, (zoneData.blip and zoneData.blip.alpha) or 110)
+        SetBlipAlpha(activeRadiusBlip, (zoneData.blip and zoneData.blip.alpha) or 130)
         SetBlipHighDetail(activeRadiusBlip, true)
         SetBlipAsShortRange(activeRadiusBlip, false)
         SetBlipRotation(activeRadiusBlip, 0)
@@ -255,6 +256,16 @@ end
 
 exports('InRedZoneField', InRedZoneField)
 exports('GetActiveTrapHouseZone', GetActiveTrapHouseZone)
+
+-- Manual Refresh Command
+RegisterCommand('refreshtraphouse', function()
+    refreshActiveTrapHouseZone()
+    lib.notify({
+        title = 'TRAPHOUSE',
+        description = 'TrapHouse 2D RedZone refreshed.',
+        type = 'inform'
+    })
+end, false)
 
 -- Cleanup on Resource Stop
 AddEventHandler('onResourceStop', function(resName)
