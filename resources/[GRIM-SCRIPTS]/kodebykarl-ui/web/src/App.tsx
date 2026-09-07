@@ -8,7 +8,6 @@ import FpsOptimizer, { FpsPreset } from "./cfx-keydi-fps/FpsOptimizer";
 import ReportSystem, { OpenReport, ReportCategory } from "./cfx-keydi-report/ReportSystem";
 import BankingSystem from "./cfx-keydi-banking/BankingSystem";
 import AutofarmHud from "./cfx-keydi-autofarm/AutofarmHud";
-import WeedfarmHud from "./cfx-keydi-weedfarm/WeedfarmHud";
 import PatchNotes from "./cfx-keydi-patchnotes/PatchNotes";
 import MultiJob from "./cfx-keydi-multijob/MultiJob";
 import Regions from "./cfx-keydi-regions/Regions";
@@ -247,11 +246,10 @@ export default function App() {
       setBadgeVisible(false);
       setRadioHudVisible(false);
       setIpadVisible(true);
-      // Prod-default: weedfarm HUD. Preview with ?preview=weedfarm|autofarm|citizen|police|boss|owner|business
       // University: ?preview=university|student|teacher|dean|director|registrar
       // Playtime shop: ?preview=shop | Autofarm: ?preview=autofarm | Modules: ?preview=modules | Death: ?preview=deathscreen
       // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip | Phone: ?preview=phone
-      const preview = new URLSearchParams(window.location.search).get("preview") || "weedfarm";
+      const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
       if (preview === "registrar") {
         setIpadVisible(false);
         setRegistrarVisible(true);
@@ -1248,9 +1246,6 @@ export default function App() {
 
       {/* Auto Farm HUD (shown while standing in a farm marker) */}
       <AutofarmHud />
-
-      {/* Weed Farm HUD (shown while harvesting / processing weed) */}
-      <WeedfarmHud />
 
       {/* Welcome banner (.wcb) — bottom-right 65x65 overlay */}
       <WelcomeBanner />
