@@ -1221,6 +1221,102 @@ exports('grim_peas', function(event, item, inventory, slot, data)
 	end
 end)
 
+-- 8-Ball Food, Drink & Combo Box
+exports('8ball_food', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { hunger = 50 })
+		notify(inventory.id, '8-BALL DINER', 'Ate an 8-Ball Burger (+50% Hunger).', 'success', 3500)
+		return true
+	end
+end)
+
+exports('8ball_drink', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { thirst = 50 })
+		notify(inventory.id, '8-BALL DINER', 'Drank an 8-Ball Soda (+50% Thirst).', 'success', 3500)
+		return true
+	end
+end)
+
+exports('8ball_box', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, '8ball_food', 5) or not Inventory.CanCarryItem(inventory.id, '8ball_drink', 5) then
+			notify(inventory.id, '8-BALL DINER', 'Inventory is too full to unpack this combo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, '8ball_food', 5)
+		Inventory.AddItem(inventory.id, '8ball_drink', 5)
+		notify(inventory.id, '8-BALL DINER', 'Unpacked 8-Ball Combo Box: 5x 8-Ball Burgers & 5x 8-Ball Sodas!', 'success', 5000)
+		return true
+	end
+end)
+
+-- Taco Shop Food, Drink & Combo Box
+exports('taco_food', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { hunger = 50 })
+		notify(inventory.id, 'TACO SHOP', 'Ate a Crispy Taco (+50% Hunger).', 'success', 3500)
+		return true
+	end
+end)
+
+exports('taco_drink', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { thirst = 50 })
+		notify(inventory.id, 'TACO SHOP', 'Drank a Taco Drink (+50% Thirst).', 'success', 3500)
+		return true
+	end
+end)
+
+exports('taco_box', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'taco_food', 5) or not Inventory.CanCarryItem(inventory.id, 'taco_drink', 5) then
+			notify(inventory.id, 'TACO SHOP', 'Inventory is too full to unpack this combo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'taco_food', 5)
+		Inventory.AddItem(inventory.id, 'taco_drink', 5)
+		notify(inventory.id, 'TACO SHOP', 'Unpacked Taco Combo Box: 5x Crispy Tacos & 5x Taco Drinks!', 'success', 5000)
+		return true
+	end
+end)
+
+-- Legacy Taco Shop Aliases
+exports('taco_food1', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { hunger = 50 })
+		notify(inventory.id, 'TACO SHOP', 'Ate a Crispy Taco (+50% Hunger).', 'success', 3500)
+		return true
+	end
+end)
+
+exports('taco_drink1', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		exports['es_extended']:SecureApplyItemStatus(inventory.id, { thirst = 50 })
+		notify(inventory.id, 'TACO SHOP', 'Drank a Taco Drink (+50% Thirst).', 'success', 3500)
+		return true
+	end
+end)
+
+exports('taco_meal', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'taco_food', 5) or not Inventory.CanCarryItem(inventory.id, 'taco_drink', 5) then
+			notify(inventory.id, 'TACO SHOP', 'Inventory is too full to unpack this combo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'taco_food', 5)
+		Inventory.AddItem(inventory.id, 'taco_drink', 5)
+		notify(inventory.id, 'TACO SHOP', 'Unpacked Taco Combo Box: 5x Crispy Tacos & 5x Taco Drinks!', 'success', 5000)
+		return true
+	end
+end)
+
 exports('police_gauze', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
 		local xPlayer = ESX.GetPlayerFromId(inventory.id)

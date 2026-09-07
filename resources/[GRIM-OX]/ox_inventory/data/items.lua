@@ -953,6 +953,168 @@ return {
 		}
 	},
 
+	-- 8-Ball Diner Items
+	['8ball_food'] = {
+		label = '8-Ball Burger',
+		weight = 250,
+		description = 'A hearty signature 8-Ball burger. Restores 50% Hunger.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = '8ball_food.png',
+			anim = { dict = 'mp_player_inteat@burger', clip = 'mp_player_int_eat_burger' },
+			prop = { model = `prop_cs_burger_01`, pos = vec3(0.02, 0.02, -0.02), rot = vec3(0.0, 0.0, 0.0) },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.8ball_food'
+		}
+	},
+
+	['8ball_drink'] = {
+		label = '8-Ball Soda',
+		weight = 200,
+		description = 'Crisp and refreshing 8-Ball specialty soda. Restores 50% Thirst.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = '8ball_drink.png',
+			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
+			prop = { model = `prop_ld_can_01`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.8ball_drink'
+		}
+	},
+
+	['8ball_box'] = {
+		label = '8-Ball Combo Box',
+		weight = 1500,
+		description = 'A packed 8-Ball combo box containing 5x 8-Ball Burgers and 5x 8-Ball Sodas. Use to unpack.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = '8ball_box.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.8ball_box'
+		}
+	},
+
+	-- Taco Shop Items
+	['taco_food'] = {
+		label = 'Crispy Taco',
+		weight = 200,
+		description = 'Authentic crispy beef taco loaded with fresh toppings. Restores 50% Hunger.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = 'taco_food.png',
+			anim = { dict = 'mp_player_inteat@burger', clip = 'mp_player_int_eat_burger' },
+			prop = { model = `prop_taco_01`, pos = vec3(0.02, 0.02, -0.02), rot = vec3(0.0, 0.0, 0.0) },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.taco_food'
+		}
+	},
+
+	['taco_drink'] = {
+		label = 'Taco Drink',
+		weight = 200,
+		description = 'Refreshing fiesta citrus drink. Restores 50% Thirst.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = 'taco_drink.png',
+			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
+			prop = { model = `prop_ld_can_01`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.taco_drink'
+		}
+	},
+
+	['taco_box'] = {
+		label = 'Taco Combo Box',
+		weight = 1500,
+		description = 'A packed Taco Shop combo box containing 5x Crispy Tacos and 5x Taco Drinks. Use to unpack.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = 'taco_box.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.taco_box'
+		}
+	},
+
+	-- Taco Shop Aliases
+	['taco_food1'] = {
+		label = 'Crispy Taco',
+		weight = 200,
+		description = 'Authentic crispy beef taco loaded with fresh toppings. Restores 50% Hunger.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = 'taco_food.png',
+			anim = { dict = 'mp_player_inteat@burger', clip = 'mp_player_int_eat_burger' },
+			prop = { model = `prop_taco_01`, pos = vec3(0.02, 0.02, -0.02), rot = vec3(0.0, 0.0, 0.0) },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.taco_food'
+		}
+	},
+
+	['taco_drink1'] = {
+		label = 'Taco Drink',
+		weight = 200,
+		description = 'Refreshing fiesta citrus drink. Restores 50% Thirst.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = 'taco_drink.png',
+			anim = { dict = 'mp_player_intdrink', clip = 'loop_bottle' },
+			prop = { model = `prop_ld_can_01`, pos = vec3(0.01, 0.01, 0.06), rot = vec3(5.0, 5.0, -180.5) },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.taco_drink'
+		}
+	},
+
+	['taco_meal'] = {
+		label = 'Taco Combo Box',
+		weight = 1500,
+		description = 'A packed Taco Shop combo box containing 5x Crispy Tacos and 5x Taco Drinks. Use to unpack.',
+		stack = true,
+		consume = 1,
+		close = true,
+		client = {
+			image = 'taco_box.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 2000,
+		},
+		server = {
+			export = 'ox_inventory.taco_box'
+		}
+	},
+
 	-- Clothing items (kodebykarl-utils clothing menu / Keybind 'U')
 	['torso'] = {
 		label = 'Shirt / Top',
