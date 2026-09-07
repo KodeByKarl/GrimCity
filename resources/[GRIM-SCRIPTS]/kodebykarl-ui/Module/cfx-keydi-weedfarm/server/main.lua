@@ -8,6 +8,21 @@ local activeCollectors = {}
 local activeProcessors = {}
 
 local function GetItemCount(src, item)
+    if item == 'black_money' then
+        local oxCount = 0
+        if GetResourceState('ox_inventory') == 'started' then
+            pcall(function()
+                oxCount = exports.ox_inventory:GetItemCount(src, 'black_money') or 0
+            end)
+        end
+        if type(oxCount) == 'number' and oxCount > 0 then return oxCount end
+        local xPlayer = ESX.GetPlayerFromId(src)
+        if xPlayer and xPlayer.getAccount then
+            local acc = xPlayer.getAccount('black_money')
+            if acc and acc.money then return acc.money end
+        end
+        return 0
+    end
     if GetResourceState('ox_inventory') ~= 'started' then return 0 end
     local ok, count = pcall(function()
         return exports.ox_inventory:GetItemCount(src, item)
@@ -17,6 +32,23 @@ local function GetItemCount(src, item)
 end
 
 local function RemoveItem(src, item, amount)
+    if item == 'black_money' then
+        if GetResourceState('ox_inventory') == 'started' then
+            local ok, res = pcall(function()
+                return exports.ox_inventory:RemoveItem(src, 'black_money', amount)
+            end)
+            if ok and res then return true end
+        end
+        local xPlayer = ESX.GetPlayerFromId(src)
+        if xPlayer and xPlayer.getAccount then
+            local acc = xPlayer.getAccount('black_money')
+            if acc and acc.money and acc.money >= amount then
+                xPlayer.removeAccountMoney('black_money', amount)
+                return true
+            end
+        end
+        return false
+    end
     if GetResourceState('ox_inventory') ~= 'started' then return false end
     local ok, res = pcall(function()
         return exports.ox_inventory:RemoveItem(src, item, amount)
@@ -25,6 +57,20 @@ local function RemoveItem(src, item, amount)
 end
 
 local function AddItem(src, item, amount)
+    if item == 'black_money' then
+        if GetResourceState('ox_inventory') == 'started' then
+            local ok, res = pcall(function()
+                return exports.ox_inventory:AddItem(src, 'black_money', amount)
+            end)
+            if ok and res then return true end
+        end
+        local xPlayer = ESX.GetPlayerFromId(src)
+        if xPlayer and xPlayer.addAccountMoney then
+            xPlayer.addAccountMoney('black_money', amount)
+            return true
+        end
+        return false
+    end
     if GetResourceState('ox_inventory') ~= 'started' then return false end
     local ok, res = pcall(function()
         return exports.ox_inventory:AddItem(src, item, amount)
@@ -149,6 +195,16 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:completeHarvest", function(plantInde
     local itemName = Config.WeedFarm.ItemName or "weed_bud"
     local itemLabel = Config.WeedFarm.ItemLabel or "Weed Bud"
 
+    local grindBonus = 0
+    pcall(function()
+        if exports["kodebykarl-ui"] and exports["kodebykarl-ui"].GetVipGrindBonus then
+            grindBonus = exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0
+        end
+    end)
+    if grindBonus > 0 then
+        rewardAmount = rewardAmount + grindBonus
+    end
+
     if not AddItem(src, itemName, rewardAmount) then
         TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — harvest cancelled.")
         return
@@ -267,6 +323,16 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:completeCollect", function(stationIn
     local itemName = station.item
     local itemLabel = station.itemLabel or itemName
 
+    local grindBonus = 0
+    pcall(function()
+        if exports["kodebykarl-ui"] and exports["kodebykarl-ui"].GetVipGrindBonus then
+            grindBonus = exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0
+        end
+    end)
+    if grindBonus > 0 then
+        rewardAmount = rewardAmount + grindBonus
+    end
+
     if not itemName then return end
 
     if not AddItem(src, itemName, rewardAmount) then
@@ -278,6 +344,16 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:completeCollect", function(stationIn
 end)
 
 -- ── Process stations ────────────────────────────────────────────
+local function GetStationRequires(station)
+    if not station then return {} end
+    if type(station.requires) == "table" and #station.requires > 0 then
+        return station.requires
+    elseif station.require and station.require.item then
+        return { station.require }
+    end
+    return {}
+end
+
 RegisterNetEvent("cfx-keydi-weedfarm:server:startProcess", function(stationIndex)
     local src = source
     local xPlayer = ESX.GetPlayerFromId(src)
@@ -307,18 +383,18 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:startProcess", function(stationIndex
     end
 
     local input = station.input
-    local requireItem = station.require
+    local reqList = GetStationRequires(station)
     if not input or not input.item or not input.amount then return end
 
     if GetItemCount(src, input.item) < input.amount then
-        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input")
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input", input.label or input.item, input.amount)
         return
     end
 
-    if requireItem and requireItem.item then
-        local needAmt = requireItem.amount or 1
-        if GetItemCount(src, requireItem.item) < needAmt then
-            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
+    for _, req in ipairs(reqList) do
+        local needAmt = req.amount or 1
+        if GetItemCount(src, req.item) < needAmt then
+            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require", req.label or req.item, needAmt)
             return
         end
     end
@@ -379,41 +455,52 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:completeProcess", function(stationIn
     end
 
     local input = station.input
-    local requireItem = station.require
+    local reqList = GetStationRequires(station)
     local output = station.output
     if not input or not output then return end
 
     if GetItemCount(src, input.item) < input.amount then
-        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input")
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input", input.label or input.item, input.amount)
         return
     end
 
-    if requireItem and requireItem.item then
-        local needAmt = requireItem.amount or 1
-        if GetItemCount(src, requireItem.item) < needAmt then
-            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
+    for _, req in ipairs(reqList) do
+        local needAmt = req.amount or 1
+        if GetItemCount(src, req.item) < needAmt then
+            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require", req.label or req.item, needAmt)
             return
         end
     end
 
     if not RemoveItem(src, input.item, input.amount) then
-        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input")
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_input", input.label or input.item, input.amount)
         return
     end
 
-    if requireItem and requireItem.item then
-        local needAmt = requireItem.amount or 1
-        if not RemoveItem(src, requireItem.item, needAmt) then
-            AddItem(src, input.item, input.amount)
-            TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
-            return
+    local removedReqs = {}
+    local reqFailed = false
+    for _, req in ipairs(reqList) do
+        local needAmt = req.amount or 1
+        if not RemoveItem(src, req.item, needAmt) then
+            reqFailed = true
+            break
         end
+        table.insert(removedReqs, { item = req.item, amount = needAmt })
+    end
+
+    if reqFailed then
+        AddItem(src, input.item, input.amount)
+        for _, rem in ipairs(removedReqs) do
+            AddItem(src, rem.item, rem.amount)
+        end
+        TriggerClientEvent("cfx-keydi-weedfarm:client:processDenied", src, "missing_require")
+        return
     end
 
     if not AddItem(src, output.item, output.amount) then
         AddItem(src, input.item, input.amount)
-        if requireItem and requireItem.item then
-            AddItem(src, requireItem.item, requireItem.amount or 1)
+        for _, rem in ipairs(removedReqs) do
+            AddItem(src, rem.item, rem.amount)
         end
         TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — process cancelled.")
         return

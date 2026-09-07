@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Layers,
   Info,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,11 @@ export interface WeedfarmData {
     inputAmount?: number;
     requireLabel?: string;
     requireAmount?: number;
+    requires?: Array<{
+      label: string;
+      amount: number;
+      isMoney?: boolean;
+    }>;
     outputLabel?: string;
     outputAmount?: number;
   };
@@ -86,6 +92,9 @@ const STAGES_CONFIG: Record<
     recipe: {
       inputLabel: "Weed Bud",
       inputAmount: 5,
+      requires: [
+        { label: "Zip-lock Bag", amount: 1 },
+      ],
       requireLabel: "Zip-lock Bag",
       requireAmount: 1,
       outputLabel: "Packaged Weed",
@@ -106,8 +115,11 @@ const STAGES_CONFIG: Record<
     recipe: {
       inputLabel: "Packaged Weed",
       inputAmount: 5,
-      requireLabel: "Rolling Paper",
-      requireAmount: 1,
+      requires: [
+        { label: "Rolling Paper", amount: 5 },
+        { label: "Paper Bag", amount: 5 },
+        { label: "Dirty Money", amount: 1000, isMoney: true },
+      ],
       outputLabel: "Joint",
       outputAmount: 5,
     },
@@ -430,14 +442,50 @@ export default function WeedfarmHud() {
           </div>
 
           {/* Recipe Requirements (for Packaging & Rolling) */}
-          {data.recipe && data.recipe.requireLabel && (
-            <div className="flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-950/25 px-3 py-2 text-[10px]">
-              <div className="flex items-center gap-1.5 text-white/70">
-                <Layers className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Recipe:</span>
+          {data.recipe && (data.recipe.requires || data.recipe.requireLabel) && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-2.5 text-[10.5px] space-y-1.5 shadow-sm">
+              <div className="flex items-center justify-between text-white/70 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>
+                    Recipe ({data.recipe.outputAmount || 5}x {data.recipe.outputLabel || "Joint"}):
+                  </span>
+                </span>
+                {data.recipe.inputLabel && (
+                  <span className="rounded border border-emerald-500/30 bg-emerald-950/50 px-1.5 py-0.5 font-bold text-emerald-300">
+                    {data.recipe.inputAmount}x {data.recipe.inputLabel}
+                  </span>
+                )}
               </div>
-              <div className="font-bold text-emerald-300">
-                {data.recipe.inputAmount}x {data.recipe.inputLabel} + {data.recipe.requireAmount}x {data.recipe.requireLabel}
+
+              {/* Multi-requirement Badges */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {data.recipe.requires && data.recipe.requires.length > 0 ? (
+                  data.recipe.requires.map((req, idx) => (
+                    <span
+                      key={idx}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold border shadow-sm",
+                        req.isMoney
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      )}
+                    >
+                      {req.isMoney ? (
+                        <>
+                          <DollarSign className="h-3 w-3 text-amber-400" />
+                          <span>${req.amount.toLocaleString()} {req.label}</span>
+                        </>
+                      ) : (
+                        <span>{req.amount}x {req.label}</span>
+                      )}
+                    </span>
+                  ))
+                ) : (
+                  <span className="inline-flex items-center rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9.5px] font-bold text-emerald-300">
+                    {data.recipe.requireAmount}x {data.recipe.requireLabel}
+                  </span>
+                )}
               </div>
             </div>
           )}

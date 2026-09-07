@@ -50,9 +50,12 @@ Config.WeedFarm = {
             interactionDistance = 2.0,
             input = { item = "weed_bud", amount = 5, label = "Weed Bud" },
             require = { item = "zipper_bag", amount = 1, label = "Zip-lock Bag" },
+            requires = {
+                { item = "zipper_bag", amount = 1, label = "Zip-lock Bag" },
+            },
             output = { item = "packaged_weed", amount = 5, label = "Packaged Weed" },
         },
-        -- ── WEED 3rd: 5 packaged_weed + rolling paper -> 5 joint
+        -- ── WEED 3rd: 5 packaged_weed + 5 rolling paper + 5 paper bag + 1K dirty money -> 5 joint
         {
             id = "weed_roll",
             label = "Roll Joint",
@@ -60,7 +63,11 @@ Config.WeedFarm = {
             coords = vector4(2195.8811, 5601.7451, 53.6019, 88.0269),
             interactionDistance = 2.0,
             input = { item = "packaged_weed", amount = 5, label = "Packaged Weed" },
-            require = { item = "rolling_paper", amount = 1, label = "Rolling Paper" },
+            requires = {
+                { item = "rolling_paper", amount = 5, label = "Rolling Paper" },
+                { item = "paperbag", amount = 5, label = "Paper Bag" },
+                { item = "black_money", amount = 1000, label = "Dirty Money", isMoney = true },
+            },
             output = { item = "joint", amount = 5, label = "Joint" },
         },
     },

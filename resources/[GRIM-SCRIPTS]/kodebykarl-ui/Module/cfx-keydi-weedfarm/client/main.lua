@@ -164,8 +164,18 @@ CreateThread(function()
                     DrawText3D(c.x, c.y, c.z + 0.35, "~y~Processing...")
                 else
                     local hint
-                    if station.require and station.require.label then
-                        hint = ("~g~[E]~s~ %s ~c~(need %s)"):format(station.label or "Process", station.require.label)
+                    local reqList = station.requires or (station.require and { station.require }) or {}
+                    if #reqList > 0 then
+                        local reqLabels = {}
+                        for _, r in ipairs(reqList) do
+                            local amt = r.amount or 1
+                            if r.isMoney or r.item == "black_money" then
+                                table.insert(reqLabels, ("$%s %s"):format(amt >= 1000 and (math.floor(amt / 1000) .. "K") or amt, r.label or "Dirty Money"))
+                            else
+                                table.insert(reqLabels, (amt > 1 and (amt .. "x ") or "") .. (r.label or r.item))
+                            end
+                        end
+                        hint = ("~g~[E]~s~ %s ~c~(need %s)"):format(station.label or "Process", table.concat(reqLabels, ", "))
                     else
                         hint = ("~g~[E]~s~ %s"):format(station.label or "Process")
                     end
@@ -307,13 +317,19 @@ RegisterNetEvent("cfx-keydi-weedfarm:client:processStarted", function(stationInd
         recipe = isRoll and {
             inputLabel = "Packaged Weed",
             inputAmount = 5,
-            requireLabel = "Rolling Paper",
-            requireAmount = 1,
+            requires = {
+                { label = "Rolling Paper", amount = 5 },
+                { label = "Paper Bag", amount = 5 },
+                { label = "Dirty Money", amount = 1000, isMoney = true },
+            },
             outputLabel = "Joint",
             outputAmount = 5,
         } or {
             inputLabel = "Weed Bud",
             inputAmount = 5,
+            requires = {
+                { label = "Zip-lock Bag", amount = 1 },
+            },
             requireLabel = "Zip-lock Bag",
             requireAmount = 1,
             outputLabel = "Packaged Weed",
@@ -338,12 +354,24 @@ RegisterNetEvent("cfx-keydi-weedfarm:client:processStarted", function(stationInd
     TriggerServerEvent("cfx-keydi-weedfarm:server:completeProcess", stationIndex)
 end)
 
-RegisterNetEvent("cfx-keydi-weedfarm:client:processDenied", function(reason)
+RegisterNetEvent("cfx-keydi-weedfarm:client:processDenied", function(reason, itemLabel, amount)
     isProcessing = false
     if reason == "missing_input" then
-        ESX.ShowNotification("~r~Not enough materials to process.")
+        if itemLabel and amount then
+            ESX.ShowNotification(("~r~Missing required material: %sx %s."):format(amount, itemLabel))
+        else
+            ESX.ShowNotification("~r~Not enough materials to process.")
+        end
     elseif reason == "missing_require" then
-        ESX.ShowNotification("~r~Missing required item.")
+        if itemLabel and amount then
+            if itemLabel == "Dirty Money" or itemLabel == "black_money" then
+                ESX.ShowNotification(("~r~Missing required $%s %s."):format(amount, itemLabel))
+            else
+                ESX.ShowNotification(("~r~Missing required item: %sx %s."):format(amount, itemLabel))
+            end
+        else
+            ESX.ShowNotification("~r~Missing required item.")
+        end
     elseif reason == "busy" then
         ESX.ShowNotification("~r~Already processing.")
     elseif reason == "distance" then
