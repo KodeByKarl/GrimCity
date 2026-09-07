@@ -101,11 +101,55 @@ local function setupWardrobe()
     end
 end
 
+local function setupHelipad()
+    local heliCfg = ConfigSheriff.Station and ConfigSheriff.Station.Helipad
+    if not heliCfg or not heliCfg.access then return end
+
+    if GetResourceState('ox_target') == 'started' then
+        exports.ox_target:addBoxZone({
+            coords = heliCfg.access,
+            size = vector3(1.5, 1.5, 2.0),
+            rotation = heliCfg.heading or 0.0,
+            debug = false,
+            options = {
+                {
+                    name = 'sheriff_helipad_access',
+                    icon = 'fa-solid fa-helicopter',
+                    label = heliCfg.label or 'Sheriff Helipad',
+                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0, ['police'] = 0 },
+                    onSelect = function()
+                        if cache.vehicle and GetPedInVehicleSeat(cache.vehicle, -1) == cache.ped then
+                            TriggerEvent('jg-advancedgarages:client:store-vehicle', heliCfg.garageId or 'Sheriff Helipad', 'air', false)
+                        else
+                            TriggerEvent('jg-advancedgarages:client:open-garage', heliCfg.garageId or 'Sheriff Helipad', 'air', false)
+                        end
+                    end,
+                    distance = 3.0
+                },
+                {
+                    name = 'sheriff_helipad_store',
+                    icon = 'fa-solid fa-warehouse',
+                    label = 'Store Helicopter',
+                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0, ['police'] = 0 },
+                    canInteract = function()
+                        return cache.vehicle and GetPedInVehicleSeat(cache.vehicle, -1) == cache.ped
+                    end,
+                    onSelect = function()
+                        TriggerEvent('jg-advancedgarages:client:store-vehicle', heliCfg.garageId or 'Sheriff Helipad', 'air', false)
+                    end,
+                    distance = 15.0
+                }
+            }
+        })
+    end
+end
+
 CreateThread(function()
     while not ESX.IsPlayerLoaded() do Wait(200) end
     ESX.PlayerData = ESX.GetPlayerData()
     createStationBlip()
     setupWardrobe()
+    setupHelipad()
 end)
 
 -- F6 / LEO tools live on kodebykarl-police (HasGroup includes sheriff).

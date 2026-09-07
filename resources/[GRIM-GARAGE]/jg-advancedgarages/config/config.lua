@@ -805,6 +805,32 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
+  ["Sheriff Helipad"] = {
+    coords = vector3(1883.4827, 3659.4534, 40.8335),
+    spawn = vector4(1892.9338, 3664.7878, 40.8335, 119.3511),
+    distance = 3.0,
+    type = "air",
+    job = {"sheriff", "bcso", "police"},
+    vehiclesType = "spawner",
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "polmav",
+        plate = "BCSO",
+        minJobGrade = 0,
+        nickname = "Sheriff Maverick",
+        maxMods = true,
+      },
+    },
+    hideBlip = false,
+    blip = {
+      id = 43,
+      color = 5,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
 }
 
 -- Gang Garages (unused — HQ spots are public in Config.GarageLocations)

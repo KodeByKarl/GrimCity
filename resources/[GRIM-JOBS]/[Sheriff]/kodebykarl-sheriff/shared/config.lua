@@ -60,6 +60,13 @@ ConfigSheriff.Station = {
         heading = 119.8286,
         label = 'Sheriff Boss Locker',
     },
+    Helipad = {
+        access = vector3(1883.4827, 3659.4534, 40.8335),
+        heading = 297.0320,
+        spawn = vector4(1892.9338, 3664.7878, 40.8335, 119.3511),
+        label = 'Sheriff Helipad',
+        garageId = 'Sheriff Helipad',
+    },
 }
 
 -- Minimum grade for /givescs (boss = 6)
