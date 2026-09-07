@@ -50,6 +50,19 @@ local function RunProgress(duration, label, anim)
     })
 end
 
+local function SendWeedfarmHud(action, payload)
+    SendNUIMessage({
+        action = action,
+        data = payload
+    })
+end
+
+local function HideWeedfarmHud()
+    SendNUIMessage({
+        action = "cfx-keydi-weedfarm:hide"
+    })
+end
+
 -- Spawn Weed Plant Props at locations
 local function SpawnPlantProps()
     local modelHash = Config.WeedFarm.PlantModel
@@ -179,10 +192,32 @@ RegisterNetEvent("cfx-keydi-weedfarm:client:harvestStarted", function(plantIndex
 
     duration = duration or Config.WeedFarm.HarvestDuration or 4000
     local itemLabel = Config.WeedFarm.ItemLabel or "Weed Bud"
+
+    local invWeight = (GetResourceState("ox_inventory") == "started" and exports.ox_inventory:GetPlayerWeight()) or 0
+    local maxWeight = (GetResourceState("ox_inventory") == "started" and exports.ox_inventory:GetPlayerMaxWeight()) or 24000
+    local collected = (GetResourceState("ox_inventory") == "started" and tonumber(exports.ox_inventory:Search("count", "weed_bud"))) or 0
+
+    SendWeedfarmHud("cfx-keydi-weedfarm:show", {
+        status = "active",
+        stage = "harvest",
+        label = itemLabel,
+        itemWeight = 50,
+        collected = collected,
+        weight = invWeight,
+        maxWeight = maxWeight,
+        progress = 0.05,
+        zone = "San Chianski Weed Farm",
+        rarity = "uncommon",
+        untilFull = math.max(0, math.floor((maxWeight - invWeight) / 50)),
+        etaSeconds = math.ceil(duration / 1000),
+    })
+
     local success = RunProgress(duration, ("Harvesting %s…"):format(itemLabel), {
         dict = "amb@world_human_gardener_plant@male@base",
         clip = "base",
     })
+
+    HideWeedfarmHud()
 
     if not success then
         isHarvesting = false
@@ -249,10 +284,49 @@ RegisterNetEvent("cfx-keydi-weedfarm:client:processStarted", function(stationInd
     isProcessing = true
 
     duration = duration or Config.WeedFarm.ProcessDuration or 5000
+
+    local invWeight = (GetResourceState("ox_inventory") == "started" and exports.ox_inventory:GetPlayerWeight()) or 0
+    local maxWeight = (GetResourceState("ox_inventory") == "started" and exports.ox_inventory:GetPlayerMaxWeight()) or 24000
+    local isRoll = stationIndex == 2
+    local outItem = isRoll and "joint" or "packaged_weed"
+    local collected = (GetResourceState("ox_inventory") == "started" and tonumber(exports.ox_inventory:Search("count", outItem))) or 0
+
+    SendWeedfarmHud("cfx-keydi-weedfarm:show", {
+        status = "active",
+        stage = isRoll and "roll" or "package",
+        label = isRoll and "Joint" or "Packaged Weed",
+        itemWeight = isRoll and 10 or 100,
+        collected = collected,
+        weight = invWeight,
+        maxWeight = maxWeight,
+        progress = 0.05,
+        zone = isRoll and "Weed Rolling Bench #2" or "Packaging Bench #1",
+        rarity = isRoll and "rare" or "uncommon",
+        untilFull = math.max(0, math.floor((maxWeight - invWeight) / (isRoll and 10 or 100))),
+        etaSeconds = math.ceil(duration / 1000),
+        recipe = isRoll and {
+            inputLabel = "Packaged Weed",
+            inputAmount = 5,
+            requireLabel = "Rolling Paper",
+            requireAmount = 1,
+            outputLabel = "Joint",
+            outputAmount = 5,
+        } or {
+            inputLabel = "Weed Bud",
+            inputAmount = 5,
+            requireLabel = "Zip-lock Bag",
+            requireAmount = 1,
+            outputLabel = "Packaged Weed",
+            outputAmount = 5,
+        }
+    })
+
     local success = RunProgress(duration, progressLabel or ("Processing %s…"):format(itemLabel or "Item"), {
         dict = "amb@prop_human_parking_meter@male@base",
         clip = "base",
     })
+
+    HideWeedfarmHud()
 
     if not success then
         isProcessing = false

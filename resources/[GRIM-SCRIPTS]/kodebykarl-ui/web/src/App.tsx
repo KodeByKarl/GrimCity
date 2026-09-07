@@ -7,16 +7,14 @@ import ModulesMenu from "./cfx-keydi-modules/ModulesMenu";
 import FpsOptimizer, { FpsPreset } from "./cfx-keydi-fps/FpsOptimizer";
 import ReportSystem, { OpenReport, ReportCategory } from "./cfx-keydi-report/ReportSystem";
 import BankingSystem from "./cfx-keydi-banking/BankingSystem";
-import ImpoundNotification from "./cfx-keydi-impound/ImpoundNotification";
 import AutofarmHud from "./cfx-keydi-autofarm/AutofarmHud";
+import WeedfarmHud from "./cfx-keydi-weedfarm/WeedfarmHud";
 import PatchNotes from "./cfx-keydi-patchnotes/PatchNotes";
 import MultiJob from "./cfx-keydi-multijob/MultiJob";
 import Regions from "./cfx-keydi-regions/Regions";
 import RockstarRecording from "./cfx-keydi-rockstar/RockstarRecording";
 import VipStatus from "./cfx-keydi-vip/VipStatus";
 import DeathScreen, { type DeathScreenData } from "./cfx-keydi-deathscreen/DeathScreen";
-import { Spawn, type SpawnData } from "./cfx-keydi-spawn/Spawn";
-import { SpawnMapWarmup } from "./cfx-keydi-spawn/preloadMaps";
 import WelcomeBanner from "./welcomebanner/WelcomeBanner";
 import WelcomeBannerPanel, { WelcomeBannerPanelData } from "./welcomebanner/WelcomeBannerPanel";
 import WelcomeBannerVolume, { WelcomeBannerVolumeData } from "./welcomebanner/WelcomeBannerVolume";
@@ -25,7 +23,6 @@ import Badge, { BadgeData } from "./cfx-keydi-badge/Badge";
 import RadioListHud, { RadioPlayer } from "./cfx-keydi-radiolist/RadioListHud";
 import RadioListModal from "./cfx-keydi-radiolist/RadioListModal";
 import MarketMenu, { MarketData } from "./cfx-keydi-market/MarketMenu";
-import FreeCarMenu, { FreeCarData } from "./cfx-keydi-freecar/FreeCarMenu";
 import ComServHud from "./cfx-keydi-comserv/ComServHud";
 import ComServMenu from "./cfx-keydi-comserv/ComServMenu";
 import LockMenu from "./cfx-keydi-lockscript/LockMenu";
@@ -33,12 +30,14 @@ import InvoiceMenu, { InvoiceData } from "./cfx-keydi-invoice/InvoiceMenu";
 import RegistrarMenu, { type RegistrarData } from "./cfx-keydi-university/RegistrarMenu";
 import type { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
 import type { UniversityRole } from "./cfx-keydi-ipad/universityTypes";
+import type { PhonePlayerData } from "./cfx-keydi-phone/Phone";
 import PartyHud from "./cfx-keydi-ipad/PartyHud";
 import PlaytimeShop, { PlaytimeShopData } from "./cfx-keydi-playtimeshop/PlaytimeShop";
 import { Toaster } from "sonner";
 import { AlertTriangle } from "lucide-react";
 
 const Ipad = lazy(() => import("./cfx-keydi-ipad/Ipad"));
+const Phone = lazy(() => import("./cfx-keydi-phone/Phone"));
 
 interface IndicatorSettings {
   deadText: string;
@@ -178,8 +177,6 @@ export default function App() {
   const [vipVisible, setVipVisible] = useState(false);
   const [deathScreenVisible, setDeathScreenVisible] = useState(false);
   const [deathScreenData, setDeathScreenData] = useState<DeathScreenData | null>(null);
-  const [spawnVisible, setSpawnVisible] = useState(false);
-  const [spawnData, setSpawnData] = useState<SpawnData | null>(null);
   const [fpsVisible, setFpsVisible] = useState(false);
   const [fpsPreset, setFpsPreset] = useState("default");
   const [fpsPresets, setFpsPresets] = useState<Record<string, FpsPreset>>({});
@@ -202,9 +199,6 @@ export default function App() {
   const [marketVisible, setMarketVisible] = useState(false);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
 
-  const [freeCarVisible, setFreeCarVisible] = useState(false);
-  const [freeCarData, setFreeCarData] = useState<FreeCarData | null>(null);
-
   const [comServMenuVisible, setComServMenuVisible] = useState(false);
   const [comServMenuData, setComServMenuData] = useState<any>(null);
 
@@ -222,6 +216,9 @@ export default function App() {
 
   const [ipadVisible, setIpadVisible] = useState(false);
   const [ipadData, setIpadData] = useState<IpadPlayerData | null>(null);
+  const [phoneVisible, setPhoneVisible] = useState(false);
+  const [phoneData, setPhoneData] = useState<PhonePlayerData | null>(null);
+  const [phoneMsgToast, setPhoneMsgToast] = useState<{ from: string; body: string } | null>(null);
   const [playtimeVisible, setPlaytimeVisible] = useState(false);
   const [playtimeData, setPlaytimeData] = useState<PlaytimeShopData | null>(null);
 
@@ -250,11 +247,11 @@ export default function App() {
       setBadgeVisible(false);
       setRadioHudVisible(false);
       setIpadVisible(true);
-      // Prod-default: citizen iPad. Preview staff apps with ?preview=police|boss|owner
+      // Prod-default: weedfarm HUD. Preview with ?preview=weedfarm|autofarm|citizen|police|boss|owner|business
       // University: ?preview=university|student|teacher|dean|director|registrar
       // Playtime shop: ?preview=shop | Autofarm: ?preview=autofarm | Modules: ?preview=modules | Death: ?preview=deathscreen
-      // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip
-      const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
+      // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip | Phone: ?preview=phone
+      const preview = new URLSearchParams(window.location.search).get("preview") || "weedfarm";
       if (preview === "registrar") {
         setIpadVisible(false);
         setRegistrarVisible(true);
@@ -297,7 +294,9 @@ export default function App() {
           universityRole === "visitor"
             ? isPolice
               ? "Police"
-              : "Unemployed"
+              : preview === "business"
+                ? "UwU Cafe"
+                : "Unemployed"
             : universityRole === "director"
               ? "University Director"
               : universityRole === "dean"
@@ -307,8 +306,13 @@ export default function App() {
                   : "Student",
         gang: "None",
         canEditEconomy: isOwner,
-        canPoliceBoss: isBoss,
-        canPoliceMdt: isPolice,
+        canPoliceBoss: isBoss || isOwner,
+        canSheriffBoss: isOwner || preview === "sheriff",
+        canAmbulanceBoss: isOwner || preview === "ems" || preview === "ambulance",
+        canDojBoss: isOwner || preview === "doj",
+        canPoliceMdt: isPolice || isOwner || preview === "doj",
+        canSheriffMdt: isOwner || preview === "sheriff",
+        canBusinessBoss: preview === "business" || isOwner,
         universityRole: universityRole as UniversityRole,
       });
       if (preview === "scoreboard") {
@@ -352,6 +356,20 @@ export default function App() {
         setIpadVisible(false);
         setPlaytimeVisible(true);
         setPlaytimeData(null);
+      }
+      if (preview === "phone") {
+        setIpadVisible(false);
+        setPhoneVisible(true);
+        setPhoneData({
+          firstName: "Karl",
+          lastName: "Dev",
+          cash: 2450,
+          bank: 128400,
+          job: "Unemployed",
+        });
+      }
+      if (preview === "weedfarm" || preview === "weed") {
+        setIpadVisible(false);
       }
       if (preview === "autofarm") {
         setIpadVisible(false);
@@ -429,7 +447,6 @@ export default function App() {
           ],
         });
       }
-      setFreeCarVisible(false);
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -509,6 +526,10 @@ export default function App() {
         setRegionsVisible(false);
         setRockstarVisible(false);
         setVipVisible(false);
+      } else if (data.action === "cfx-keydi-vip:show") {
+        setVipVisible(true);
+      } else if (data.action === "cfx-keydi-vip:hide") {
+        setVipVisible(false);
       } else if (data.action === "cfx-keydi-modules:recording") {
         setRockstarRecording(!!data.recording);
       } else if (data.action === "cfx-keydi-serverlocations:applied") {
@@ -531,34 +552,6 @@ export default function App() {
       } else if (data.action === "deathscreen:hide") {
         setDeathScreenVisible(false);
         setDeathScreenData(null);
-      }
-
-      // Spawn selector (ambulance H)
-      if (data.action === "cfx-keydi-spawn:show") {
-        setDeathScreenVisible(false);
-        setDeathScreenData(null);
-        setSpawnData((data.data || {}) as SpawnData);
-        setSpawnVisible(true);
-      } else if (data.action === "cfx-keydi-spawn:hide") {
-        setSpawnVisible(false);
-        setSpawnData(null);
-      } else if (data.action === "cfx-keydi-spawn:setPhase") {
-        setSpawnData((prev) => ({
-          ...(prev || {}),
-          respawnTimer: data.data?.respawnTimer ?? prev?.respawnTimer,
-          allowEarlySpawn: data.data?.allowEarlySpawn ?? prev?.allowEarlySpawn,
-          isBleedout: data.data?.isBleedout ?? prev?.isBleedout,
-        }));
-      } else if (data.action === "cfx-keydi-spawn:updateTimer") {
-        setSpawnData((prev) => ({
-          ...(prev || {}),
-          respawnTimer: data.data?.respawnTimer ?? prev?.respawnTimer,
-        }));
-      } else if (data.action === "cfx-keydi-spawn:updateRecap") {
-        setSpawnData((prev) => ({
-          ...(prev || {}),
-          recap: data.data?.recap ?? prev?.recap,
-        }));
       }
 
       // FPS Optimizer UI Handlers
@@ -623,14 +616,6 @@ export default function App() {
         if (data.data) setMarketData(data.data);
       }
 
-      // Free Car Claim UI Handlers
-      if (data.action === "cfx-keydi-freecar:show") {
-        if (data.data) setFreeCarData(data.data);
-        setFreeCarVisible(true);
-      } else if (data.action === "cfx-keydi-freecar:hide") {
-        setFreeCarVisible(false);
-      }
-
       // Billing / Invoice UI Handlers
       if (data.action === "cfx-keydi-invoice:show") {
         if (data.data) setInvoiceData(data.data);
@@ -659,6 +644,21 @@ export default function App() {
         }
       } else if (data.action === "cfx-keydi-ipad:close") {
         setIpadVisible(false);
+      }
+
+      // Companion iPhone System
+      if (data.action === "cfx-keydi-phone:open") {
+        if (data.data) setPhoneData(data.data);
+        setPhoneVisible(true);
+      } else if (data.action === "cfx-keydi-phone:close") {
+        setPhoneVisible(false);
+      } else if (data.action === "cfx-keydi-phone:message") {
+        if (data.showToast === false) return;
+        const payload = data.data || {};
+        const from = String(payload.fromName || "Someone");
+        const body = String(payload.body || "");
+        setPhoneMsgToast({ from, body });
+        window.setTimeout(() => setPhoneMsgToast(null), 6500);
       }
 
       // Playtime Shop
@@ -794,6 +794,17 @@ export default function App() {
             body: JSON.stringify({})
           }).catch(() => {});
         }
+
+        if (vipVisible && isPressingEscape) {
+          fetch(`https://${resourceName}/cfx-keydi-vip:close`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json; charset=UTF-8"
+            },
+            body: JSON.stringify({})
+          }).catch(() => {});
+          setVipVisible(false);
+        }
       }
     };
 
@@ -804,7 +815,7 @@ export default function App() {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [scoreboardData, scoreboardVisible, indicatorConfigVisible, modulesVisible, fpsVisible, reportVisible, bankingVisible, welcomeVisible, comServMenuVisible, lockMenuVisible, invoiceVisible]);
+  }, [scoreboardData, scoreboardVisible, indicatorConfigVisible, modulesVisible, fpsVisible, reportVisible, bankingVisible, welcomeVisible, comServMenuVisible, lockMenuVisible, invoiceVisible, vipVisible]);
 
   const isBrowserPreview =
     typeof window !== "undefined" &&
@@ -1037,7 +1048,24 @@ export default function App() {
         />
       )}
       {vipVisible && (
-        <VipStatus onClose={() => closeModulePage(() => setVipVisible(false))} />
+        <VipStatus
+          onClose={() => {
+            const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
+            if (isBrowser) {
+              setVipVisible(false);
+              return;
+            }
+            const resourceName = (window as any).GetParentResourceName
+              ? (window as any).GetParentResourceName()
+              : "kodebykarl-ui";
+            fetch(`https://${resourceName}/cfx-keydi-vip:close`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json; charset=UTF-8" },
+              body: JSON.stringify({}),
+            }).catch(() => {});
+            setVipVisible(false);
+          }}
+        />
       )}
 
       {deathScreenVisible && (
@@ -1046,18 +1074,6 @@ export default function App() {
           onClose={() => {
             setDeathScreenVisible(false);
             setDeathScreenData(null);
-          }}
-        />
-      )}
-
-      <SpawnMapWarmup />
-      {spawnVisible && (
-        <Spawn
-          visible={spawnVisible}
-          data={spawnData || undefined}
-          onClose={() => {
-            setSpawnVisible(false);
-            setSpawnData(null);
           }}
         />
       )}
@@ -1230,11 +1246,11 @@ export default function App() {
       {/* Chat overlay container */}
       <Chat />
 
-      {/* Impound Countdown Alerts */}
-      <ImpoundNotification />
-
       {/* Auto Farm HUD (shown while standing in a farm marker) */}
       <AutofarmHud />
+
+      {/* Weed Farm HUD (shown while harvesting / processing weed) */}
+      <WeedfarmHud />
 
       {/* Welcome banner (.wcb) — bottom-right 65x65 overlay */}
       <WelcomeBanner />
@@ -1247,9 +1263,6 @@ export default function App() {
 
       {/* Grind Sell Market UI */}
       <MarketMenu visible={marketVisible} data={marketData || undefined} onClose={() => setMarketVisible(false)} />
-
-      {/* Free Car Claim UI */}
-      <FreeCarMenu visible={freeCarVisible} data={freeCarData || undefined} onClose={() => setFreeCarVisible(false)} />
 
       {/* Billing / Invoice System */}
       <InvoiceMenu visible={invoiceVisible} data={invoiceData || undefined} onClose={() => setInvoiceVisible(false)} />
@@ -1273,6 +1286,27 @@ export default function App() {
         <Suspense fallback={null}>
           <Ipad visible={ipadVisible} data={ipadData} onClose={() => setIpadVisible(false)} />
         </Suspense>
+      ) : null}
+
+      {/* Companion iPhone — Dynamic Island shell */}
+      {phoneVisible ? (
+        <Suspense fallback={null}>
+          <Phone visible={phoneVisible} data={phoneData} onClose={() => setPhoneVisible(false)} />
+        </Suspense>
+      ) : null}
+
+      {phoneMsgToast ? (
+        <div className="pointer-events-none fixed right-6 top-6 z-[100001] w-[min(320px,86vw)] animate-[phoneIn_320ms_cubic-bezier(0.32,0.72,0,1)]">
+          <div className="rounded-2xl border border-white/10 bg-[#12141c]/95 px-3.5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#f5c542]">
+              New Message
+            </p>
+            <p className="mt-1 truncate text-[13px] font-semibold text-[#f8f3e8]">{phoneMsgToast.from}</p>
+            <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-[#9a9386]">
+              {phoneMsgToast.body}
+            </p>
+          </div>
+        </div>
       ) : null}
 
       {announcementVisible && (
