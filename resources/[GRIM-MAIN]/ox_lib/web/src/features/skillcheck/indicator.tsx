@@ -43,10 +43,8 @@ const Indicator: React.FC<Props> = ({
       }
 
       const elapsed = time - startTimeRef.current;
-
       const speed = Math.max(multiplier || 0, 0.0001);
       const duration = BASE_DURATION_MS / speed;
-
       const progress = Math.min(elapsed / duration, 1);
       const newAngle = -90 + progress * 360;
 
@@ -63,17 +61,17 @@ const Indicator: React.FC<Props> = ({
     },
     [multiplier, handleComplete]
   );
+
   const keyHandler = useCallback(
     (e: KeyboardEvent) => {
       const capitalHetaCode = 880;
       const isNonLatin = e.key.charCodeAt(0) >= capitalHetaCode;
-      var convKey = e.key.toLowerCase()
+      let convKey = e.key.toLowerCase();
       if (isNonLatin) {
-        if (e.code.indexOf('Key') === 0 && e.code.length === 4) { // i.e. 'KeyW'
+        if (e.code.indexOf('Key') === 0 && e.code.length === 4) {
           convKey = e.code.charAt(3);
         }
-
-        if (e.code.indexOf('Digit') === 0 && e.code.length === 6) { // i.e. 'Digit7'
+        if (e.code.indexOf('Digit') === 0 && e.code.length === 6) {
           convKey = e.code.charAt(5);
         }
       }
@@ -112,15 +110,7 @@ const Indicator: React.FC<Props> = ({
     else handleComplete(true);
 
     setKeyPressed(false);
-  }, [
-    keyPressed,
-    angle,
-    offset,
-    indicatorAngle,
-    skillCheck,
-    keyHandler,
-    handleComplete,
-  ]);
+  }, [keyPressed, angle, offset, indicatorAngle, skillCheck, keyHandler, handleComplete]);
 
   return <circle transform={`rotate(${indicatorAngle}, 250, 250)`} className={className} />;
 };

@@ -6,6 +6,7 @@ import { isIconUrl } from '../../../../utils/isIconUrl';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import MarkdownComponents from '../../../../config/MarkdownComponents';
 import LibIcon from '../../../../components/LibIcon';
+import { grim, grimFont } from '../../../../theme/grim';
 
 const openMenu = (id: string | undefined) => {
   fetchNui<ContextMenuProps>('openContext', { id: id, back: false });
@@ -15,21 +16,30 @@ const clickContext = (id: string) => {
   fetchNui('clickContext', id);
 };
 
-const useStyles = createStyles((theme, params: { disabled?: boolean; readOnly?: boolean }) => ({
+const useStyles = createStyles((_theme, params: { disabled?: boolean; readOnly?: boolean }) => ({
   inner: {
     justifyContent: 'flex-start',
   },
   label: {
     width: '100%',
-    color: params.disabled ? theme.colors.dark[3] : theme.colors.dark[0],
+    color: params.disabled ? grim.mutedDark : grim.foreground,
     whiteSpace: 'pre-wrap',
+    fontFamily: grimFont,
   },
   button: {
     height: 'fit-content',
     width: '100%',
-    padding: 10,
+    padding: '11px 14px',
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderLeft: '3px solid transparent',
+    borderBottom: `1px solid rgba(255, 58, 58, 0.12)`,
+    clipPath: 'none',
+    transition: 'background-color 120ms ease, border-color 120ms ease',
     '&:hover': {
-      backgroundColor: params.readOnly ? theme.colors.dark[6] : undefined,
+      backgroundColor: params.readOnly ? 'transparent' : 'rgba(255, 58, 58, 0.12)',
+      borderLeftColor: params.readOnly ? 'transparent' : grim.primary,
       cursor: params.readOnly ? 'unset' : 'pointer',
     },
     '&:active': {
@@ -37,42 +47,62 @@ const useStyles = createStyles((theme, params: { disabled?: boolean; readOnly?: 
     },
   },
   iconImage: {
-    maxWidth: '25px',
+    maxWidth: '22px',
   },
   description: {
-    color: params.disabled ? theme.colors.dark[3] : theme.colors.dark[2],
-    fontSize: 12,
+    color: params.disabled ? grim.mutedDark : grim.muted,
+    fontSize: 11,
+    fontFamily: grimFont,
+    lineHeight: 1.35,
+    marginTop: 2,
   },
   dropdown: {
-    padding: 10,
-    color: theme.colors.dark[0],
-    fontSize: 14,
-    maxWidth: 256,
+    padding: 12,
+    color: grim.foreground,
+    fontSize: 13,
+    maxWidth: 260,
     width: 'fit-content',
-    border: 'none',
+    border: `1px solid ${grim.primary}`,
+    borderRadius: 0,
+    background: `linear-gradient(180deg, #161014, ${grim.background})`,
+    boxShadow: '0 16px 40px rgba(0,0,0,0.85)',
+    fontFamily: grimFont,
   },
   buttonStack: {
-    gap: 4,
+    gap: 2,
     flex: '1',
+    minWidth: 0,
   },
   buttonGroup: {
-    gap: 4,
+    gap: 10,
     flexWrap: 'nowrap',
+    alignItems: 'center',
   },
   buttonIconContainer: {
-    width: 25,
-    height: 25,
+    width: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    color: grim.accent,
+    flexShrink: 0,
   },
   buttonTitleText: {
     overflowWrap: 'break-word',
+    fontWeight: 700,
+    fontSize: 13,
+    letterSpacing: '0.02em',
   },
   buttonArrowContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 25,
-    height: 25,
+    width: 18,
+    height: 18,
+    color: grim.soft,
+    opacity: 0.85,
+    flexShrink: 0,
+  },
+  progress: {
+    marginTop: 6,
   },
 }));
 
@@ -115,8 +145,8 @@ const ContextButton: React.FC<{
                           <LibIcon
                             icon={button.icon as IconProp}
                             fixedWidth
-                            size="lg"
-                            style={{ color: button.iconColor }}
+                            size="sm"
+                            style={{ color: button.iconColor || grim.accent }}
                             animation={button.iconAnimation}
                           />
                         )}
@@ -133,12 +163,19 @@ const ContextButton: React.FC<{
                   </Text>
                 )}
                 {button.progress !== undefined && (
-                  <Progress value={button.progress} size="sm" color={button.colorScheme || 'dark.3'} />
+                  <Progress
+                    className={classes.progress}
+                    value={button.progress}
+                    size={4}
+                    radius={0}
+                    color={button.colorScheme || 'red'}
+                    styles={{ root: { backgroundColor: 'rgba(255,255,255,0.08)' } }}
+                  />
                 )}
               </Stack>
               {(button.menu || button.arrow) && button.arrow !== false && (
                 <Stack className={classes.buttonArrowContainer}>
-                  <LibIcon icon="chevron-right" fixedWidth />
+                  <LibIcon icon="chevron-right" fixedWidth size="sm" />
                 </Stack>
               )}
             </Group>
@@ -160,8 +197,10 @@ const ContextButton: React.FC<{
                   {typeof metadata === 'object' && metadata.progress !== undefined && (
                     <Progress
                       value={metadata.progress}
-                      size="sm"
-                      color={metadata.colorScheme || button.colorScheme || 'dark.3'}
+                      size={4}
+                      radius={0}
+                      color={metadata.colorScheme || button.colorScheme || 'red'}
+                      styles={{ root: { backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 4 } }}
                     />
                   )}
                 </>

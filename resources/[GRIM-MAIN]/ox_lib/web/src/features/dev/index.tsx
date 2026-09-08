@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Divider, Drawer, Stack, Tooltip } from '@mantine/core';
+import { ActionIcon, Button, createStyles, Divider, Drawer, Stack, Text, Tooltip } from '@mantine/core';
 import { debugAlert } from './debug/alert';
 import { debugContext } from './debug/context';
 import { debugInput } from './debug/input';
@@ -10,63 +10,109 @@ import { debugSkillCheck } from './debug/skillcheck';
 import { useState } from 'react';
 import { debugRadial } from './debug/radial';
 import LibIcon from '../../components/LibIcon';
+import { clipChamferKey, grim, grimFont, grimMono } from '../../theme/grim';
+
+const useStyles = createStyles(() => ({
+  fab: {
+    position: 'absolute',
+    bottom: 50,
+    right: 50,
+    width: 52,
+    height: 52,
+    borderRadius: 0,
+    clipPath: clipChamferKey,
+    background: `linear-gradient(135deg, ${grim.accent}, ${grim.deep})`,
+    border: `1px solid ${grim.primary}`,
+    color: grim.foreground,
+    '&:hover': {
+      filter: 'brightness(1.1)',
+      background: `linear-gradient(135deg, ${grim.accent}, ${grim.deep})`,
+    },
+  },
+  section: {
+    fontFamily: grimMono,
+    fontSize: 9,
+    letterSpacing: '0.16em',
+    color: grim.mutedDark,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  btn: {
+    backgroundColor: grim.card,
+    border: `1px solid ${grim.borderMuted}`,
+    color: grim.foreground,
+    fontFamily: grimFont,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    '&:hover': {
+      backgroundColor: 'rgba(255, 58, 58, 0.2)',
+      borderColor: grim.primary,
+    },
+  },
+  divider: {
+    borderColor: grim.borderMuted,
+  },
+}));
 
 const Dev: React.FC = () => {
   const [opened, setOpened] = useState(false);
+  const { classes } = useStyles();
 
   return (
     <>
       <Tooltip label="Developer drawer" position="bottom">
-        <ActionIcon
-          onClick={() => setOpened(true)}
-          radius="xl"
-          variant="filled"
-          color="orange"
-          sx={{ position: 'absolute', bottom: 0, right: 0, width: 50, height: 50 }}
-          size="xl"
-          mr={50}
-          mb={50}
-        >
-          <LibIcon icon="wrench" fontSize={24} />
+        <ActionIcon onClick={() => setOpened(true)} className={classes.fab} size="xl" variant="filled">
+          <LibIcon icon="wrench" fontSize={22} />
         </ActionIcon>
       </Tooltip>
 
-      <Drawer position="left" onClose={() => setOpened(false)} opened={opened} title="Developer drawer" padding="xl">
-        <Stack>
-          <Divider />
-          <Button fullWidth onClick={() => debugInput()}>
+      <Drawer position="left" onClose={() => setOpened(false)} opened={opened} title="GRIM // DEV MATRIX" padding="xl">
+        <Stack spacing="sm">
+          <Text className={classes.section}>Dialogs</Text>
+          <Divider className={classes.divider} />
+          <Button fullWidth className={classes.btn} onClick={() => debugInput()}>
             Open input dialog
           </Button>
-          <Button fullWidth onClick={() => debugAlert()}>
+          <Button fullWidth className={classes.btn} onClick={() => debugAlert()}>
             Open alert dialog
           </Button>
-          <Divider />
-          <Button fullWidth onClick={() => debugContext()}>
+
+          <Text className={classes.section}>Menus</Text>
+          <Divider className={classes.divider} />
+          <Button fullWidth className={classes.btn} onClick={() => debugContext()}>
             Open context menu
           </Button>
-          <Button fullWidth onClick={() => debugMenu()}>
+          <Button fullWidth className={classes.btn} onClick={() => debugMenu()}>
             Open list menu
           </Button>
-          <Button fullWidth onClick={() => debugRadial()}>
+          <Button fullWidth className={classes.btn} onClick={() => debugRadial()}>
             Open radial menu
           </Button>
-          <Divider />
-          <Button fullWidth onClick={() => debugCustomNotification()}>
+
+          <Text className={classes.section}>Alerts</Text>
+          <Divider className={classes.divider} />
+          <Button fullWidth className={classes.btn} onClick={() => debugCustomNotification()}>
             Send notification
           </Button>
-          <Divider />
-          <Button fullWidth onClick={() => debugProgressbar()}>
+
+          <Text className={classes.section}>Progress</Text>
+          <Divider className={classes.divider} />
+          <Button fullWidth className={classes.btn} onClick={() => debugProgressbar()}>
             Activate progress bar
           </Button>
-          <Button fullWidth onClick={() => debugCircleProgressbar()}>
+          <Button fullWidth className={classes.btn} onClick={() => debugCircleProgressbar()}>
             Activate progress circle
           </Button>
-          <Divider />
-          <Button fullWidth onClick={() => debugTextUI()}>
+
+          <Text className={classes.section}>HUD</Text>
+          <Divider className={classes.divider} />
+          <Button fullWidth className={classes.btn} onClick={() => debugTextUI()}>
             Show TextUI
           </Button>
-          <Divider />
-          <Button fullWidth onClick={() => debugSkillCheck()}>
+
+          <Text className={classes.section}>Mechanics</Text>
+          <Divider className={classes.divider} />
+          <Button fullWidth className={classes.btn} onClick={() => debugSkillCheck()}>
             Run skill check
           </Button>
         </Stack>

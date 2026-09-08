@@ -1,4 +1,4 @@
-import { Button, Group, Modal, Stack } from '@mantine/core';
+import { Button, createStyles, Group, Modal, Stack } from '@mantine/core';
 import React from 'react';
 import { useNuiEvent } from '../../hooks/useNuiEvent';
 import { useLocales } from '../../providers/LocaleProvider';
@@ -16,12 +16,34 @@ import DateField from './components/fields/date';
 import TextareaField from './components/fields/textarea';
 import TimeField from './components/fields/time';
 import dayjs from 'dayjs';
+import { grim } from '../../theme/grim';
 
 export type FormValues = {
   test: {
     value: any;
   }[];
 };
+
+const useStyles = createStyles(() => ({
+  cancelBtn: {
+    backgroundColor: grim.card,
+    border: `1px solid ${grim.borderMuted}`,
+    color: grim.muted,
+    '&:hover': {
+      backgroundColor: 'rgba(255, 58, 58, 0.12)',
+      borderColor: grim.primary,
+      color: grim.foreground,
+    },
+  },
+  confirmBtn: {
+    background: `linear-gradient(135deg, ${grim.accent}, ${grim.deep})`,
+    border: `1px solid ${grim.primary}`,
+    color: grim.foreground,
+    '&:hover': {
+      filter: 'brightness(1.08)',
+    },
+  },
+}));
 
 const InputDialog: React.FC = () => {
   const [fields, setFields] = React.useState<InputProps>({
@@ -30,6 +52,7 @@ const InputDialog: React.FC = () => {
   });
   const [visible, setVisible] = React.useState(false);
   const { locale } = useLocales();
+  const { classes } = useStyles();
   const closeTimeout = React.useRef<number | null>(null);
 
   const form = useForm<{ test: { value: any }[] }>({});
@@ -55,8 +78,7 @@ const InputDialog: React.FC = () => {
           value:
             row.type !== 'checkbox'
               ? row.type === 'date' || row.type === 'date-range' || row.type === 'time'
-                ? // Set date to current one if default is set to true
-                  row.default === true
+                ? row.default === true
                   ? new Date().getTime()
                   : Array.isArray(row.default)
                   ? row.default.map((date) => new Date(date).getTime())
@@ -65,7 +87,6 @@ const InputDialog: React.FC = () => {
               : row.checked,
         } || { value: null }
       );
-      // Backwards compat with new Select data type
       if (row.type === 'select' || row.type === 'multi-select') {
         row.options = row.options.map((option) =>
           !option.label ? { ...option, label: option.value } : option
@@ -123,7 +144,6 @@ const InputDialog: React.FC = () => {
         closeOnEscape={fields.options?.allowCancel !== false}
         closeOnClickOutside={false}
         size={fields.options?.size || 'xs'}
-        styles={{ title: { textAlign: 'center', width: '100%', fontSize: 18 } }}
         title={fields.heading}
         withCloseButton={false}
         overlayOpacity={0.5}
@@ -174,13 +194,14 @@ const InputDialog: React.FC = () => {
               <Button
                 uppercase
                 variant="default"
+                className={classes.cancelBtn}
                 onClick={() => handleClose()}
                 mr={3}
                 disabled={fields.options?.allowCancel === false}
               >
                 {locale.ui.cancel}
               </Button>
-              <Button uppercase variant="light" type="submit">
+              <Button uppercase variant="light" type="submit" className={classes.confirmBtn}>
                 {locale.ui.confirm}
               </Button>
             </Group>

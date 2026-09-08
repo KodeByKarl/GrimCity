@@ -5,6 +5,7 @@ import type { MenuItem } from '../../../typings';
 import { isIconUrl } from '../../../utils/isIconUrl';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import LibIcon from '../../../components/LibIcon';
+import { clipChamferKey, grim, grimFont, grimMono } from '../../../theme/grim';
 
 interface Props {
   item: MenuItem;
@@ -13,15 +14,19 @@ interface Props {
   checked: boolean;
 }
 
-const useStyles = createStyles((theme, params: { iconColor?: string }) => ({
+const useStyles = createStyles((_theme, params: { iconColor?: string }) => ({
   buttonContainer: {
-    backgroundColor: theme.colors.dark[6],
-    borderRadius: theme.radius.md,
+    backgroundColor: grim.card,
+    borderRadius: 0,
+    clipPath: clipChamferKey,
+    border: `1px solid ${grim.borderMuted}`,
     padding: 2,
     height: 60,
     scrollMargin: 8,
+    fontFamily: grimFont,
     '&:focus': {
-      backgroundColor: theme.colors.dark[4],
+      backgroundColor: 'rgba(255, 58, 58, 0.18)',
+      borderColor: grim.primary,
       outline: 'none',
     },
   },
@@ -41,22 +46,29 @@ const useStyles = createStyles((theme, params: { iconColor?: string }) => ({
   },
   icon: {
     fontSize: 24,
-    color: params.iconColor || theme.colors.dark[2],
+    color: params.iconColor || grim.accent,
   },
   label: {
-    color: theme.colors.dark[2],
+    color: grim.muted,
     textTransform: 'uppercase',
-    fontSize: 12,
+    fontSize: 11,
+    letterSpacing: '0.06em',
     verticalAlign: 'middle',
+    fontWeight: 600,
+  },
+  value: {
+    color: grim.foreground,
+    fontWeight: 600,
   },
   chevronIcon: {
     fontSize: 14,
-    color: theme.colors.dark[2],
+    color: grim.soft,
   },
   scrollIndexValue: {
-    color: theme.colors.dark[2],
+    color: grim.accent,
     textTransform: 'uppercase',
-    fontSize: 14,
+    fontSize: 12,
+    fontFamily: grimMono,
   },
   progressStack: {
     width: '100%',
@@ -65,6 +77,8 @@ const useStyles = createStyles((theme, params: { iconColor?: string }) => ({
   progressLabel: {
     verticalAlign: 'middle',
     marginBottom: 3,
+    color: grim.foreground,
+    fontWeight: 600,
   },
 }));
 
@@ -101,7 +115,7 @@ const ListItem = forwardRef<Array<HTMLDivElement | null>, Props>(({ item, index,
           <Group position="apart" w="100%">
             <Stack spacing={0} justify="space-between">
               <Text className={classes.label}>{item.label}</Text>
-              <Text>
+              <Text className={classes.value}>
                 {typeof item.values[scrollIndex] === 'object'
                   ? // @ts-ignore for some reason even checking the type TS still thinks it's a string
                     item.values[scrollIndex].label
@@ -118,7 +132,7 @@ const ListItem = forwardRef<Array<HTMLDivElement | null>, Props>(({ item, index,
           </Group>
         ) : item.checked !== undefined ? (
           <Group position="apart" w="100%">
-            <Text>{item.label}</Text>
+            <Text className={classes.value}>{item.label}</Text>
             <CustomCheckbox checked={checked}></CustomCheckbox>
           </Group>
         ) : item.progress !== undefined ? (
@@ -126,12 +140,12 @@ const ListItem = forwardRef<Array<HTMLDivElement | null>, Props>(({ item, index,
             <Text className={classes.progressLabel}>{item.label}</Text>
             <Progress
               value={item.progress}
-              color={item.colorScheme || 'dark.0'}
-              styles={(theme) => ({ root: { backgroundColor: theme.colors.dark[3] } })}
+              color={item.colorScheme || 'red'}
+              styles={() => ({ root: { backgroundColor: grim.track } })}
             />
           </Stack>
         ) : (
-          <Text>{item.label}</Text>
+          <Text className={classes.value}>{item.label}</Text>
         )}
       </Group>
     </Box>

@@ -1,6 +1,7 @@
-import { Button, createStyles } from '@mantine/core';
+import { UnstyledButton, createStyles } from '@mantine/core';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import LibIcon from '../../../../components/LibIcon';
+import { grim } from '../../../../theme/grim';
 
 interface Props {
   icon: IconProp;
@@ -9,21 +10,22 @@ interface Props {
   handleClick: () => void;
 }
 
-const useStyles = createStyles((theme, params: { canClose?: boolean }) => ({
+const useStyles = createStyles((_theme, params: { canClose?: boolean }) => ({
   button: {
-    borderRadius: 4,
-    flex: '1 15%',
-    alignSelf: 'stretch',
-    height: 'auto',
-    textAlign: 'center',
+    width: 44,
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'center',
-    padding: 2,
-  },
-  root: {
+    background: 'transparent',
     border: 'none',
-  },
-  label: {
-    color: params.canClose === false ? theme.colors.dark[2] : theme.colors.dark[0],
+    borderLeft: `1px solid ${grim.borderMuted}`,
+    color: params.canClose === false ? grim.mutedDark : grim.foreground,
+    cursor: params.canClose === false ? 'not-allowed' : 'pointer',
+    transition: 'background-color 120ms ease, color 120ms ease',
+    '&:hover': {
+      backgroundColor: params.canClose === false ? 'transparent' : 'rgba(255, 58, 58, 0.18)',
+      color: params.canClose === false ? grim.mutedDark : grim.soft,
+    },
   },
 }));
 
@@ -31,15 +33,9 @@ const HeaderButton: React.FC<Props> = ({ icon, canClose, iconSize, handleClick }
   const { classes } = useStyles({ canClose });
 
   return (
-    <Button
-      variant="default"
-      className={classes.button}
-      classNames={{ label: classes.label, root: classes.root }}
-      disabled={canClose === false}
-      onClick={handleClick}
-    >
+    <UnstyledButton className={classes.button} disabled={canClose === false} onClick={handleClick}>
       <LibIcon icon={icon} fontSize={iconSize} fixedWidth />
-    </Button>
+    </UnstyledButton>
   );
 };
 

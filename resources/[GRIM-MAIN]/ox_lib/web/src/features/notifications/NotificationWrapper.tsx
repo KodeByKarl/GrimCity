@@ -7,56 +7,83 @@ import tinycolor from 'tinycolor2';
 import type { NotificationProps } from '../../typings';
 import MarkdownComponents from '../../config/MarkdownComponents';
 import LibIcon from '../../components/LibIcon';
+import { clipChamferBR, grim, grimFont, grimMono, panelGridBg } from '../../theme/grim';
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles(() => ({
   container: {
-    width: 300,
+    width: 320,
     height: 'fit-content',
-    backgroundColor: theme.colors.dark[6],
-    color: theme.colors.dark[0],
-    padding: 12,
-    borderRadius: theme.radius.sm,
-    fontFamily: 'Roboto',
-    boxShadow: theme.shadows.sm,
+    background: panelGridBg,
+    backgroundSize: 'auto, 28px 28px, 28px 28px',
+    color: grim.foreground,
+    padding: '12px 14px',
+    borderRadius: 0,
+    clipPath: clipChamferBR,
+    border: `1px solid ${grim.primary}`,
+    fontFamily: grimFont,
+    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85)',
+    position: 'relative',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: 40,
+      height: 2,
+      background: `linear-gradient(90deg, ${grim.accent}, transparent)`,
+    },
   },
   title: {
-    fontWeight: 500,
+    fontWeight: 700,
     lineHeight: 'normal',
+    letterSpacing: '0.04em',
+    fontSize: 14,
   },
   description: {
     fontSize: 12,
-    color: theme.colors.dark[2],
-    fontFamily: 'Roboto',
-    lineHeight: 'normal',
+    color: grim.muted,
+    fontFamily: grimFont,
+    lineHeight: 1.35,
   },
   descriptionOnly: {
-    fontSize: 14,
-    color: theme.colors.dark[2],
-    fontFamily: 'Roboto',
-    lineHeight: 'normal',
+    fontSize: 13,
+    color: grim.muted,
+    fontFamily: grimFont,
+    lineHeight: 1.35,
+  },
+  tag: {
+    position: 'absolute',
+    top: 6,
+    right: 14,
+    fontFamily: grimMono,
+    fontSize: 7,
+    letterSpacing: '0.12em',
+    color: grim.mutedDark,
+    textTransform: 'uppercase',
   },
 }));
 
-const createAnimation = (from: string, to: string, visible: boolean) => keyframes({
-  from: {
-    opacity: visible ? 0 : 1,
-    transform: `translate${from}`,
-  },
-  to: {
-    opacity: visible ? 1 : 0,
-    transform: `translate${to}`,
-  },
-});
+const createAnimation = (from: string, to: string, visible: boolean) =>
+  keyframes({
+    from: {
+      opacity: visible ? 0 : 1,
+      transform: `translate${from}`,
+    },
+    to: {
+      opacity: visible ? 1 : 0,
+      transform: `translate${to}`,
+    },
+  });
 
 const getAnimation = (visible: boolean, position: string) => {
-  const animationOptions = visible ? '0.2s ease-out forwards' : '0.4s ease-in forwards'
+  const animationOptions = visible ? '0.2s ease-out forwards' : '0.4s ease-in forwards';
   let animation: { from: string; to: string };
 
   if (visible) {
-    animation = position.includes('bottom') ? { from: 'Y(30px)', to: 'Y(0px)' } : { from: 'Y(-30px)', to:'Y(0px)' };
+    animation = position.includes('bottom') ? { from: 'Y(30px)', to: 'Y(0px)' } : { from: 'Y(-30px)', to: 'Y(0px)' };
   } else {
     if (position.includes('right')) {
-      animation = { from: 'X(0px)', to: 'X(100%)' }
+      animation = { from: 'X(0px)', to: 'X(100%)' };
     } else if (position.includes('left')) {
       animation = { from: 'X(0px)', to: 'X(-100%)' };
     } else if (position === 'top-center') {
@@ -68,7 +95,7 @@ const getAnimation = (visible: boolean, position: string) => {
     }
   }
 
-  return `${createAnimation(animation.from, animation.to, visible)} ${animationOptions}`
+  return `${createAnimation(animation.from, animation.to, visible)} ${animationOptions}`;
 };
 
 const durationCircle = keyframes({
@@ -91,9 +118,8 @@ const Notifications: React.FC = () => {
 
     data.showDuration = data.showDuration !== undefined ? data.showDuration : true;
 
-    if (toastId) setToastKey(prevKey => prevKey + 1);
+    if (toastId) setToastKey((prevKey) => prevKey + 1);
 
-    // Backwards compat with old notifications
     switch (position) {
       case 'top':
         position = 'top-center';
@@ -123,16 +149,16 @@ const Notifications: React.FC = () => {
     if (!data.iconColor) {
       switch (data.type) {
         case 'error':
-          iconColor = 'red.6';
+          iconColor = grim.primary;
           break;
         case 'success':
-          iconColor = 'teal.6';
+          iconColor = '#4ade80';
           break;
         case 'warning':
-          iconColor = 'yellow.6';
+          iconColor = '#fbbf24';
           break;
         default:
-          iconColor = 'blue.6';
+          iconColor = grim.accent;
           break;
       }
     } else {
@@ -148,6 +174,7 @@ const Notifications: React.FC = () => {
           }}
           className={`${classes.container}`}
         >
+          <Text className={classes.tag}>ALERT // NUI</Text>
           <Group noWrap spacing={12}>
             {data.icon && (
               <>
@@ -171,9 +198,10 @@ const Notifications: React.FC = () => {
                       <Center>
                         <ThemeIcon
                           color={iconColor}
-                          radius="xl"
+                          radius={0}
                           size={32}
                           variant={tinycolor(iconColor).getAlpha() < 0 ? undefined : 'light'}
+                          sx={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
                         >
                           <LibIcon icon={data.icon} fixedWidth color={iconColor} animation={data.iconAnimation} />
                         </ThemeIcon>
@@ -183,10 +211,11 @@ const Notifications: React.FC = () => {
                 ) : (
                   <ThemeIcon
                     color={iconColor}
-                    radius="xl"
+                    radius={0}
                     size={32}
                     variant={tinycolor(iconColor).getAlpha() < 0 ? undefined : 'light'}
                     style={{ alignSelf: !data.alignIcon || data.alignIcon === 'center' ? 'center' : 'start' }}
+                    sx={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
                   >
                     <LibIcon icon={data.icon} fixedWidth color={iconColor} animation={data.iconAnimation} />
                   </ThemeIcon>

@@ -7,10 +7,30 @@ import { useLocales } from '../../providers/LocaleProvider';
 import remarkGfm from 'remark-gfm';
 import type { AlertProps } from '../../typings';
 import MarkdownComponents from '../../config/MarkdownComponents';
+import { grim, grimFont } from '../../theme/grim';
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles(() => ({
   contentStack: {
-    color: theme.colors.dark[2],
+    color: grim.muted,
+    fontFamily: grimFont,
+  },
+  cancelBtn: {
+    backgroundColor: grim.card,
+    border: `1px solid ${grim.borderMuted}`,
+    color: grim.muted,
+    '&:hover': {
+      backgroundColor: 'rgba(255, 58, 58, 0.12)',
+      borderColor: grim.primary,
+      color: grim.foreground,
+    },
+  },
+  confirmBtn: {
+    background: `linear-gradient(135deg, ${grim.accent}, ${grim.deep})`,
+    border: `1px solid ${grim.primary}`,
+    color: grim.foreground,
+    '&:hover': {
+      filter: 'brightness(1.08)',
+    },
   },
 }));
 
@@ -68,7 +88,7 @@ const AlertDialog: React.FC = () => {
           </ReactMarkdown>
           <Group position="right" spacing={10}>
             {dialogData.cancel && (
-              <Button uppercase variant="default" onClick={() => closeAlert('cancel')} mr={3}>
+              <Button uppercase variant="default" className={classes.cancelBtn} onClick={() => closeAlert('cancel')} mr={3}>
                 {dialogData.labels?.cancel || locale.ui.cancel}
               </Button>
             )}
@@ -76,6 +96,7 @@ const AlertDialog: React.FC = () => {
               uppercase
               variant={dialogData.cancel ? 'light' : 'default'}
               color={dialogData.cancel ? theme.primaryColor : undefined}
+              className={classes.confirmBtn}
               onClick={() => closeAlert('confirm')}
             >
               {dialogData.labels?.confirm || locale.ui.confirm}

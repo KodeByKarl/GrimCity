@@ -8,41 +8,48 @@ import ScaleFade from '../../../transitions/ScaleFade';
 import type { RadialMenuItem } from '../../../typings';
 import { useLocales } from '../../../providers/LocaleProvider';
 import LibIcon from '../../../components/LibIcon';
+import { grim, grimFont } from '../../../theme/grim';
 
-const useStyles = createStyles((theme) => ({
+const useStyles = createStyles(() => ({
   wrapper: {
     position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
+    fontFamily: grimFont,
   },
   sector: {
-    fill: theme.colors.dark[6],
-    color: theme.colors.dark[0],
+    fill: grim.card,
+    color: grim.foreground,
+    stroke: grim.borderMuted,
+    strokeWidth: 1,
 
     '&:hover': {
-      fill: theme.fn.primaryColor(),
+      fill: grim.primary,
       cursor: 'pointer',
       '> g > text, > g > svg > path': {
         fill: '#fff',
       },
     },
     '> g > text': {
-      fill: theme.colors.dark[0],
+      fill: grim.foreground,
       strokeWidth: 0,
+      fontFamily: grimFont,
     },
   },
   backgroundCircle: {
-    fill: theme.colors.dark[6],
+    fill: grim.panel,
+    stroke: grim.primary,
+    strokeWidth: 2,
   },
   centerCircle: {
-    fill: theme.fn.primaryColor(),
+    fill: grim.primary,
     color: '#fff',
-    stroke: theme.colors.dark[6],
+    stroke: grim.panel,
     strokeWidth: 4,
     '&:hover': {
       cursor: 'pointer',
-      fill: theme.colors[theme.primaryColor][theme.fn.primaryShade() - 1],
+      fill: grim.accent,
     },
   },
   centerIconContainer: {
