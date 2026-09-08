@@ -11,24 +11,22 @@ local function getJobLabel(jobName)
     return jobName and jobName:gsub('^%l', string.upper) or 'JOB'
 end
 
-local function buildJobTemplate(jobData, jobLabel, message, time)
-    local backgroundStyle = 'background: #0f0f13;'
-
-    if jobData then
-        if jobData.gif then
-            backgroundStyle = ("background-image: url('%s'); background-size: cover; background-position: center;"):format(jobData.gif)
-        elseif jobData.background then
-            backgroundStyle = 'background: ' .. jobData.background .. ';'
-        end
+local function resolveSystemJobData(jobName, jobLabel)
+    if type(ResolveJobTemplate) == 'function' then
+        return ResolveJobTemplate(jobName, jobLabel)
     end
 
-    return '<div style="' .. backgroundStyle .. ' border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.05); padding: 10px; margin-bottom: 8px; font-family: sans-serif; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.8);">'
-        .. '  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #a1a1a8; font-weight: 600; text-transform: uppercase;">'
-        .. '    <span>FEED • ' .. jobLabel .. ' | SYSTEM</span>'
-        .. '    <span>{1}</span>'
-        .. '  </div>'
-        .. '  <div style="color: #ffffff; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-top: 6px; line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.85);">{0}</div>'
-        .. '</div>'
+    local cfg = ConfigChat.jobTemplate
+    local data = cfg and cfg.jobs and cfg.jobs[jobName]
+    if data then return data end
+
+    local fallback = cfg and cfg.default or {}
+    return {
+        gif = fallback.gif,
+        background = fallback.background or '#111111',
+        color = fallback.color or '#ffffff',
+        headerColor = fallback.headerColor or '#cfcfcf',
+    }
 end
 
 local function resolvePlayerGang(xPlayer)
@@ -66,14 +64,14 @@ function JobTemplateWithoutID(jobName, message)
         return
     end
 
-    local jobData = ConfigChat.jobTemplate and ConfigChat.jobTemplate.jobs and ConfigChat.jobTemplate.jobs[jobName]
     local jobLabel = getJobLabel(jobName)
+    local jobData = resolveSystemJobData(jobName, jobLabel)
     local time = os.date('%H:%M')
-    local template = buildJobTemplate(jobData, jobLabel, message, time)
+    local template = BuildAnnouncementHtml(jobData, 'FEED • ' .. jobLabel .. ' | SYSTEM')
 
     TriggerClientEvent('chat:addMessage', -1, {
         template = template,
-        args = { message, time }
+        args = { 'SYSTEM', message, time }
     })
 end
 

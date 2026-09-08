@@ -8,12 +8,51 @@ end
 
 local function templateBackground(data, fallback)
     if data and data.gif then
-        return "background-image: url('" .. data.gif .. "'); background-size: cover; background-position: center;"
+        -- Fixed compact card: image covers the box (crop), badge/logo side kept visible.
+        return "background-image: linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.15) 100%), url('"
+            .. data.gif
+            .. "'); background-size: cover; background-position: center right; background-repeat: no-repeat;"
     end
     if data and data.background and data.background ~= 'nil' then
         return "background: " .. data.background .. ";"
     end
     return "background: " .. (fallback or "#0f0f13") .. ";"
+end
+
+--- Compact size matched to Traphouse chat cards (padding 8x12, ~single-block height).
+local ANNOUNCE_CARD_STYLE = "height: 52px; min-height: 52px; max-height: 52px; overflow: hidden; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-family: 'Outfit', sans-serif; position: relative; display: flex; flex-direction: column; justify-content: center; gap: 2px; max-width: 100%; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
+
+--- Freestyle job banner. Per-job colors/gifs override default.
+function ResolveJobTemplate(jobName, jobLabel)
+    local cfg = ConfigChat.jobTemplate
+    if not cfg or not cfg.enabled then return nil end
+
+    jobName = type(jobName) == 'string' and jobName:lower() or nil
+    if not jobName or jobName == '' then
+        return nil
+    end
+
+    if cfg.blockedJobs and cfg.blockedJobs[jobName] then
+        return nil
+    end
+
+    local data = cfg.jobs and cfg.jobs[jobName]
+    if data then
+        return data
+    end
+
+    if cfg.allowAnyJob == false then
+        return nil
+    end
+
+    local fallback = cfg.default or {}
+    return {
+        label = jobLabel or jobName:upper(),
+        gif = fallback.gif,
+        background = fallback.background or '#111111',
+        color = fallback.color or '#ffffff',
+        headerColor = fallback.headerColor or '#cfcfcf',
+    }
 end
 
 --- Any assigned ESX gang can post. Custom gif/colors override the free default.
@@ -48,15 +87,15 @@ end
 function BuildAnnouncementHtml(data, headerLeft, fallbackBg, borderColor)
     local color, headerColor = templateColors(data)
     local backgroundStyle = templateBackground(data, fallbackBg)
-    local border = borderColor or "rgba(255, 255, 255, 0.05)"
-    local overlay = (data and data.gif) and "" or "box-shadow: inset 0 0 80px rgba(0,0,0,0.55);"
+    local border = borderColor or "rgba(255, 255, 255, 0.08)"
+    local overlay = (data and data.gif) and "" or "box-shadow: inset 0 0 40px rgba(0,0,0,0.45), 0 4px 15px rgba(0,0,0,0.5);"
 
-    return '<div style="' .. backgroundStyle .. ' color: ' .. color .. '; border-radius: 4px; border: 1px solid ' .. border .. '; padding: 10px; margin-bottom: 8px; font-family: sans-serif; position: relative; ' .. overlay .. '">'
-        .. '  <div style="display: flex; justify-content: space-between; font-size: 11px; color: ' .. headerColor .. '; font-weight: 600; text-transform: uppercase;">'
-        .. '    <span>' .. headerLeft .. '</span>'
-        .. '    <span>{2}</span>'
+    return '<div style="' .. backgroundStyle .. ' color: ' .. color .. '; border: 1px solid ' .. border .. '; ' .. ANNOUNCE_CARD_STYLE .. ' ' .. overlay .. '">'
+        .. '  <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 10px; color: ' .. headerColor .. '; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">'
+        .. '    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">' .. headerLeft .. '</span>'
+        .. '    <span style="flex-shrink: 0; opacity: 0.9;">{2}</span>'
         .. '  </div>'
-        .. '  <div style="color: ' .. color .. '; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-top: 6px; line-height: 1.4;">{1}</div>'
+        .. '  <div style="color: ' .. color .. '; font-size: 12px; font-weight: 700; text-transform: uppercase; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{1}</div>'
         .. '</div>'
 end
 
@@ -110,7 +149,7 @@ if ConfigChat.jobTemplate.enabled then
         local message = table.concat(args, " ")
         local time = os.date("%H:%M")
 
-        local jobData = ConfigChat.jobTemplate.jobs[jobName]
+        local jobData = ResolveJobTemplate(jobName, jobLabel)
         if not jobData then
             TriggerClientEvent('chat:addMessage', source, {
                 template = '<div style="color: #ff3b30; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px;">[SYSTEM] Your job does not have authorization to use this announcement!</div>'
@@ -118,15 +157,7 @@ if ConfigChat.jobTemplate.enabled then
             return
         end
 
-        -- No message: open Auto Templates picker when this job has presets configured
         if message == "" then
-            local autoCfg = ConfigChat.jobAutoTemplates
-            local autoList = autoCfg and autoCfg.enabled and autoCfg.jobs and (autoCfg.jobs[jobName] or (jobName == 'sambulance' and autoCfg.jobs['ambulance']) or (jobName == 'sheriff' and autoCfg.jobs['police']))
-            if autoList and #autoList > 0 then
-                TriggerClientEvent('cfx-keydi-chat:openJobAutoTemplates', source)
-                return
-            end
-
             TriggerClientEvent('chat:addMessage', source, {
                 template = '<div style="color: #e3a71b; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px;">[SYSTEM] Please enter a message! Format: /' .. ConfigChat.jobTemplate.command .. ' [message]</div>'
             })

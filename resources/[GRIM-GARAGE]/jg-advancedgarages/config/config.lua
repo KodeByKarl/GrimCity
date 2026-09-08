@@ -375,8 +375,8 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
   ["Hospital"] = {
-    coords = vector3(1157.1622, -1474.2361, 34.6925),
-    spawn = vector4(1148.1801, -1475.9166, 34.6926, 1.2972),
+    coords = vector3(-1051.1544, -1410.1101, 5.4256),
+    spawn = vector4(-1056.2134, -1415.5654, 5.4258, 134.9362),
     distance = 3.0,
     type = "car",
     hideBlip = false,
@@ -746,15 +746,13 @@ Config.JobGarageUniqueLocations = true
 Config.JobGarageEnableInteriors = true
 Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
   ["EMS Garage"] = {
-    coords = vector3(1119.2634, -1498.2333, 35.0544),
+    coords = vector3(-1030.4906, -1415.4324, 5.4256),
     spawn = {
-      vector4(1120.2469, -1483.9165, 34.6926, 3.3234),
-      vector4(1124.5000, -1483.9165, 34.6926, 3.3234),
-      vector4(1128.8000, -1483.9165, 34.6926, 3.3234),
+      vector4(-1035.8992, -1421.0535, 5.4292, 66.2173),
     },
     distance = 3.0,
     type = "car",
-    job = {"ambulance", "sambulance"},
+    job = {"ambulance", "sambulance", "pambulance"},
     vehiclesType = "spawner",
     showLiveriesExtrasMenu = true,
     vehicles = {
@@ -781,6 +779,48 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
       },
     },
     hideBlip = false,
+    blip = {
+      id = 357,
+      color = 1,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Paleto EMS Garage"] = {
+    coords = vector3(-273.5200, 6318.0293, 32.4212),
+    spawn = {
+      vector4(-268.4462, 6309.9468, 32.3824, 215.0898),
+    },
+    distance = 3.0,
+    type = "car",
+    job = {"pambulance", "sambulance", "ambulance"},
+    vehiclesType = "spawner",
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "ambulance",
+        plate = "PAMS",
+        minJobGrade = 0,
+        nickname = "Ambulance",
+        maxMods = true,
+      },
+      [2] = {
+        model = "dodgeEMS",
+        plate = "PAMS",
+        minJobGrade = 0,
+        nickname = "Dodge EMS",
+        maxMods = true,
+      },
+      [3] = {
+        model = "lguard",
+        plate = "PAMS",
+        minJobGrade = 0,
+        nickname = "Lifeguard SUV",
+        maxMods = true,
+      },
+    },
+    hideBlip = true,
     blip = {
       id = 357,
       color = 1,

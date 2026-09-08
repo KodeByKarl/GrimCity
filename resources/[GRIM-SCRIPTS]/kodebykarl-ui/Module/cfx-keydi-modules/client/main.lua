@@ -51,20 +51,133 @@ exports('OpenRentalMenu', function(location)
     TriggerEvent('cfx-keydi-utils:rental:open', location)
 end)
 
--- Identification & Name change exports
+-- Identification & Name change exports (redirect — City Hall is no longer free)
 exports('RequestLicense', function()
-    TriggerServerEvent('cfx-keydi-identification:server:giveIdItem')
+    lib.notify({
+        title = 'DOJ',
+        description = 'Citizen IDs are issued by on-duty DOJ staff ($250,000).',
+        type = 'error',
+    })
 end)
 
 exports('OpenChangeNameMenu', function()
-    local input = lib.inputDialog('City Hall - Change Name', {
-        { type = 'input', label = 'First Name', placeholder = 'Enter first name...', required = true },
-        { type = 'input', label = 'Last Name', placeholder = 'Enter last name...', required = true }
+    lib.notify({
+        title = 'DOJ',
+        description = 'Legal name changes are processed by on-duty DOJ staff ($500,000).',
+        type = 'error',
     })
-    if input and input[1] and input[2] then
-        TriggerServerEvent('cfx-keydi-identification:server:changeName', input[1], input[2])
-    end
 end)
+
+local function isOnDutyDoj()
+    local data = ESX.GetPlayerData and ESX.GetPlayerData() or nil
+    return data and data.job and data.job.name == 'doj'
+end
+
+local function dojErr(code, price)
+    local map = {
+        not_doj = 'On-duty DOJ only.',
+        invalid_target = 'No valid citizen nearby.',
+        offline = 'Citizen is offline.',
+        far = 'Citizen is too far away.',
+        has_id = 'They already have a Citizen ID.',
+        no_money = ('Citizen cannot afford $%s.'):format(
+            (price and ESX.Math and ESX.Math.GroupDigits and ESX.Math.GroupDigits(price)) or tostring(price or 0)
+        ),
+        inventory_full = 'Their inventory is full.',
+        invalid = 'Invalid name provided.',
+    }
+    return map[code] or 'Request failed.'
+end
+
+local function openDojMenu()
+    if not isOnDutyDoj() then
+        lib.notify({ title = 'DOJ', description = 'On-duty DOJ only.', type = 'error' })
+        return
+    end
+
+    local cfg = (ConfigModules and ConfigModules.DOJ) or {}
+    local maxDist = tonumber(cfg.MaxDistance) or 3.0
+    local idPrice = tonumber(cfg.CitizenIdPrice) or 250000
+    local namePrice = tonumber(cfg.ChangeNamePrice) or 500000
+
+    local playerId = lib.getClosestPlayer(GetEntityCoords(cache.ped), maxDist, false)
+    if not playerId then
+        lib.notify({ title = 'DOJ', description = 'No citizen nearby.', type = 'error' })
+        return
+    end
+    local targetSid = GetPlayerServerId(playerId)
+
+    lib.registerContext({
+        id = 'doj_services_menu',
+        title = 'DOJ Services',
+        options = {
+            {
+                title = 'Issue Citizen ID',
+                description = ('Charge nearby citizen $%s'):format(
+                    (ESX.Math and ESX.Math.GroupDigits and ESX.Math.GroupDigits(idPrice)) or idPrice
+                ),
+                icon = 'id-card',
+                onSelect = function()
+                    local result = lib.callback.await('cfx-keydi-doj:issueCitizenId', false, targetSid)
+                    if not result or not result.ok then
+                        lib.notify({
+                            title = 'DOJ',
+                            description = dojErr(result and result.error, result and result.price or idPrice),
+                            type = 'error',
+                        })
+                    end
+                end,
+            },
+            {
+                title = 'Process Name Change',
+                description = ('Charge nearby citizen $%s'):format(
+                    (ESX.Math and ESX.Math.GroupDigits and ESX.Math.GroupDigits(namePrice)) or namePrice
+                ),
+                icon = 'user-pen',
+                onSelect = function()
+                    local input = lib.inputDialog('DOJ — Legal Name Change', {
+                        { type = 'input', label = 'First Name', required = true, max = 24 },
+                        { type = 'input', label = 'Last Name', required = true, max = 24 },
+                    })
+                    if not input or not input[1] or not input[2] then return end
+                    local result = lib.callback.await('cfx-keydi-doj:changeName', false, {
+                        targetId = targetSid,
+                        firstName = input[1],
+                        lastName = input[2],
+                    })
+                    if not result or not result.ok then
+                        lib.notify({
+                            title = 'DOJ',
+                            description = dojErr(result and result.error, result and result.price or namePrice),
+                            type = 'error',
+                        })
+                    end
+                end,
+            },
+        },
+    })
+    lib.showContext('doj_services_menu')
+end
+
+local dojCmd = (ConfigModules.DOJ and ConfigModules.DOJ.MenuCommand) or 'doj'
+RegisterCommand(dojCmd, function()
+    openDojMenu()
+end, false)
+
+if ConfigModules.DOJ and ConfigModules.DOJ.MenuKey and ConfigModules.DOJ.MenuKey ~= '' then
+    lib.addKeybind({
+        name = 'doj_services',
+        description = 'DOJ Services Menu',
+        defaultKey = ConfigModules.DOJ.MenuKey,
+        onPressed = function()
+            if isOnDutyDoj() then
+                openDojMenu()
+            end
+        end,
+    })
+end
+
+exports('OpenDojMenu', openDojMenu)
 
 -- Register Command & Key Mapping
 RegisterCommand(ConfigModules.OpenCommand, function()

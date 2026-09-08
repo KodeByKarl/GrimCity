@@ -9,31 +9,87 @@ local BigHeist = {
     destroy = {},
     markerCache = {},
     blipCache = {},
+    locationBlips = {}, -- always-on map blips for robbery locations
     debugBlipCache = {},
-    debugPointsCache = {}
+    debugPointsCache = {},
+    loaded = false,
 }
 
-AddEventHandler('ESX:Client:PlayerLoaded', function()
-    
-end)
+local function DrawMarkerSimple(coords, r, g, b, a)
+    if not coords then return end
+    DrawMarker(
+        1,
+        coords.x, coords.y, coords.z - 1.0,
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0,
+        0.6, 0.6, 0.35,
+        r or 255, g or 0, b or 0, a or 160,
+        false, false, 2, false, nil, nil, false
+    )
+end
+
+local function DrawText3D(x, y, z, text)
+    SetTextScale(0.35, 0.35)
+    SetTextFont(4)
+    SetTextProportional(true)
+    SetTextColour(255, 255, 255, 215)
+    SetTextOutline()
+    BeginTextCommandDisplayText('STRING')
+    SetTextCentre(true)
+    AddTextComponentSubstringPlayerName(text)
+    SetDrawOrigin(x, y, z, 0)
+    EndTextCommandDisplayText(0.0, 0.0)
+    local factor = (#text) / 370
+    DrawRect(0.0, 0.0125, 0.017 + factor, 0.03, 0, 0, 0, 75)
+    ClearDrawOrigin()
+end
+
+local function getHeistCoords(value)
+    if value.ped and value.ped.coords then
+        local c = value.ped.coords
+        return vec3(c.x, c.y, c.z)
+    end
+    if value.marker and value.marker.coords then
+        return value.marker.coords
+    end
+    return nil
+end
+
+--- Permanent map blip for big heists only (stores stay hidden).
+--- Short-range so they don't stick on the minimap until nearby.
+local function createLocationBlip(heistKey, value)
+    if value.settings and value.settings.showMapBlip == false then
+        return
+    end
+    -- Small store robberies (marker only) — no map blip
+    if value.marker and not value.ped then
+        return
+    end
+    -- Big heists need a ped start point
+    if not value.ped then
+        return
+    end
+
+    local coords = getHeistCoords(value)
+    if not coords then return end
+
+    local blip = AddBlipForCoord(coords.x, coords.y, coords.z)
+    SetBlipSprite(blip, 84)
+    SetBlipColour(blip, 1)
+    SetBlipScale(blip, 0.75)
+    SetBlipAsShortRange(blip, true) -- not sticky on minimap
+    SetBlipDisplay(blip, 4)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName(value.label or heistKey)
+    EndTextCommandSetBlipName(blip)
+    BigHeist.locationBlips[heistKey] = blip
+end
 
 function StartBigHeist(data)
     local key = data.args.key
     local config = Config.Heist[key]
+    if not config then return end
 
-    if not config.settings.disablePCheck then
-        local isOnHold = GlobalState.PriorityPolice.canRob
-        if not isOnHold then
-            ESX.Notify('[SYSTEM]: Priority', config.label..' is on hold', 'warning', 5000)
-            return
-        end
-    end
-
-    --[[ local robbery = exports['cfx-cs-scoreboard']:CheckLawEnforcementByTable(config.require)
-    if not robbery.enable then
-        ESX.Notify('ROBBERY - '..config.label, ('There must be at least %s %s in town to rob.'):format(robbery.count, robbery.name), 'error', 5000)
-        return
-    end ]]
     local canRob = lib.callback.await('cfx-cs-robbery:check', false, key)
     if not canRob then return end
 
@@ -66,8 +122,10 @@ local function setStateBagHandlers(blipId, notifyId, gubed)
     _AddStateBagChangeHandler(blipId, "global", function(_, theGlobalKey, value)
         local theKey = theGlobalKey:gsub('_blip', '')
         local config = Config.Heist[theKey]
+        if not config then return end
         if value then
-            local coords = config.ped and config.ped.coords.xyz or config.marker.coords
+            local coords = getHeistCoords(config)
+            if not coords then return end
             BigHeist.blipCache[blipId] = AddBlipForCoord(coords.x, coords.y, coords.z)
             SetBlipSprite(BigHeist.blipCache[blipId], 161)
             SetBlipScale(BigHeist.blipCache[blipId], 1.5)
@@ -87,28 +145,14 @@ local function setStateBagHandlers(blipId, notifyId, gubed)
         _AddStateBagChangeHandler(notifyId, "global", function(_, theGlobalKey, value)
             local theKey = theGlobalKey:gsub('_notify', '')
             local config = Config.Heist[theKey]
-            if value then
+            if value and config then
                 lib.notify({
                     title = 'Illegal Activity',
                     description = 'Ongoing '..config.label,
-                    duration = 15000, -- Keep it persistent for announcements
-                    position = 'top-center', -- Center the announcement at the top
-                    icon = 'bullhorn', -- Use an icon that represents an announcement
-                    iconColor = '#E53E3E', -- Red icon color for importance
-                    style = {
-                        backgroundColor = '#1A202C', -- Darker background for emphasis
-                        color = '#FFFFFF', -- Bright text color for contrast
-                        fontSize = '16px', -- Larger font size for visibility
-                        fontWeight = 'bold', -- Make text bold for impact
-                        border = '2px solid #E53E3E', -- Red border for urgency
-                        padding = '16px', -- Add padding for better spacing
-                        borderRadius = '8px', -- Rounded edges for a clean look
-                        boxShadow = '0px 4px 10px rgba(0, 0, 0, 0.4)', -- Subtle shadow for depth
-                        ['.description'] = {
-                            color = '#F7FAFC', -- Lighter description text
-                            fontSize = '13px', -- Slightly smaller for hierarchy
-                        }
-                    },
+                    duration = 15000,
+                    position = 'top-center',
+                    icon = 'bullhorn',
+                    iconColor = '#E53E3E',
                 })
             end
         end)
@@ -118,7 +162,9 @@ local function setStateBagHandlers(blipId, notifyId, gubed)
         _AddStateBagChangeHandler(gubed, "global", function(_, theGlobalKey, value)
             local theKey = theGlobalKey:gsub('_debug', '')
             local config = Config.Heist[theKey]
-            local coords = config.ped and config.ped.coords.xyz or config.marker.coords
+            if not config then return end
+            local coords = getHeistCoords(config)
+            if not coords then return end
             if value then
                 local cPoint = lib.points.new({
                     coords = coords,
@@ -131,46 +177,17 @@ local function setStateBagHandlers(blipId, notifyId, gubed)
                     DrawMarker(28, self.zoneCoords.x, self.zoneCoords.y, self.zoneCoords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.ZoneSize, self.ZoneSize, self.ZoneSize, 255, 0, 0, 40, false, false, 2, true, false, false, false)
                 end
                 function cPoint:onEnter()
-                    --[[ local redzoneBlip = AddBlipForRadius(self.zoneCoords.x, self.zoneCoords.y, self.zoneCoords.z, self.blipSize + 0.0)
-                    SetBlipColour(redzoneBlip, 1)
-                    SetBlipAlpha(redzoneBlip, 200)
-                    BigHeist.debugBlipCache[theKey] = redzoneBlip ]]
                     SetInTraphouse(true)
                     if not BigHeist.timer[theKey] and not Player(cache.serverId).state.dead then
                         lib.showTextUI('You are in a traphouse zone. This area is kill on sight.', {
                             position = "bottom-center",
                             icon = 'fa-solid fa-skull-crossbones',
                             iconColor = '#FF0949',
-                            style = {
-                                backgroundColor = '#2E2E2E', -- Slightly lighter background for better contrast
-                                color = '#F1F1F1', -- Softer white text for reduced strain on the eyes
-                                padding = '12px 24px', -- Adds more spacing for a cleaner look
-                                borderRadius = '8px', -- Rounded corners for a modern look
-                                border = '2px solid #FF0949', -- Adds a border matching the icon color
-                                fontSize = '16px', -- Clear and readable text size
-                                fontFamily = 'Arial, sans-serif', -- Clean and widely supported font
-                                textAlign = 'center', -- Centers the text nicely
-                                boxShadow = '0 4px 20px rgba(0, 0, 0, 0.7)', -- Larger and softer shadow
-                                transition = 'all 0.3s ease', -- Smooth transition for hover effects
-                                hover = {
-                                    backgroundColor = '#FF0949', -- Changes background color on hover
-                                    color = '#212121', -- Inverts text color on hover
-                                },
-                                ['.description'] = {
-                                    color = '#D1D1D1', -- Subtle contrast for description text
-                                    fontSize = '14px', -- Slightly smaller for descriptions
-                                }
-                            }
                         })
                     end
                 end
                 function cPoint:onExit()
                     SetInTraphouse(false)
-                    --[[ if BigHeist.debugBlipCache[theKey] then
-                        if DoesBlipExist(BigHeist.debugBlipCache[theKey]) then
-                            RemoveBlip(BigHeist.debugBlipCache[theKey])
-                        end
-                    end ]]
                     if not BigHeist.timer[theKey] and not Player(cache.serverId).state.dead then
                         lib.hideTextUI()
                     end
@@ -202,40 +219,27 @@ function SetInTraphouse(state)
 end
 
 function LoadBigHeist()
+    if BigHeist.loaded then return end
+    if not Config.Heist or not next(Config.Heist) then
+        print('^1[kodebykarl-robbery]^0 Config.Heist is empty — check shared/heist/*.lua load order.')
+        return
+    end
+
+    BigHeist.loaded = true
     _CreateThread(function()
-        for i = 1, 99 do
-            local trapKey = "trap" .. i
-            if Config.Heist[trapKey] and Config.Heist[trapKey].marker and Config.Heist[trapKey].debug then
-                local coords = Config.Heist[trapKey].marker.coords
-                local blipSize = Config.Heist[trapKey].debug.blipSize or 150
-        
-                local redzoneBlip = AddBlipForRadius(coords.x, coords.y, coords.z, blipSize + 0.0)
-                SetBlipColour(redzoneBlip, 1)
-                SetBlipAlpha(redzoneBlip, 200)
-        
-                local blipSprite = AddBlipForCoord(coords.x, coords.y, coords.z)
-                SetBlipSprite(blipSprite, 274)
-                SetBlipDisplay(blipSprite, 4)
-                SetBlipScale(blipSprite, 1.0)
-                SetBlipColour(blipSprite, 1)
-                SetBlipAsShortRange(blipSprite, true)
-        
-                BeginTextCommandSetBlipName("STRING")
-                AddTextComponentString("TH "..Config.Heist[trapKey].label)
-                EndTextCommandSetBlipName(blipSprite)
-            end
-        end
-    end)
-    _CreateThread(function()
+        local count = 0
         for heist, value in pairs(Config.Heist) do
+            count = count + 1
+            createLocationBlip(heist, value)
+
             if value.ped then
-                local spawnedped
-                RequestModel(value.ped.model)
-                while not HasModelLoaded(value.ped.model) do
+                local model = value.ped.model
+                if type(model) == 'string' then model = joaat(model) end
+                RequestModel(model)
+                while not HasModelLoaded(model) do
                     Wait(0)
                 end
-                if type(value.ped.model) == 'string' then value.ped.model = joaat(value.ped.model) end
-                spawnedped = CreatePed(0, value.ped.model, value.ped.coords.x, value.ped.coords.y, value.ped.coords.z - 1.0, value.ped.coords.w, false, false)
+                local spawnedped = CreatePed(0, model, value.ped.coords.x, value.ped.coords.y, value.ped.coords.z - 1.0, value.ped.coords.w, false, false)
                 FreezeEntityPosition(spawnedped, true)
                 SetEntityInvincible(spawnedped, true)
                 SetBlockingOfNonTemporaryEvents(spawnedped, true)
@@ -249,6 +253,7 @@ function LoadBigHeist()
                     }
                 })
                 Config.Heist[heist].ped.entity = spawnedped
+                Config.Heist[heist].ped.model = model
             end
             if value.marker then
                 local cPoint = lib.points.new({
@@ -258,22 +263,25 @@ function LoadBigHeist()
                     heistId = heist
                 })
                 function cPoint:nearby()
-                    if self.currentDistance > 2.5 and not GlobalState[self.heistId] then
-                        ESX.DrawMarker(self.coords, 255, 0, 0, 1000)
-                    end
-                    if self.currentDistance < 2.5 and not GlobalState[self.heistId] then
-                        ESX.DrawText3D(self.coords.x, self.coords.y, self.coords.z, 'Press ~g~E~w~ to start ~r~'..self.storeName..'~w~')
-                    end
-                    if self.currentDistance < 2.5 and IsControlJustReleased(0, 38) and not GlobalState[self.heistId] then
-                        StartBigHeist({args = {key = heist}})
+                    if GlobalState[self.heistId] then return end
+                    DrawMarkerSimple(self.coords, 255, 0, 0, 160)
+                    if self.currentDistance < 2.5 then
+                        DrawText3D(self.coords.x, self.coords.y, self.coords.z + 0.35, 'Press ~g~E~w~ to start ~r~'..self.storeName..'~w~')
+                        if IsControlJustReleased(0, 38) then
+                            StartBigHeist({args = {key = heist}})
+                        end
                     end
                 end
             end
-            if value.settings.autoBlip then
-                setStateBagHandlers(heist..'_blip', (value.settings.autoAnnounce and heist..'_notify' or false), ((value.debug and value.debug.enable) and heist..'_debug' or false))
+            if value.settings and value.settings.autoBlip then
+                setStateBagHandlers(
+                    heist..'_blip',
+                    (value.settings.autoAnnounce and heist..'_notify' or false),
+                    ((value.debug and value.debug.enable) and heist..'_debug' or false)
+                )
             end
         end
-        print('^0[^3kodebykarl-robbery^0]: ^2Heist Loaded.^0')
+        print(('^0[^3kodebykarl-robbery^0]: ^2Heist Loaded (%s locations + map blips).^0'):format(count))
     end)
 end
 
@@ -283,38 +291,18 @@ RegisterNetEvent('cfx-cs-robbery:DestroyClient', function(key)
     BigHeist.destroy[key] = false
 end)
 
-
 RegisterNetEvent('cfx-cs-robbery:SyncTimer', function(key)
     local config = Config.Heist[key]
+    if not config then return end
     BigHeist.timer[key] = config.timer
     _CreateThread(function()
-		while true do
-			Wait(1000)
-			BigHeist.timer[key] -= 1
+        while true do
+            Wait(1000)
+            BigHeist.timer[key] -= 1
             lib.showTextUI(config.label..': '..BigHeist.timer[key]..' seconds remaining', {
                 position = "bottom-center",
                 icon = 'fa-solid fa-stopwatch',
                 iconColor = '#FF0949',
-                style = {
-                    backgroundColor = '#2E2E2E', -- Slightly lighter background for better contrast
-                    color = '#F1F1F1', -- Softer white text for reduced strain on the eyes
-                    padding = '12px 24px', -- Adds more spacing for a cleaner look
-                    borderRadius = '8px', -- Rounded corners for a modern look
-                    border = '2px solid #FF0949', -- Adds a border matching the icon color
-                    fontSize = '16px', -- Clear and readable text size
-                    fontFamily = 'Arial, sans-serif', -- Clean and widely supported font
-                    textAlign = 'center', -- Centers the text nicely
-                    boxShadow = '0 4px 20px rgba(0, 0, 0, 0.7)', -- Larger and softer shadow
-                    transition = 'all 0.3s ease', -- Smooth transition for hover effects
-                    hover = {
-                        backgroundColor = '#FF0949', -- Changes background color on hover
-                        color = '#212121', -- Inverts text color on hover
-                    },
-                    ['.description'] = {
-                        color = '#D1D1D1', -- Subtle contrast for description text
-                        fontSize = '14px', -- Slightly smaller for descriptions
-                    }
-                }
             })
             if BigHeist.timer[key] <= 0 then
                 lib.hideTextUI()
@@ -324,13 +312,15 @@ RegisterNetEvent('cfx-cs-robbery:SyncTimer', function(key)
                 lib.hideTextUI()
                 break
             end
-		end
-	end)
+        end
+    end)
     _CreateThread(function()
-		while true do
-			Wait(0)
+        while true do
+            Wait(0)
             local coords = GetEntityCoords(cache.ped)
-            local dist = config.ped and #(coords - config.ped.coords.xyz) or #(coords - config.marker.coords)
+            local heistCoords = getHeistCoords(config)
+            if not heistCoords then break end
+            local dist = #(coords - heistCoords)
             if dist > config.distanceToCancel then
                 TriggerServerEvent('cfx-cs-robbery:DestroyServer', key)
                 break
@@ -338,31 +328,44 @@ RegisterNetEvent('cfx-cs-robbery:SyncTimer', function(key)
             if BigHeist.destroy[key] then
                 break
             end
-		end
-	end)
+        end
+    end)
 end)
 
-
 function UnloadBigHeist()
-    for k,v in pairs(Config.Heist) do
-        if v.ped then
+    for k, v in pairs(Config.Heist or {}) do
+        if v.ped and v.ped.entity and v.ped.entity ~= 0 then
             DeletePed(v.ped.entity)
             Config.Heist[k].ped.entity = 0
         end
     end
+    for key, blip in pairs(BigHeist.locationBlips) do
+        if blip and DoesBlipExist(blip) then
+            RemoveBlip(blip)
+        end
+        BigHeist.locationBlips[key] = nil
+    end
+    for id, blip in pairs(BigHeist.blipCache) do
+        if blip and DoesBlipExist(blip) then
+            RemoveBlip(blip)
+        end
+        BigHeist.blipCache[id] = nil
+    end
+    BigHeist.loaded = false
 end
 
-AddEventHandler('ESX:Client:PlayerLoaded', function()
+RegisterNetEvent('esx:playerLoaded', function()
+    Wait(500)
     LoadBigHeist()
 end)
 
 AddEventHandler('onResourceStart', function(resource)
-	if resource ~= GetCurrentResourceName() then return end
+    if resource ~= GetCurrentResourceName() then return end
     Wait(1000)
     LoadBigHeist()
 end)
 
 AddEventHandler('onResourceStop', function(resource)
-	if resource ~= GetCurrentResourceName() then return end
+    if resource ~= GetCurrentResourceName() then return end
     UnloadBigHeist()
 end)

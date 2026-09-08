@@ -305,7 +305,16 @@ function Framework.Client.VehicleGetFuel(vehicle)
     local level, type = exports["ti_fuel"]:getFuel(vehicle)
     TriggerServerEvent("jg-advancedgarages:server:save-ti-fuel-type", Framework.Client.GetPlate(vehicle), type)
     return level
-  elseif Config.FuelSystem == "ox_fuel" or Config.FuelSystem == "Renewed-Fuel" then
+  elseif Config.FuelSystem == "ox_fuel" then
+    -- ox_fuel stores the real value in the state bag; native level can stay at 100.
+    local stateFuel = Entity(vehicle).state and Entity(vehicle).state.fuel
+    local nativeFuel = GetVehicleFuelLevel(vehicle) + 0.0
+    if type(stateFuel) == "number" then
+      -- Prefer the lower value so a stale full native/state cannot wipe real fuel
+      return math.min(stateFuel + 0.0, nativeFuel)
+    end
+    return nativeFuel
+  elseif Config.FuelSystem == "Renewed-Fuel" then
     return GetVehicleFuelLevel(vehicle)
   elseif Config.FuelSystem == "rcore_fuel" then
     return exports.rcore_fuel:GetVehicleFuelPercentage(vehicle)
@@ -319,17 +328,23 @@ end
 function Framework.Client.VehicleSetFuel(vehicle, fuel)
   if not DoesEntityExist(vehicle) then return false end
 
+  fuel = tonumber(fuel) or 100.0
+  if fuel < 0 then fuel = 0 end
+  if fuel > 100 then fuel = 100 end
+
   if (Config.FuelSystem == "LegacyFuel" or Config.FuelSystem == "ps-fuel" or Config.FuelSystem == "lj-fuel" or Config.FuelSystem == "cdn-fuel" or Config.FuelSystem == "hyon_gas_station" or Config.FuelSystem == "okokGasStation" or Config.FuelSystem == "nd_fuel" or Config.FuelSystem == "myFuel" or Config.FuelSystem == "Renewed-Fuel") then
     exports[Config.FuelSystem]:SetFuel(vehicle, fuel)
   elseif Config.FuelSystem == "ti_fuel" then
     local fuelType = lib.callback.await("jg-advancedgarages:server:get-ti-fuel-type", false, Framework.Client.GetPlate(vehicle))
     exports["ti_fuel"]:setFuel(vehicle, fuel, fuelType or nil)
   elseif Config.FuelSystem == "ox_fuel" then
-    Entity(vehicle).state.fuel = fuel
+    SetVehicleFuelLevel(vehicle, fuel + 0.0)
+    Entity(vehicle).state:set("fuel", fuel + 0.0, true)
   elseif Config.FuelSystem == "rcore_fuel" then
     exports.rcore_fuel:SetVehicleFuel(vehicle, fuel)
   else
     -- Setup custom fuel system here
+    SetVehicleFuelLevel(vehicle, fuel + 0.0)
   end
 end
 

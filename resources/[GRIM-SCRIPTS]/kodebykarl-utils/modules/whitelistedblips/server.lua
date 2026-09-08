@@ -74,36 +74,53 @@ AddEventHandler('esx:playerDropped', function(source, reason)
     end
 end)
 
+local function packBlip(src, data)
+    return {
+        src = src,
+        group = data.group,
+        label = data.label,
+        color = data.color,
+        defaultSprite = data.defaultSprite,
+        name = data.name,
+        coords = data.coords,
+        heading = data.heading,
+        vehState = data.vehState,
+    }
+end
+
+-- One payload per department (O(n)), not a nested rebuild per officer (O(n²)).
 CreateThread(function()
     while true do
-        Wait(Config.RefreshInterval or 1500)
+        Wait(Config.RefreshInterval or 2000)
 
         local now = os.time()
+        local byGroup = {}
+
         for src, data in pairs(onDutyPlayers) do
-            if not GetPlayerPing(src) or (now - data.lastUpdate > 10) then
+            if not GetPlayerName(src) or (now - data.lastUpdate > 10) then
                 onDutyPlayers[src] = nil
+            else
+                local group = data.group
+                if not byGroup[group] then byGroup[group] = {} end
+                byGroup[group][#byGroup[group] + 1] = packBlip(src, data)
             end
         end
 
         if next(onDutyPlayers) ~= nil then
-            for targetSrc, targetData in pairs(onDutyPlayers) do
-                local payload = {}
-                for src, data in pairs(onDutyPlayers) do
-                    if Config.ShareAll or data.group == targetData.group then
-                        payload[#payload + 1] = {
-                            src = src,
-                            group = data.group,
-                            label = data.label,
-                            color = data.color,
-                            defaultSprite = data.defaultSprite,
-                            name = data.name,
-                            coords = data.coords,
-                            heading = data.heading,
-                            vehState = data.vehState,
-                        }
+            if Config.ShareAll then
+                local all = {}
+                for _, list in pairs(byGroup) do
+                    for i = 1, #list do
+                        all[#all + 1] = list[i]
                     end
                 end
-                TriggerClientEvent('cfx-keydi-utils:whitelistedblips:sync', targetSrc, payload)
+                for src in pairs(onDutyPlayers) do
+                    TriggerClientEvent('cfx-keydi-utils:whitelistedblips:sync', src, all)
+                end
+            else
+                for src, data in pairs(onDutyPlayers) do
+                    TriggerClientEvent('cfx-keydi-utils:whitelistedblips:sync', src, byGroup[data.group] or {})
+                end
             end
         end
     end

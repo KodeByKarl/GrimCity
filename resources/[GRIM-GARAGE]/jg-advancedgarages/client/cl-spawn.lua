@@ -104,6 +104,10 @@ function applyVehicleProperties(vehicle, vehicleData)
 
     -- Apply vehicle properties if they exist
     if vehicleProperties and type(vehicleProperties) == "table" then
+        -- Prevent props from overwriting the dedicated fuel/engine/body columns
+        vehicleProperties.fuelLevel = nil
+        vehicleProperties.engineHealth = nil
+        vehicleProperties.bodyHealth = nil
         Framework.Client.SetVehicleProperties(vehicle, vehicleProperties)
         -- Only fully repair when the stored vehicle is healthy. SetVehicleFixed
         -- replicates to other clients; local deformation does not, which made the
@@ -114,23 +118,27 @@ function applyVehicleProperties(vehicle, vehicleData)
         end
     end
 
-    -- Set vehicle fuel level
-    local fuelLevel = vehicleData.fuel or 100.0
+    -- Set vehicle fuel level (after props so they cannot wipe it)
+    local fuelLevel = tonumber(vehicleData.fuel)
+    if not fuelLevel then fuelLevel = 100.0 end
     Framework.Client.VehicleSetFuel(vehicle, fuelLevel)
 
     -- Set engine health
     local engineHealth = 1000.0
-    if vehicleData.engine and Config.SaveVehicleDamage then
-        engineHealth = vehicleData.engine + 0.0 or 1000.0
+    if vehicleData.engine ~= nil and Config.SaveVehicleDamage then
+        engineHealth = tonumber(vehicleData.engine) or 1000.0
     end
-    SetVehicleEngineHealth(vehicle, engineHealth)
+    SetVehicleEngineHealth(vehicle, engineHealth + 0.0)
 
     -- Set body health
     local bodyHealth = 1000.0
-    if vehicleData.body and Config.SaveVehicleDamage then
-        bodyHealth = vehicleData.body + 0.0 or 1000.0
+    if vehicleData.body ~= nil and Config.SaveVehicleDamage then
+        bodyHealth = tonumber(vehicleData.body) or 1000.0
     end
-    SetVehicleBodyHealth(vehicle, bodyHealth)
+    SetVehicleBodyHealth(vehicle, bodyHealth + 0.0)
+    if bodyHealth < 1000.0 then
+        SetVehiclePetrolTankHealth(vehicle, math.max(0.0, bodyHealth + 0.0))
+    end
 
     -- Set vehicle mod kit for customization
     SetVehicleModKit(vehicle, 0)

@@ -11,6 +11,7 @@ return {
         sheriff = true,
         ambulance = true,
         sambulance = true,
+        pambulance = true,
     },
 
     distance = 3.0,

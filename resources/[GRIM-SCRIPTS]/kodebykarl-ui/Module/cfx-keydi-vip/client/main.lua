@@ -28,10 +28,32 @@ local function OpenWelcomeBannerSelf()
     end)
 end
 
+local isVipOpen = false
+
+local function ToggleVipMenu(state)
+    if state == nil then
+        isVipOpen = not isVipOpen
+    else
+        isVipOpen = state
+    end
+
+    SetNuiFocus(isVipOpen, isVipOpen)
+    SendNUIMessage({
+        action = isVipOpen and "cfx-keydi-vip:show" or "cfx-keydi-vip:hide"
+    })
+end
+
+exports("ToggleVipMenu", ToggleVipMenu)
+
 RegisterNUICallback("cfx-keydi-vip:getStatus", function(_, cb)
     lib.callback("cfx-keydi-vip:getStatus", false, function(result)
         cb(result or { vip = nil })
     end)
+end)
+
+RegisterNUICallback("cfx-keydi-vip:close", function(_, cb)
+    ToggleVipMenu(false)
+    cb("ok")
 end)
 
 RegisterNUICallback("cfx-keydi-vip:openPedMenu", function(_, cb)
@@ -48,6 +70,24 @@ RegisterNUICallback("cfx-keydi-vip:staffRoster", function(_, cb)
     lib.callback("cfx-keydi-vip:staffRoster", false, function(result)
         cb(result or { ok = false, canManage = false })
     end)
+end)
+
+RegisterNUICallback("cfx-keydi-vip:getAllVipMembers", function(_, cb)
+    lib.callback("cfx-keydi-vip:getAllVipMembers", false, function(result)
+        cb(result or { ok = false })
+    end)
+end)
+
+RegisterNUICallback("cfx-keydi-vip:staffEditVip", function(data, cb)
+    lib.callback("cfx-keydi-vip:staffEditVip", false, function(result)
+        cb(result or { ok = false })
+    end, data)
+end)
+
+RegisterNUICallback("cfx-keydi-vip:staffRevokeByIdentifier", function(data, cb)
+    lib.callback("cfx-keydi-vip:staffRevokeByIdentifier", false, function(result)
+        cb(result or { ok = false })
+    end, data and data.identifier)
 end)
 
 RegisterNUICallback("cfx-keydi-vip:staffLookup", function(data, cb)
@@ -67,6 +107,19 @@ RegisterNUICallback("cfx-keydi-vip:staffRevoke", function(data, cb)
         cb(result or { ok = false })
     end, tonumber(data and data.targetId))
 end)
+
+-- Main VIP container commands
+RegisterCommand("viperks", function()
+    ToggleVipMenu(true)
+end, false)
+
+RegisterCommand("vip", function()
+    ToggleVipMenu(true)
+end, false)
+
+RegisterCommand("vipmenu", function()
+    ToggleVipMenu(true)
+end, false)
 
 -- VIP players can also type /pedmenu; illenium admin ACE still works separately.
 RegisterCommand("vipped", function()

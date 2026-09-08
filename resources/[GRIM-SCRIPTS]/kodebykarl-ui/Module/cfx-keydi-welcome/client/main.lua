@@ -1,10 +1,10 @@
 local ESX = exports["es_extended"]:getSharedObject()
 local welcomeShown = false
--- Set while a brand-new character is in identity / appearance creation.
+-- Set while a brand-new character is in appearance creation.
 local suppressAutomaticWelcome = false
 
 local function showWelcomeScreen(force)
-    if welcomeShown or isIdentityOpen then
+    if welcomeShown then
         return
     end
 
@@ -17,7 +17,7 @@ local function showWelcomeScreen(force)
     ESX.TriggerServerCallback('cfx-keydi-welcome:getWelcomeData', function(data)
         -- Re-check because another NUI (such as illenium-appearance) may
         -- have opened while the server callback was in flight.
-        if not data or isIdentityOpen then
+        if not data then
             return
         end
 
@@ -41,29 +41,32 @@ local function showWelcomeScreen(force)
     end)
 end
 
--- A new character enters illenium-appearance after identity registration.
--- Suppress the automatic welcome until creation is finished.
-RegisterNetEvent('esx_identity:showRegisterIdentity', function()
-    suppressAutomaticWelcome = true
-    welcomeShown = false
-    SendNUIMessage({
-        action = "cfx-keydi-welcome:hide"
-    })
-end)
-
--- Returning players only. New characters (isNew) go through identity → appearance first.
+-- Returning players only. New characters (isNew) go through appearance first.
+-- Show during multichar blackout (right after slot select), not 5s+ after spawn fade-in.
 RegisterNetEvent('esx:playerLoaded', function(xPlayer, isNew)
     if isNew then
         suppressAutomaticWelcome = true
         return
     end
 
-    -- Wait a bit for the player to spawn and screen fade/transition
-    Wait(5000)
-    showWelcomeScreen(false)
+    CreateThread(function()
+        -- Yield so kodebykarl-multicharacter can CloseMulticharacter / fade out first.
+        Wait(0)
+
+        local deadline = GetGameTimer() + 2000
+        while GetGameTimer() < deadline do
+            if IsScreenFadedOut() and not IsNuiFocused() then
+                break
+            end
+            Wait(50)
+        end
+
+        -- force=true: ignore IsNuiFocused (spawn may still settle) and show over blackout
+        showWelcomeScreen(true)
+    end)
 end)
 
--- Fired after identity registration once appearance NUI focus has been released.
+-- Fired after appearance creation for new characters.
 RegisterNetEvent('cfx-keydi-welcome:show', function()
     welcomeShown = false
     suppressAutomaticWelcome = false
@@ -72,9 +75,7 @@ end)
 
 -- Close NUI callback from React
 RegisterNUICallback("cfx-keydi-welcome:close", function(data, cb)
-    if not isIdentityOpen then
-        SetNuiFocus(false, false)
-    end
+    SetNuiFocus(false, false)
     SendNUIMessage({
         action = "cfx-keydi-welcome:hide"
     })

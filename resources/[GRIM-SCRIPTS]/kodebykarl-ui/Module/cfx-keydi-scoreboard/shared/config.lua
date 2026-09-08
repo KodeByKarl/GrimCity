@@ -12,12 +12,14 @@ ConfigScoreboard.ToggleKey = 'F10' -- Default keybind to toggle the scoreboard
 
 -- Jobs we want to count online in the scoreboard
 ConfigScoreboard.Jobs = {
-    { name = "LS EMS", job = "ambulance" },
-    { name = "LS Police", job = "police" },
+    { name = "Los EMS", job = "ambulance" },
+    { name = "Paleto EMS", job = "pambulance" },
+    { name = "Los Police", job = "police" },
+    { name = "Paleto Sheriff", job = "sheriff" },
     { name = "Mechanic", job = "mechanic" },
 }
 
--- World events config (location/status overwritten live via exports['kodebykarl-ui']:SetWorldEvent)
+-- World events (location = place; status timer is driven live via SetWorldEvent endsAt/timer)
 ConfigScoreboard.WorldEvents = {
     { name = "Airdrop", location = "—", status = "INACTIVE" },
     { name = "Traphouse", location = "—", status = "INACTIVE" },

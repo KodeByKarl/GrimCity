@@ -221,6 +221,15 @@ if IsDuplicityVersion() then
         end
 
         local amount = math.random(ConfigRaven.RewardMin, ConfigRaven.RewardMax)
+        local grindBonus = 0
+        pcall(function()
+            if exports["kodebykarl-ui"] and exports["kodebykarl-ui"].GetVipGrindBonus then
+                grindBonus = exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0
+            end
+        end)
+        if grindBonus > 0 then
+            amount = amount + grindBonus
+        end
         local canCarry = exports.ox_inventory:CanCarryAmount(src, ConfigRaven.RewardItem) or 0
         if canCarry < 1 then
             TriggerClientEvent("cfx-keydi-raven:notify", src, "You cannot carry any more raw meat.", "error")

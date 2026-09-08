@@ -107,8 +107,92 @@ const mockVipRoster: {
   ],
 };
 
+const mockBusiness = {
+  funds: 245000,
+  employees: [
+    { identifier: "char1:boss", name: "Karl Dev", grade: 3, gradeLabel: "Boss", online: true, serverId: 1 },
+    { identifier: "char1:ace", name: "Ace Walker", grade: 1, gradeLabel: "Cook", online: true, serverId: 12 },
+    { identifier: "char1:mia", name: "Mia Storm", grade: 0, gradeLabel: "Trainee", online: false, serverId: null },
+  ],
+};
+
 export async function fetchNui<T = unknown>(eventName: string, data?: unknown): Promise<T> {
   if (isBrowserEnv()) {
+    if (eventName === "cfx-keydi-ipad:business:dashboard") {
+      const chart = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (13 - i));
+        return {
+          day: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          sales: 4 + ((i * 3) % 9),
+          income: 12000 + i * 3500,
+        };
+      });
+      return {
+        ok: true,
+        job: "uwu",
+        label: "UwU Cafe",
+        funds: mockBusiness.funds,
+        sales: 128,
+        income: 890400,
+        pending: 6,
+        pendingAmount: 24500,
+        chart,
+        ledger: [
+          { id: 1, action: "deposit", amount: 25000, note: "iPad deposit" },
+          { id: 2, action: "withdraw", amount: 8000, note: "iPad withdraw" },
+        ],
+        employees: mockBusiness.employees,
+        grades: [
+          { grade: 0, name: "trainee", label: "Trainee" },
+          { grade: 1, name: "cook", label: "Cook" },
+          { grade: 2, name: "manager", label: "Manager" },
+          { grade: 3, name: "boss", label: "Boss" },
+        ],
+        invoices: [
+          { id: 41, reference: "K8F2MQ1A", title: "Table 4 combo", total: 12500, status: "paid", senderName: "Karl Dev", receiverName: "Nova Cruz" },
+          { id: 40, reference: "P3N9WQ2C", title: "Catering order", total: 48000, status: "unpaid", senderName: "Ace Walker", receiverName: "Rico Vale" },
+          { id: 39, reference: "L1D7TX8B", title: "UwU Box x4", total: 8600, status: "paid", senderName: "Karl Dev", receiverName: "Mia Storm" },
+        ],
+        yourGrade: 3,
+      } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:business:transfer") {
+      const body = data as { action?: string; amount?: number };
+      const n = Math.floor(Number(body?.amount) || 0);
+      if (body?.action === "deposit") mockBusiness.funds += n;
+      if (body?.action === "withdraw") mockBusiness.funds = Math.max(0, mockBusiness.funds - n);
+      return { ok: true, funds: mockBusiness.funds, ledger: [{ id: Date.now(), action: body?.action, amount: n, note: "iPad" }], sales: 128, income: 890400 } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:business:nearby") {
+      return { ok: true, players: [{ id: 18, name: "Nova Cruz" }, { id: 22, name: "Rico Vale" }] } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:business:hire") {
+      const body = data as { id?: number; grade?: number };
+      mockBusiness.employees.push({
+        identifier: `char1:${body?.id || Date.now()}`,
+        name: body?.id === 18 ? "Nova Cruz" : "Rico Vale",
+        grade: Number(body?.grade) || 0,
+        gradeLabel: Number(body?.grade) === 1 ? "Cook" : "Trainee",
+        online: true,
+        serverId: body?.id,
+      });
+      return { ok: true, employees: mockBusiness.employees } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:business:setGrade") {
+      const body = data as { identifier?: string; grade?: number };
+      mockBusiness.employees = mockBusiness.employees.map((e) =>
+        e.identifier === body?.identifier
+          ? { ...e, grade: Number(body.grade) || 0, gradeLabel: Number(body.grade) === 1 ? "Cook" : Number(body.grade) === 2 ? "Manager" : "Trainee" }
+          : e,
+      );
+      return { ok: true, employees: mockBusiness.employees } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:business:fire") {
+      const body = data as { identifier?: string };
+      mockBusiness.employees = mockBusiness.employees.filter((e) => e.identifier !== body?.identifier);
+      return { ok: true, employees: mockBusiness.employees } as T;
+    }
     if (eventName === "cfx-keydi-modules:getPatchNotes") {
       return {
         updates: [
@@ -282,10 +366,31 @@ export async function fetchNui<T = unknown>(eventName: string, data?: unknown): 
           { rank: 1, name: "Ace Walker", kills: 48, deaths: 12, kd: 4.0 },
           { rank: 2, name: "Nova Cruz", kills: 41, deaths: 15, kd: 2.7 },
           { rank: 3, name: "Rico Vale", kills: 33, deaths: 19, kd: 1.7 },
-          { rank: 4, name: "Karl Dev", kills: 21, deaths: 18, kd: 1.2 },
-          { rank: 5, name: "Mia Storm", kills: 17, deaths: 22, kd: 0.8 },
         ],
-        mine: { rank: 4, name: "Karl Dev", kills: 21, deaths: 18, kd: 1.2 },
+        mine: { rank: 3, name: "Rico Vale", kills: 33, deaths: 19, kd: 1.7 },
+      } as T;
+    }
+    if (eventName === "cfx-keydi-ipad:leaderboard:turfwar") {
+      return {
+        ok: true,
+        rows: [
+          { rank: 1, name: "Ballas", gang: "ballas", claims: 12, score: "12 claims", subtitle: "Turf wins" },
+          { rank: 2, name: "Families", gang: "families", claims: 9, score: "9 claims", subtitle: "Turf wins" },
+        ],
+      } as T;
+    }
+    if (
+      eventName === "cfx-keydi-ipad:leaderboard:traphouse" ||
+      eventName === "cfx-keydi-ipad:leaderboard:party" ||
+      eventName === "cfx-keydi-ipad:leaderboard:topplayer"
+    ) {
+      return {
+        ok: true,
+        rows: [
+          { rank: 1, name: "Smoke King", kills: 22, deaths: 5, kd: 4.4, score: "22 K / 5 D", subtitle: "KDA 4.40" },
+          { rank: 2, name: "Night Shift", kills: 17, deaths: 8, kd: 2.13, score: "17 K / 8 D", subtitle: "KDA 2.13" },
+        ],
+        mine: { rank: 2, name: "Night Shift", kills: 17, deaths: 8, kd: 2.13, score: "17 K / 8 D", subtitle: "KDA 2.13" },
       } as T;
     }
     if (eventName.startsWith("cfx-keydi-ipad:party:")) {

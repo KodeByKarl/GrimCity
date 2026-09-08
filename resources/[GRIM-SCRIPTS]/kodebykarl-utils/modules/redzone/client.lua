@@ -42,12 +42,16 @@ CreateThread(function()
                 debug = zone.debug == true,
                 onEnter = function()
                     insideZones[zone.name] = true
+                    LocalPlayer.state:set('inRedZone', true, false)
 
                     showNotification('REDZONE', zone.enterMessage or ('You are inside the %s'):format(zone.label), 'error', 5000)
                     refreshActiveTextUI()
                 end,
                 onExit = function()
                     insideZones[zone.name] = nil
+                    if next(insideZones) == nil then
+                        LocalPlayer.state:set('inRedZone', false, false)
+                    end
 
                     showNotification('REDZONE', zone.exitMessage or ('You left the %s'):format(zone.label), 'inform', 3000)
                     refreshActiveTextUI()

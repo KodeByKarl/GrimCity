@@ -1593,24 +1593,61 @@ end
 AddEventHandler('ox_inventory:customDrop', CustomDrop)
 exports('CustomDrop', CustomDrop)
 
-exports('CreateDropFromPlayer', function(playerId)
+exports('CreateDropFromPlayer', function(playerId, keep)
 	local playerInventory = Inventory(playerId)
 
 	if not playerInventory or not next(playerInventory.items) then return end
 
+	local keepSet = nil
+	if type(keep) == 'string' then
+		keepSet = { [keep] = true }
+	elseif type(keep) == 'table' then
+		keepSet = {}
+		for i = 1, #keep do
+			keepSet[keep[i]] = true
+		end
+	end
+
+	local dropItems = {}
+	local dropWeight = 0
+	local hasDrop = false
+
+	for slot, item in pairs(playerInventory.items) do
+		if item and not (keepSet and keepSet[item.name]) then
+			local copy = table.clone(item)
+			if item.metadata then
+				copy.metadata = table.clone(item.metadata)
+			end
+			dropItems[slot] = copy
+			dropWeight += item.weight or 0
+			hasDrop = true
+		end
+	end
+
+	if not hasDrop then return end
+
 	local dropId = generateInvId()
-	local inventory = Inventory.Create(dropId, ('Drop %s'):format(dropId:gsub('%D', '')), 'drop', playerInventory.slots, playerInventory.weight, playerInventory.maxWeight, false, table.clone(playerInventory.items))
+	local inventory = Inventory.Create(
+		dropId,
+		('Drop %s'):format(dropId:gsub('%D', '')),
+		'drop',
+		playerInventory.slots,
+		dropWeight,
+		playerInventory.maxWeight,
+		false,
+		dropItems
+	)
 
 	if not inventory then return end
 
 	local coords = GetEntityCoords(GetPlayerPed(playerId))
-	inventory.coords = vec3(coords.x, coords.y, coords.z-0.2)
+	inventory.coords = vec3(coords.x, coords.y, coords.z - 0.2)
 	Inventory.Drops[dropId] = {
 		coords = inventory.coords,
 		instance = Player(playerId).state.instance
 	}
 
-	Inventory.Clear(playerInventory)
+	Inventory.Clear(playerInventory, keep)
 	TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId])
 
 	return dropId

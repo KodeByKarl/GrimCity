@@ -52,44 +52,39 @@ local function EnsureSceneReady(x, y, z)
     scenePrepared = true
 end
 
-local function CreateDeathscreenStyleCam(spawnX, spawnY, spawnZ, pHeading)
+local function SetupDeathscreenCam(ped)
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return end
+
+    local camCoords = GetOffsetFromEntityInWorldCoords(ped, 0.0, 4.4, 0.35)
+    local lookAt = GetOffsetFromEntityInWorldCoords(ped, 0.0, 0.0, 0.05)
+
+    if not cam then
+        cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
+    end
+    SetCamCoord(cam, camCoords.x, camCoords.y, camCoords.z)
+    PointCamAtCoord(cam, lookAt.x, lookAt.y, lookAt.z)
+    SetCamFov(cam, 46.0)
+    SetCamActive(cam, true)
+    RenderScriptCams(true, true, 500, true, true)
+end
+
+local function SetupInitialDeathscreenCam()
     ClearScriptCam()
 
-    local cfg = Config.Multicharacter or {}
-    local camPos = cfg.CamCoords
-    local lookAt = cfg.CamPoint
-    local fov = cfg.CamFov or 48.0
+    local spawn = Config.Multicharacter.DefaultSpawn
+    local heading = spawn.w or 205.5
+    local rad = math.rad(heading)
+    local dist = 4.4
+    local spawnZ = (spawn.z or 31.2) + 0.98
 
-    if camPos then
-        cam = CreateCamWithParams(
-            "DEFAULT_SCRIPTED_CAMERA",
-            camPos.x, camPos.y, camPos.z,
-            0.0, 0.0, 0.0,
-            fov,
-            false, 0
-        )
-        if lookAt then
-            PointCamAtCoord(cam, lookAt.x, lookAt.y, lookAt.z)
-        else
-            PointCamAtCoord(cam, spawnX, spawnY, spawnZ + 0.85)
-        end
-    else
-        local pRad = math.rad(pHeading)
-        local camDistance = 3.2
-        local camX = spawnX + (math.sin(pRad) * camDistance)
-        local camY = spawnY - (math.cos(pRad) * camDistance)
-        local camZ = spawnZ + 0.85
+    local camX = spawn.x - math.sin(rad) * dist
+    local camY = spawn.y + math.cos(rad) * dist
+    local camZ = spawnZ + 0.35
 
-        cam = CreateCamWithParams(
-            "DEFAULT_SCRIPTED_CAMERA",
-            camX, camY, camZ,
-            0.0, 0.0, 0.0,
-            fov,
-            false, 0
-        )
-        PointCamAtCoord(cam, spawnX, spawnY, spawnZ + 0.85)
-    end
-
+    cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
+    SetCamCoord(cam, camX, camY, camZ)
+    PointCamAtCoord(cam, spawn.x, spawn.y, spawnZ + 0.05)
+    SetCamFov(cam, 46.0)
     SetCamActive(cam, true)
     RenderScriptCams(true, false, 0, true, true)
 end
@@ -155,30 +150,42 @@ local function applyPreviewAppearance(ped, skinData)
     end)
 end
 
-local function placePreviewPed(ped, spawnX, spawnY, spawnZ, heading)
-    local z = spawnZ
-    local found, groundZ = GetGroundZFor_3dCoord(spawnX, spawnY, spawnZ + 2.0, false)
-    if found then
-        z = groundZ
+local function forcePedStanding(ped)
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return end
+
+    local maxH = GetEntityMaxHealth(ped)
+    if not maxH or maxH < 100 then
+        maxH = 200
+        SetEntityMaxHealth(ped, maxH)
     end
-    SetEntityCoordsNoOffset(ped, spawnX, spawnY, z, false, false, false)
-    SetEntityHeading(ped, heading)
+
+    if IsPedDeadOrDying(ped, true) or IsEntityDead(ped) or GetEntityHealth(ped) <= 100 then
+        pcall(ResurrectPed, ped)
+        pcall(ReviveInjuredPed, ped)
+        SetEntityHealth(ped, maxH)
+    end
+
+    SetPedCanRagdoll(ped, false)
+    SetPedCanRagdollFromPlayerImpact(ped, false)
+    SetPedRagdollOnCollision(ped, false)
+    ResetPedRagdollTimer(ped)
+    SetPedConfigFlag(ped, 166, false)
+    ClearPedBloodDamage(ped)
+    ClearPedTasksImmediately(ped)
+    SetEntityRotation(ped, 0.0, 0.0, GetEntityHeading(ped), 2, true)
 end
 
-local function playPreviewIdle(ped)
-    local animDict = "amb@world_human_stand_guard@male@base"
-    RequestAnimDict(animDict)
-    if HasAnimDictLoaded(animDict) then
-        TaskPlayAnim(ped, animDict, "base", 8.0, 8.0, -1, 1, 0.0, false, false, false)
-        return
-    end
+local function startPreviewHold(token)
     CreateThread(function()
-        local deadline = GetGameTimer() + 1500
-        while not HasAnimDictLoaded(animDict) and GetGameTimer() < deadline do
-            Wait(0)
-        end
-        if HasAnimDictLoaded(animDict) and previewPed == ped and DoesEntityExist(ped) then
-            TaskPlayAnim(ped, animDict, "base", 8.0, 8.0, -1, 1, 0.0, false, false, false)
+        local dict, clip = "amb@world_human_stand_guard@male@base", "base"
+        RequestAnimDict(dict)
+        while previewToken == token and previewPed and DoesEntityExist(previewPed) do
+            forcePedStanding(previewPed)
+            if HasAnimDictLoaded(dict) and not IsEntityPlayingAnim(previewPed, dict, clip, 3) then
+                TaskPlayAnim(previewPed, dict, clip, 8.0, 8.0, -1, 1, 0.0, false, false, false)
+            end
+            FreezeEntityPosition(previewPed, true)
+            Wait(400)
         end
     end)
 end
@@ -187,10 +194,22 @@ function SpawnCharacterPreview(skinData, spawnVector)
     local spawnCoords = spawnVector or Config.Multicharacter.DefaultSpawn
     local spawnX = spawnCoords.x
     local spawnY = spawnCoords.y
-    local spawnZ = spawnCoords.z
-    local pHeading = spawnCoords.w or 205.5
-    local faceHeading = (pHeading + 180.0) % 360.0
+    local floorZ = spawnCoords.z or 31.2
+    local heading = spawnCoords.w or 205.5
     local model = resolvePreviewModel(skinData)
+
+    -- True ground elevation matching deathscreen:
+    -- In GTA V, ped root coordinate sits ~0.98m above the bottom of the feet.
+    local foundGround, gZ = GetGroundZFor_3dCoord(spawnX, spawnY, floorZ + 2.5, false)
+    if not foundGround then
+        foundGround, gZ = GetGroundZFor_3dCoord(spawnX, spawnY, floorZ + 15.0, false)
+    end
+    local spawnZ
+    if foundGround and math.abs(gZ - floorZ) < 0.6 then
+        spawnZ = gZ + 0.98
+    else
+        spawnZ = floorZ + 0.98
+    end
 
     previewToken = previewToken + 1
     local token = previewToken
@@ -198,10 +217,11 @@ function SpawnCharacterPreview(skinData, spawnVector)
     CreateThread(function()
         -- Same freemode ped: just re-skin (no scene wait, no recreate)
         if previewPed and DoesEntityExist(previewPed) and GetEntityModel(previewPed) == model then
+            SetPedDefaultComponentVariation(previewPed)
             applyPreviewAppearance(previewPed, skinData)
-            if not cam then
-                CreateDeathscreenStyleCam(spawnX, spawnY, spawnZ, pHeading)
-            end
+            forcePedStanding(previewPed)
+            startPreviewHold(token)
+            SetupDeathscreenCam(previewPed)
             return
         end
 
@@ -214,13 +234,12 @@ function SpawnCharacterPreview(skinData, spawnVector)
         if not requestModelFast(model) then
             model = MODEL_MALE
             if not requestModelFast(model) then
-                CreateDeathscreenStyleCam(spawnX, spawnY, spawnZ, pHeading)
                 return
             end
         end
         if token ~= previewToken then return end
 
-        previewPed = CreatePed(4, model, spawnX, spawnY, spawnZ, faceHeading, false, true)
+        previewPed = CreatePed(0, model, spawnX, spawnY, spawnZ, heading, false, false)
 
         if token ~= previewToken then
             if previewPed and DoesEntityExist(previewPed) then
@@ -231,7 +250,6 @@ function SpawnCharacterPreview(skinData, spawnVector)
         end
 
         if not previewPed or previewPed == 0 or not DoesEntityExist(previewPed) then
-            CreateDeathscreenStyleCam(spawnX, spawnY, spawnZ, pHeading)
             return
         end
 
@@ -239,22 +257,22 @@ function SpawnCharacterPreview(skinData, spawnVector)
         SetEntityVisible(previewPed, true, false)
         ResetEntityAlpha(previewPed)
         SetEntityInvincible(previewPed, true)
+        SetEntityCoordsNoOffset(previewPed, spawnX, spawnY, spawnZ, false, false, false)
+        SetEntityHeading(previewPed, heading)
         SetEntityCollision(previewPed, false, false)
         FreezeEntityPosition(previewPed, true)
         SetBlockingOfNonTemporaryEvents(previewPed, true)
-        SetPedCanRagdoll(previewPed, false)
-        SetPedCanRagdollFromPlayerImpact(previewPed, false)
         SetPedAoBlobRendering(previewPed, true)
-        ClearPedTasksImmediately(previewPed)
+        SetPedDefaultComponentVariation(previewPed)
         ClearPedBloodDamage(previewPed)
         SetEntityHealth(previewPed, 200)
 
-        placePreviewPed(previewPed, spawnX, spawnY, spawnZ, faceHeading)
+        forcePedStanding(previewPed)
         applyPreviewAppearance(previewPed, skinData)
-        playPreviewIdle(previewPed)
+        startPreviewHold(token)
 
         if token == previewToken then
-            CreateDeathscreenStyleCam(spawnX, spawnY, spawnZ, pHeading)
+            SetupDeathscreenCam(previewPed)
         end
     end)
 end
@@ -344,12 +362,10 @@ function SetupCharacters()
     PrefetchFreemodeModels()
     scenePrepared = false
     EnsureSceneReady(spawn.x, spawn.y, spawn.z)
-    SpawnCharacterPreview(nil, spawn)
+    SetupInitialDeathscreenCam()
+    DestroyPreviewPed()
 
     ESX.TriggerServerCallback('esx_multicharacter:SetupCharacters', function(characters, slots)
-        if characters and characters[1] and characters[1].skin then
-            SpawnCharacterPreview(characters[1].skin, spawn)
-        end
         OpenMulticharacterNui(characters, slots)
     end)
 end
@@ -407,7 +423,15 @@ local function FinishPlayerSpawn(playerData, isNew, skin)
         Wait(200)
         if GetResourceState('illenium-appearance') == 'started' then
             TriggerEvent('esx_skin:resetFirstSpawn')
-            TriggerEvent('esx_skin:openSaveableMenu')
+            local function onCreationFinished()
+                TriggerEvent('cfx-keydi-welcome:show')
+                SetTimeout(1800, function()
+                    TriggerEvent('pma-voice:client:creationFinished')
+                end)
+            end
+            TriggerEvent('esx_skin:openSaveableMenu', onCreationFinished, onCreationFinished)
+        else
+            TriggerEvent('cfx-keydi-welcome:show')
         end
     elseif skin then
         if GetResourceState('illenium-appearance') == 'started' then

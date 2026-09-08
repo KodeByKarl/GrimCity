@@ -6,48 +6,37 @@ Config.HouseRob.TimeToCloseDoors = 25 -- in minutes (only start counting after o
 Config.HouseRob.ChanceToAlertPolice = 100 -- chance in percent to call the police if a house robbery is in progress
 Config.HouseRob.MinZOffset = 45
 
-Config.HouseRob.Rewards = {
-    [1] = { -- house tier
-        ["cabin"] = {
-            {item = "burger", min = 1, max = 2},
-            {item = "panties", min = 1, max = 2},
-            {item = "water", min = 1, max = 2},
-            {item = "black_money", min = 1500, max = 2000},
-        },
-        ["kitchen"] = {
-            {item = "burger", min = 1, max = 2},
-            {item = "panties", min = 1, max = 2},
-            {item = "water", min = 1, max = 2},
-            {item = "black_money", min = 1500, max = 2000},
-        },
-        ["chest"] = {
-            {item = "burger", min = 1, max = 2},
-            {item = "panties", min = 1, max = 2},
-            {item = "water", min = 1, max = 2},
-            {item = "black_money", min = 1500, max = 2000},
-        },
-        ["livingroom"] = {
-            {item = "burger", min = 1, max = 2},
-            {item = "panties", min = 1, max = 2},
-            {item = "water", min = 1, max = 2},
-            {item = "black_money", min = 1500, max = 2000},
-        }
-    }
+-- Footstep sound meter while inside a robbed house.
+-- Walk/run raises the meter; aim (RMB / LT) while moving stays silent.
+-- At 100% the player is force-exited and LEO are alerted.
+-- Paleto / Blaine County houses (y >= 2500 or name contains "paleto") alert sheriff.
+Config.HouseRob.SoundDetection = {
+    enabled = true,
+    walkNoise = 7.5,       -- % per second while walking
+    runNoise = 18.0,       -- % per second while running
+    sprintNoise = 28.0,    -- % per second while sprinting
+    idleDecay = 5.0,       -- % per second decay when still / aiming
+    moveThreshold = 0.45,  -- GetEntitySpeed must exceed this to count as moving
+    alertJobs = { 'police' },
+    -- Houses north of this Y (Sandy / Grapeseed / Paleto / Senora) go to sheriff.
+    sheriffMinY = 2500.0,
+    sheriffJobs = { 'sheriff' },
 }
 
-Config.HouseRob.RewardsSpecial = {
-    {item = 'pistol50_blueprint', min = 1, max = 2, chance = 20},
-    {item = 'glock_blueprint', min = 1, max = 2, chance = 20},
-    {item = 'de_blueprint', min = 1, max = 2, chance = 20},
-    {item = 'spring', min = 3, max = 4, chance = 20},
-    {item = 'pistol_clip', min = 3, max = 4, chance = 20},
-    {item = 'pistol_body', min = 3, max = 4, chance = 20},
+Config.HouseRob.Rewards = {
+    -- Full package once per house (first successful search). Extra cabinets still give recmats.
+    -- All amounts are rolled/applied server-side only — never trust the client.
+    dirtyMoney = { item = 'black_money', amount = 50000 },
+    recycling = { item = 'recmats', min = 10, max = 20 },
 }
+
+-- Legacy rare loot disabled (house robbery uses Rewards above only).
+Config.HouseRob.RewardsSpecial = {}
+
 
 Config.HouseRob.Houses = {
     ["jamestown1"] = {
         ['routingBucket'] = 2800,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 385.18,
             ["y"] = -1881.78,
@@ -131,7 +120,6 @@ Config.HouseRob.Houses = {
     },
     ["jamestown2"] = {
         ['routingBucket'] = 2801,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 412.47,
             ["y"] = -1856.38,
@@ -215,7 +203,6 @@ Config.HouseRob.Houses = {
     },
     ["jamestown3"] = {
         ['routingBucket'] = 2802,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 427.21,
             ["y"] = -1842.09,
@@ -299,7 +286,6 @@ Config.HouseRob.Houses = {
     },
     ["roylow1"] = {
         ['routingBucket'] = 2803,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 348.77,
             ["y"] = -1820.95,
@@ -383,7 +369,6 @@ Config.HouseRob.Houses = {
     },
     ["roylow2"] = {
         ['routingBucket'] = 2804,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 329.42,
             ["y"] = -1845.8,
@@ -467,7 +452,6 @@ Config.HouseRob.Houses = {
     },
     ["roylow3"] = {
         ['routingBucket'] = 2805,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 320.27,
             ["y"] = -1854.06,
@@ -551,7 +535,6 @@ Config.HouseRob.Houses = {
     },
     ["covenant1"] = {
         ['routingBucket'] = 2806,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 192.29,
             ["y"] = -1883.23,
@@ -635,7 +618,6 @@ Config.HouseRob.Houses = {
     },
     ["covenant2"] = {
         ['routingBucket'] = 2807,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 171.52,
             ["y"] = -1871.53,
@@ -719,7 +701,6 @@ Config.HouseRob.Houses = {
     },
     ["covenant3"] = {
         ['routingBucket'] = 2808,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 128.24,
             ["y"] = -1897.02,
@@ -803,7 +784,6 @@ Config.HouseRob.Houses = {
     },
     ["covenant4"] = {
         ['routingBucket'] = 2809,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 130.6,
             ["y"] = -1853.22,
@@ -887,7 +867,6 @@ Config.HouseRob.Houses = {
     },
     --[[ ["grove1"] = {
         ['routingBucket'] = 2810,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 76.36,
             ["y"] = -1948.1,
@@ -971,7 +950,6 @@ Config.HouseRob.Houses = {
     },
     ["grove2"] = {
         ['routingBucket'] = 2811,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 101.03,
             ["y"] = -1912.16,
@@ -1055,7 +1033,6 @@ Config.HouseRob.Houses = {
     },
     ["grove3"] = {
         ['routingBucket'] = 2812,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 126.73,
             ["y"] = -1930.12,
@@ -1139,7 +1116,6 @@ Config.HouseRob.Houses = {
     },
     ["grove4"] = {
         ['routingBucket'] = 2813,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 114.25,
             ["y"] = -1961.19,
@@ -1223,7 +1199,6 @@ Config.HouseRob.Houses = {
     },
     ["grove5"] = {
         ['routingBucket'] = 2814,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 118.41,
             ["y"] = -1921.1,
@@ -1307,7 +1282,6 @@ Config.HouseRob.Houses = {
     },
     ["grove6"] = {
         ['routingBucket'] = 2815,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 72.01,
             ["y"] = -1939.04,
@@ -1391,7 +1365,6 @@ Config.HouseRob.Houses = {
     },
     ["grove7"] = {
         ['routingBucket'] = 2816,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 56.49,
             ["y"] = -1922.78,
@@ -1475,7 +1448,6 @@ Config.HouseRob.Houses = {
     },
     ["grove8"] = {
         ['routingBucket'] = 2817,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 38.96,
             ["y"] = -1911.49,
@@ -1559,7 +1531,6 @@ Config.HouseRob.Houses = {
     },
     ["grove9"] = {
         ['routingBucket'] = 2818,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 5.22,
             ["y"] = -1884.34,
@@ -1643,7 +1614,6 @@ Config.HouseRob.Houses = {
     },
     ["grove10"] = {
         ['routingBucket'] = 2819,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -4.73,
             ["y"] = -1872.2,
@@ -1728,7 +1698,6 @@ Config.HouseRob.Houses = {
     ]]--
     ["prosperity1"] = {
         ['routingBucket'] = 2820,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1076.33,
             ["y"] = -1026.96,
@@ -1812,7 +1781,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity2"] = {
         ['routingBucket'] = 2821,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1064.64,
             ["y"] = -1057.42,
@@ -1896,7 +1864,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity3"] = {
         ['routingBucket'] = 2822,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1063.77,
             ["y"] = -1054.99,
@@ -1980,7 +1947,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity4"] = {
         ['routingBucket'] = 2823,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1054.07,
             ["y"] = -1000.2,
@@ -2064,7 +2030,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity5"] = {
         ['routingBucket'] = 2824,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -985.89,
             ["y"] = -1121.74,
@@ -2148,7 +2113,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity6"] = {
         ['routingBucket'] = 2825,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1024.42,
             ["y"] = -1140.0,
@@ -2232,7 +2196,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity7"] = {
         ['routingBucket'] = 2826,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1074.13,
             ["y"] = -1152.73,
@@ -2316,7 +2279,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity8"] = {
         ['routingBucket'] = 2827,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1063.57,
             ["y"] = -1160.35,
@@ -2400,7 +2362,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity10"] = {
         ['routingBucket'] = 2828,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -990.56,
             ["y"] = -975.93,
@@ -2484,7 +2445,6 @@ Config.HouseRob.Houses = {
     },
     ["prosperity11"] = {
         ['routingBucket'] = 2829,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -1008.49,
             ["y"] = -1015.42,
@@ -2568,7 +2528,6 @@ Config.HouseRob.Houses = {
     },
     ["paleto1"] = {
         ['routingBucket'] = 2830,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -360.24,
             ["y"] = 6260.61,
@@ -2652,7 +2611,6 @@ Config.HouseRob.Houses = {
     },
     ["paleto2"] = {
         ['routingBucket'] = 2831,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -366.57,
             ["y"] = 6214.12,
@@ -2736,7 +2694,6 @@ Config.HouseRob.Houses = {
     },
     ["paleto3"] = {
         ['routingBucket'] = 2832,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -447.87,
             ["y"] = 6260.25,
@@ -2820,7 +2777,6 @@ Config.HouseRob.Houses = {
     },
     ["paleto4"] = {
         ['routingBucket'] = 2833,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -245.99,
             ["y"] = 6414.45,
@@ -2904,7 +2860,6 @@ Config.HouseRob.Houses = {
     },
     ["paleto5"] = {
         ['routingBucket'] = 2834,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -9.59,
             ["y"] = 6654.23,
@@ -2988,7 +2943,6 @@ Config.HouseRob.Houses = {
     },
     ["paleto6"] = {
         ['routingBucket'] = 2835,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 25.1,
             ["y"] = 6601.76,
@@ -3072,7 +3026,6 @@ Config.HouseRob.Houses = {
     },
     ["paletoHotels1"] = {
         ['routingBucket'] = 2836,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -159.84,
             ["y"] = 6432.65,
@@ -3156,7 +3109,6 @@ Config.HouseRob.Houses = {
     },
     ["paletoHotels2"] = {
         ['routingBucket'] = 2837,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -149.98,
             ["y"] = 6416.07,
@@ -3240,7 +3192,6 @@ Config.HouseRob.Houses = {
     },
     ["emhouseRobbery1"] = { 
         ['routingBucket'] = 2837,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 35.4939,
             ["y"] = 6663.1904,
@@ -3325,7 +3276,6 @@ Config.HouseRob.Houses = {
     
     ["emhouseRobbery2"] = { 
         ['routingBucket'] = 2838,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = 1.8432,
             ["y"] = 6612.5811,
@@ -3410,7 +3360,6 @@ Config.HouseRob.Houses = {
     
     ["emhouseRobbery3"] = { 
         ['routingBucket'] = 2839,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -41.5201,
             ["y"] = 6637.4160,
@@ -3495,7 +3444,6 @@ Config.HouseRob.Houses = {
     
     ["emhouseRobbery4"] = { 
         ['routingBucket'] = 2840,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -26.4779,
             ["y"] = 6597.2451,
@@ -3580,7 +3528,6 @@ Config.HouseRob.Houses = {
     
     ["emhouseRobbery5"] = { 
         ['routingBucket'] = 2841,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -44.4633,
             ["y"] = 6581.9751,
@@ -3665,7 +3612,6 @@ Config.HouseRob.Houses = {
     
     ["emhouseRobbery6"] = { 
         ['routingBucket'] = 2842,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -130.6622,
             ["y"] = 6551.9751,
@@ -3750,7 +3696,6 @@ Config.HouseRob.Houses = {
     
     ["emhouseRobbery7"] = { 
         ['routingBucket'] = 2843,
-        ["requiredLE"] = {['police'] = 0},
         ["coords"] = {
             ["x"] = -105.7078,
             ["y"] = 6528.6396,

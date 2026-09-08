@@ -371,4 +371,10 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
         xPlayer.name, src, gangLabel, data.label, itemsListStr
     )
     Webhook.SendLog('TURF WAR - REWARDS CLAIMED', 65280, logMsg)
+
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        pcall(function()
+            exports['kodebykarl-ui']:LeaderboardRecordTurfClaim(gangName, gangLabel)
+        end)
+    end
 end)

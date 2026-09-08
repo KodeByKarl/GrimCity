@@ -579,6 +579,39 @@ RegisterNetEvent("esx:killPlayer", function()
     SetEntityHealth(ESX.PlayerData.ped, 0)
 end)
 
+RegisterNetEvent("esx:adminHeal", function()
+    if source ~= 65535 then return end
+    local ped = PlayerPedId()
+    local maxHealth = GetEntityMaxHealth(ped)
+    if not maxHealth or maxHealth < 100 then
+        maxHealth = 200
+        SetEntityMaxHealth(ped, maxHealth)
+    end
+    SetEntityHealth(ped, maxHealth)
+    ClearPedBloodDamage(ped)
+    SetPlayerHealthRechargeMultiplier(PlayerId(), 0.0)
+    SetPlayerHealthRechargeLimit(PlayerId(), 0.0)
+end)
+
+RegisterNetEvent("esx:adminRevive", function()
+    if source ~= 65535 then return end
+    local ped = PlayerPedId()
+    local coords = GetEntityCoords(ped)
+    local heading = GetEntityHeading(ped)
+    NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, heading, true, false)
+    ped = PlayerPedId()
+    local maxHealth = GetEntityMaxHealth(ped)
+    if not maxHealth or maxHealth < 100 then
+        maxHealth = 200
+        SetEntityMaxHealth(ped, maxHealth)
+    end
+    SetEntityHealth(ped, maxHealth)
+    ClearPedBloodDamage(ped)
+    ClearPedTasksImmediately(ped)
+    SetPlayerHealthRechargeMultiplier(PlayerId(), 0.0)
+    SetPlayerHealthRechargeLimit(PlayerId(), 0.0)
+end)
+
 RegisterNetEvent("esx:repairPedVehicle", function()
     local ped = ESX.PlayerData.ped
     local vehicle = GetVehiclePedIsIn(ped, false)

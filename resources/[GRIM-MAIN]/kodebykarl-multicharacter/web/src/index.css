@@ -50,36 +50,21 @@ body, html, #root {
   height: 100vh;
   background: transparent;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
 }
 
 .multichar-viewport * {
   pointer-events: auto;
 }
 
-.multichar-viewport.is-expanded {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 52px;
-  padding: 0 20px;
-}
-
 .panel-left {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: 320px;
-  transform: translate(-50%, -50%);
-  transition: left 0.45s cubic-bezier(0.22, 1, 0.36, 1), transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 3;
   flex-shrink: 0;
-}
-
-.multichar-viewport.is-expanded .panel-left {
-  position: relative;
-  top: auto;
-  left: auto;
-  transform: none;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .slots-container-box {
@@ -221,40 +206,39 @@ body, html, #root {
 
 .viewport-center {
   pointer-events: none;
-  flex: 0 0 280px;
-  min-width: 240px;
-  max-width: 320px;
+  width: 0px;
+  min-width: 0px;
+  max-width: 0px;
   height: 1px;
+  margin: 0;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1), min-width 0.45s cubic-bezier(0.22, 1, 0.36, 1), max-width 0.45s cubic-bezier(0.22, 1, 0.36, 1), margin 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.multichar-viewport.is-centered .viewport-center {
-  display: none;
+.multichar-viewport.is-expanded .viewport-center {
+  width: 320px;
+  min-width: 260px;
+  max-width: 380px;
+  margin: 0 24px;
 }
 
 .panel-right {
-  position: absolute;
-  top: 50%;
-  right: 48px;
   width: 340px;
+  max-width: 0px;
   opacity: 0;
-  transform: translate(28px, -50%);
-  transition: opacity 0.4s ease 0.1s, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.1s;
+  overflow: hidden;
+  transform: translateX(40px);
+  transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), max-width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
   z-index: 3;
   flex-shrink: 0;
 }
 
-.multichar-viewport.is-expanded .panel-right {
-  position: relative;
-  top: auto;
-  right: auto;
-  transform: none;
-}
-
 .panel-right.visible,
 .multichar-viewport.is-expanded .panel-right.visible {
   opacity: 1;
-  transform: none;
+  max-width: 340px;
+  overflow: visible;
+  transform: translateX(0);
   pointer-events: auto;
 }
 

@@ -3,6 +3,13 @@ cache/
 db/
 *.log
 
+# Scratch / temp image dumps
+temp_*/
+tools/
+test_*.png
+test_*.py
+*_banner.png
+
 # Node modules
 node_modules/
 **/node_modules/
@@ -13,3 +20,8 @@ node_modules/
 Thumbs.db
 imgui.ini
 .replxx_history
+
+# Maps and Cars
+resources/\[GRIM-CARS\]/
+resources/\[GRIM-MAPS\]/
+

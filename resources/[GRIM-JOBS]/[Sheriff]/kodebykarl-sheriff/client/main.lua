@@ -212,7 +212,9 @@ end
 local function stopAutoFarm(notifyUser)
     if not isFarming then return end
     isFarming = false
-    lib.cancelProgress()
+    if lib.progressActive and lib.progressActive() then
+        lib.cancelProgress()
+    end
     updateCoinFarmText('start')
     if notifyUser then
         lib.notify({
@@ -438,7 +440,9 @@ AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() then
         if isFarming then
             isFarming = false
-            lib.cancelProgress()
+            if lib.progressActive and lib.progressActive() then
+                lib.cancelProgress()
+            end
         end
         lib.hideTextUI()
         if spawnedBox and DoesEntityExist(spawnedBox) then

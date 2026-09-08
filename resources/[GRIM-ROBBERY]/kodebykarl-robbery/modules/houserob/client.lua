@@ -7,6 +7,10 @@ local IsLockpicking = false
 local houseObj = {}
 local POIOffsets = nil
 local usingAdvanced = false
+local soundLevel = 0.0
+local soundTriggered = false
+local soundThreadActive = false
+local leaveRobberyHouse, isPlayerPolice, enterRobberyHouse
 
 -- Functions
 
@@ -15,6 +19,7 @@ local function DrawText3Ds(x, y, z, text)
     SetTextFont(4)
     SetTextProportional(1)
     SetTextColour(255, 255, 255, 215)
+    SetTextOutline()
     BeginTextCommandDisplayText("STRING")
     SetTextCentre(true)
     AddTextComponentSubstringPlayerName(text)
@@ -43,8 +48,125 @@ local function playDoorSound()
     end
 end
 
+local function resetSoundMeter()
+    soundLevel = 0.0
+    soundTriggered = false
+end
+
+local function isAimingSilent()
+    local pid = PlayerId()
+    return IsPlayerFreeAiming(pid)
+        or IsControlPressed(0, 25) -- INPUT_AIM
+        or IsDisabledControlPressed(0, 25)
+end
+
+local function drawSoundMeter(level)
+    local pct = math.max(0.0, math.min(100.0, level)) / 100.0
+    local boxW, boxH = 0.18, 0.034
+    local x, y = 0.5, 0.905
+    local pad = 0.004
+
+    -- container
+    DrawRect(x, y, boxW, boxH, 12, 12, 14, 210)
+    DrawRect(x, y - (boxH * 0.5) + 0.0012, boxW, 0.0024, 180, 40, 40, 220)
+
+    -- fill track
+    local trackW = boxW - (pad * 2)
+    local trackH = 0.012
+    local trackY = y + 0.004
+    DrawRect(x, trackY, trackW, trackH, 30, 30, 34, 230)
+
+    local fillW = trackW * pct
+    if fillW > 0.001 then
+        local r, g, b = 70, 200, 90
+        if pct >= 0.75 then
+            r, g, b = 220, 55, 55
+        elseif pct >= 0.45 then
+            r, g, b = 230, 170, 40
+        end
+        DrawRect(x - (trackW * 0.5) + (fillW * 0.5), trackY, fillW, trackH, r, g, b, 245)
+    end
+
+    SetTextFont(4)
+    SetTextScale(0.28, 0.28)
+    SetTextColour(230, 230, 230, 240)
+    SetTextCentre(true)
+    SetTextOutline()
+    BeginTextCommandDisplayText('STRING')
+    local status = isAimingSilent() and 'AIMING · QUIET' or 'SOUND'
+    AddTextComponentSubstringPlayerName(('%s  %.0f%%'):format(status, level))
+    EndTextCommandDisplayText(x, y - 0.016)
+end
+
+local function alertPoliceNoise(house)
+    TriggerServerEvent('cfx-cs-robbery:houserob:server:soundAlert', house)
+    if GetResourceState('cfx-cs-dispatch') == 'started' then
+        pcall(function() exports['cfx-cs-dispatch']:HouseRobbery() end)
+    end
+end
+
+local function startSoundDetection(house)
+    local cfg = Config.HouseRob.SoundDetection
+    if not cfg or not cfg.enabled then return end
+    if isPlayerPolice() then return end
+    if soundThreadActive then return end
+
+    resetSoundMeter()
+    soundThreadActive = true
+    ESX.Notify('House Robbery', 'Keep quiet — aim while walking to stay silent.', 'info', 6000)
+
+    CreateThread(function()
+        local lastTick = GetGameTimer()
+        while inside and currentHouse == house and soundThreadActive do
+            local now = GetGameTimer()
+            local dt = (now - lastTick) / 1000.0
+            lastTick = now
+            if dt <= 0.0 then dt = 0.001 end
+            if dt > 0.25 then dt = 0.25 end
+
+            local ped = cache.ped
+            local speed = GetEntitySpeed(ped)
+            local moving = speed > (cfg.moveThreshold or 0.45)
+            local aiming = isAimingSilent()
+            local searching = IsLockpicking
+
+            if searching or not moving or aiming then
+                soundLevel = math.max(0.0, soundLevel - (cfg.idleDecay or 5.0) * dt)
+            else
+                local rate = cfg.walkNoise or 7.5
+                if IsPedSprinting(ped) then
+                    rate = cfg.sprintNoise or 28.0
+                elseif IsPedRunning(ped) then
+                    rate = cfg.runNoise or 18.0
+                end
+                soundLevel = math.min(100.0, soundLevel + rate * dt)
+            end
+
+            drawSoundMeter(soundLevel)
+
+            if soundLevel >= 100.0 and not soundTriggered then
+                soundTriggered = true
+                soundThreadActive = false
+                local exitHouse = currentHouse
+                ESX.Notify('House Robbery', 'Too loud — neighbors heard you. Getting out!', 'error', 7000)
+                alertPoliceNoise(exitHouse)
+                if exitHouse then
+                    leaveRobberyHouse(exitHouse)
+                end
+                break
+            end
+
+            Wait(0)
+        end
+        soundThreadActive = false
+        resetSoundMeter()
+    end)
+end
+
 local function leaveRobberyHouse(house)
-    TriggerServerEvent('cfx-cs-robbery:houserob:setRoutingBucket', 0)
+    soundThreadActive = false
+    resetSoundMeter()
+    TriggerServerEvent('cfx-cs-robbery:houserob:server:leaveHouse', house)
     local ped = cache.ped
     playDoorSound()
     openHouseAnim()
@@ -68,14 +190,20 @@ local function leaveRobberyHouse(house)
     currentHouse = nil
 end
 
-local function enterRobberyHouse(house)
-    TriggerServerEvent('cfx-cs-robbery:houserob:setRoutingBucket', Config.HouseRob.Houses[house]['routingBucket'])
+enterRobberyHouse = function(house)
+    -- Server sets routing bucket; client only builds interior after enter event
     playDoorSound()
     openHouseAnim()
     Wait(250)
     local coords = { x = Config.HouseRob.Houses[house].coords.x, y = Config.HouseRob.Houses[house].coords.y, z= Config.HouseRob.Houses[house].coords.z - Config.HouseRob.MinZOffset}
     local data = exports[RESOURCE]:CreateHouseRobbery(coords)
-    if not data then print('[^3kodebykarl-robbery^0]: [House Robbery]: Error Creating House ', json.encode(data)) return end
+    if not data then
+        print('[^3kodebykarl-robbery^0]: [House Robbery]: Error Creating House — shell model missing (furnitured_midapart)')
+        TriggerServerEvent('cfx-cs-robbery:houserob:server:leaveHouse', house)
+        if IsScreenFadedOut() then DoScreenFadeIn(500) end
+        ESX.Notify('House Robbery', 'Interior failed to load. Restart kodebykarl-robbery so furnitured_midapart streams.', 'error', 8000)
+        return
+    end
     houseObj = data[1]
     POIOffsets = data[2]
     print('[^3kodebykarl-robbery^0]: [House Robbery]: Teleporting to vec3('..coords.x + POIOffsets.exit.x..', '..coords.y + POIOffsets.exit.y..', '..coords.z + POIOffsets.exit.z..')')
@@ -84,6 +212,7 @@ local function enterRobberyHouse(house)
     currentHouse = house
     Wait(500)
     TriggerEvent('cfx-cs-weather:client:DisableSync')
+    startSoundDetection(house)
     CreateThread(function()
         while true do
             Wait(500)
@@ -96,31 +225,53 @@ local function enterRobberyHouse(house)
     end)
 end
 
-local function lockpickFinish(success)
-    ClearPedTasks(cache.ped)
-    if success then
-        TriggerServerEvent('cfx-cs-robbery:houserob:server:enterHouse', closestHouse)
-        ESX.Notify('House Robbery', 'Lock picked successfully!', 'success', 5000)
+--- Emergency unstuck (black screen / failed shell)
+local function forceExitHouseRobbery()
+    soundThreadActive = false
+    resetSoundMeter()
+    local house = currentHouse
+    inside = false
+    currentHouse = nil
+    POIOffsets = nil
+    TriggerServerEvent('cfx-cs-robbery:houserob:server:leaveHouse', house)
+    TriggerEvent('cfx-cs-weather:client:EnableSync')
+    if houseObj and next(houseObj) then
+        exports[RESOURCE]:DespawnInterior(houseObj, function() end)
+    end
+    houseObj = {}
+    if IsScreenFadedOut() then DoScreenFadeIn(0) end
+    local ped = cache.ped
+    if house and Config.HouseRob.Houses[house] then
+        local c = Config.HouseRob.Houses[house].coords
+        SetEntityCoords(ped, c.x, c.y, c.z + 0.5, false, false, false, false)
+        SetEntityHeading(ped, c.h or 0.0)
     else
-        if usingAdvanced then
-            if math.random(1, 100) <= 25 then
-                TriggerServerEvent("cfx-cs-robbery:houserob:server:removeAdvancedLockpick")
-                ESX.Notify('House Robbery', 'The lockpick bent and broke...', 'error', 5000)
-            else
-                ESX.Notify('House Robbery', 'Failed to pick the lock.', 'error', 5000)
-            end
-        else
-            if math.random(1, 100) <= 50 then
-                TriggerServerEvent("cfx-cs-robbery:houserob:server:removeLockpick")
-                ESX.Notify('House Robbery', 'The lockpick bent and broke...', 'error', 5000)
-            else
-                ESX.Notify('House Robbery', 'Failed to pick the lock.', 'error', 5000)
-            end
+        -- fallback: put player slightly above current coords so they aren't underground
+        local pos = GetEntityCoords(ped)
+        SetEntityCoords(ped, pos.x, pos.y, pos.z + 50.0, false, false, false, false)
+        local found, groundZ = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 100.0, false)
+        if found then
+            SetEntityCoords(ped, pos.x, pos.y, groundZ + 1.0, false, false, false, false)
         end
     end
+    ClearPedTasksImmediately(ped)
+    FreezeEntityPosition(ped, false)
+    ESX.Notify('House Robbery', 'Forced exit from house robbery.', 'info', 5000)
 end
 
-local function isPlayerPolice()
+RegisterCommand('exithouserob', function()
+    forceExitHouseRobbery()
+end, false)
+
+RegisterNetEvent('cfx-cs-robbery:houserob:client:forceExit', forceExitHouseRobbery)
+
+local function lockpickFinish(success)
+    ClearPedTasks(cache.ped)
+    if not closestHouse then return end
+    TriggerServerEvent('cfx-cs-robbery:houserob:server:finishLockpick', closestHouse, success == true, usingAdvanced == true)
+end
+
+isPlayerPolice = function()
     local pData = ESX.GetPlayerData()
     if pData and pData.job then
         local jName = tostring(pData.job.name):lower()
@@ -142,11 +293,6 @@ local function startLockpicking(house, isAdvanced)
         end
     end
 
-    local canRob = exports['cfx-cs-scoreboard']:CheckLawEnforcementByTable(Config.HouseRob.Houses[house]["requiredLE"])
-    if not canRob.enable then
-        return ESX.Notify('House Robbery', 'Not enough ' .. (canRob.name or 'police'), 'error', 5000)
-    end
-
     if Config.HouseRob.Houses[house]["opened"] then
         return ESX.Notify('House Robbery', 'The door is already open.', 'info', 5000)
     end
@@ -165,10 +311,6 @@ local function startLockpicking(house, isAdvanced)
 
     usingAdvanced = isAdvanced
     IsLockpicking = true
-
-    if GetResourceState('cfx-cs-dispatch') == 'started' then
-        pcall(function() exports['cfx-cs-dispatch']:HouseRobbery() end)
-    end
 
     RequestAnimDict("veh@break_in@0h@p_m_one@")
     while not HasAnimDictLoaded("veh@break_in@0h@p_m_one@") do Wait(10) end
@@ -275,7 +417,6 @@ CreateThread(function()
                 if dist <= 2.0 then
                     closestHouse = k
                     inRange = true
-                    local canRob = exports['cfx-cs-scoreboard']:CheckLawEnforcementByTable(Config.HouseRob.Houses[k]["requiredLE"])
                     local isCop = isPlayerPolice()
 
                     if Config.HouseRob.Houses[k]["opened"] then
@@ -284,34 +425,32 @@ CreateThread(function()
                             if Config.HouseRob.LimitTime and (GetClockHours() < Config.HouseRob.MinimumTime or GetClockHours() > Config.HouseRob.MaximumTime) then
                                 ESX.Notify('House Robbery', 'You can\'t do that at this time of day.', 'error', 5000)
                             else
-                                enterRobberyHouse(k)
+                                TriggerServerEvent('cfx-cs-robbery:houserob:server:enterHouse', k)
                             end
                         end
                     else
                         if isCop then
                             DrawText3Ds(houseCoords.x, houseCoords.y, houseCoords.z, '~b~[E]~w~ - Enter (Police)')
                             if IsControlJustPressed(0, 38) then
-                                enterRobberyHouse(k)
+                                TriggerServerEvent('cfx-cs-robbery:houserob:server:enterHouse', k)
                             end
                         else
-                            if canRob.enable then
-                                DrawText3Ds(houseCoords.x, houseCoords.y, houseCoords.z, '~r~[Locked]~w~ Press ~y~[E]~w~ to Lockpick')
-                                if IsControlJustPressed(0, 38) then
-                                    startLockpicking(k)
-                                end
-                            else
-                                DrawText3Ds(houseCoords.x, houseCoords.y, houseCoords.z, '~r~[Locked]~w~ Not enough ' .. (canRob.name or 'police'))
+                            DrawText3Ds(houseCoords.x, houseCoords.y, houseCoords.z, '~r~[Locked]~w~ Press ~y~[E]~w~ to Lockpick')
+                            if IsControlJustPressed(0, 38) then
+                                startLockpicking(k)
                             end
                         end
                     end
                 end
             end
         end
-        if inside then Wait(500) end
-        if not inRange then
-            Wait(400)
+        if inside then
+            Wait(0)
+        elseif not inRange then
+            Wait(500)
+        else
+            Wait(0)
         end
-        Wait(1)
     end
 end)
 
@@ -348,10 +487,11 @@ CreateThread(function()
             end
         end
 
-        if not inside then
+        if inside then
+            Wait(0)
+        else
             Wait(500)
         end
-        Wait(3)
     end
 end)
 

@@ -9,7 +9,6 @@ return {
         { item = 'lockpick', amount = 5 },
         { item = 'reskin_card', amount = 1 },
         { item = 'new_player_card', amount = 1 },
-        { item = 'item_free_car', amount = 1 },
     },
     OneTime = true,
     NotifyTitle = 'NEW PLAYER KIT',

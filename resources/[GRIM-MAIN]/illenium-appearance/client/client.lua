@@ -97,13 +97,14 @@ local function getNewCharacterConfig()
 end
 
 function SetInitialClothes(initial)
+    if not initial or not initial.Model then return end
     client.setPlayerModel(initial.Model)
     -- Fix for tattoo's appearing when creating a new character
     local ped = cache.ped
     client.setPedTattoos(ped, {})
-    client.setPedComponents(ped, initial.Components)
-    client.setPedProps(ped, initial.Props)
-    client.setPedHair(ped, initial.Hair, {})
+    if initial.Components then client.setPedComponents(ped, initial.Components) end
+    if initial.Props then client.setPedProps(ped, initial.Props) end
+    if initial.Hair then client.setPedHair(ped, initial.Hair, {}) end
     ClearPedDecorations(ped)
 end
 

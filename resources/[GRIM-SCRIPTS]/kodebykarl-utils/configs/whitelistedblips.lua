@@ -1,6 +1,6 @@
 return {
     Enabled = true,
-    RefreshInterval = 1500, -- Milliseconds between blip location/status updates
+    RefreshInterval = 2000, -- Milliseconds between blip location/status updates
     BlipScale = 0.8,
     ShowHeading = true,     -- Show rotation/heading arrow indicator on blip
     ShowOwnBlip = false,    -- Show duplicate blip for own player (false recommended as minimap already shows player)
@@ -22,7 +22,7 @@ return {
         },
         ambulance = {
             label = 'EMS',
-            jobs = { 'ambulance', 'sambulance' },
+            jobs = { 'ambulance', 'sambulance', 'pambulance' },
             sprite = 60,    -- Standard foot blip sprite
             color = 1,      -- Red
         },

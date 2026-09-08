@@ -3,15 +3,68 @@ function CheckDuty()
 end
 
 function IsPlayerAllowedForOutfitRoom(outfitRoom)
-    local isAllowed = false
-    local count = #outfitRoom.citizenIDs
-    for i = 1, count, 1 do
-        if Framework.IsPlayerAllowed(outfitRoom.citizenIDs[i]) then
-            isAllowed = true
-            break
+    if not outfitRoom then return false end
+
+    -- Job check: If room specifies a job, player must have that set job
+    if outfitRoom.job then
+        local playerJob = (client.job and client.job.name) or (Framework.PlayerData and Framework.PlayerData.job and Framework.PlayerData.job.name)
+        if not playerJob then return false end
+        local jobMatched = false
+        if type(outfitRoom.job) == "table" then
+            for _, j in pairs(outfitRoom.job) do
+                if j == playerJob then
+                    jobMatched = true
+                    break
+                end
+            end
+        else
+            jobMatched = (playerJob == outfitRoom.job)
+        end
+        if not jobMatched then
+            return false
         end
     end
-    return isAllowed or not outfitRoom.citizenIDs or count == 0
+
+    -- Gang check: If room specifies a gang, player must have that gang
+    if outfitRoom.gang then
+        local playerGang = (client.gang and client.gang.name) or (Framework.PlayerData and Framework.PlayerData.gang and Framework.PlayerData.gang.name)
+        if not playerGang then return false end
+        local gangMatched = false
+        if type(outfitRoom.gang) == "table" then
+            for _, g in pairs(outfitRoom.gang) do
+                if g == playerGang then
+                    gangMatched = true
+                    break
+                end
+            end
+        else
+            gangMatched = (playerGang == outfitRoom.gang)
+        end
+        if not gangMatched then
+            return false
+        end
+    end
+
+    -- Duty check if configured
+    if outfitRoom.job and not CheckDuty() then
+        return false
+    end
+
+    -- CitizenID check (only if specified and not empty)
+    if outfitRoom.citizenIDs and #outfitRoom.citizenIDs > 0 then
+        local isAllowed = false
+        for i = 1, #outfitRoom.citizenIDs do
+            if Framework.IsPlayerAllowed(outfitRoom.citizenIDs[i]) then
+                isAllowed = true
+                break
+            end
+        end
+        if not isAllowed then
+            return false
+        end
+    end
+
+    return true
 end
 
 function GetPlayerJobOutfits(job)

@@ -6,7 +6,7 @@ local targetAdded = false
 
 local function Notify(msg, nType)
     lib.notify({
-        title = "Chop Shop",
+        title = (Config.ChopShop and Config.ChopShop.Label) or "Illegal Chop",
         description = msg,
         type = nType or "inform",
     })
@@ -56,7 +56,7 @@ end
 local function RunProgress(duration)
     return lib.progressBar({
         duration = duration,
-        label = "Chopping vehicle…",
+        label = "Illegal chop in progress…",
         useWhileDead = false,
         canCancel = true,
         disable = {
@@ -120,9 +120,13 @@ local function StartChop(entity)
     local netId = NetworkGetNetworkIdFromEntity(entity)
     local plate = GetVehicleNumberPlateText(entity)
     local vehicleClass = GetVehicleClass(entity)
+    local modelName = GetEntityArchetypeName(entity)
+    if not modelName or modelName == "" then
+        modelName = tostring(GetEntityModel(entity))
+    end
     chopping = true
 
-    local result = lib.callback.await("cfx-keydi-chopshop:server:request", false, netId, plate, vehicleClass)
+    local result = lib.callback.await("cfx-keydi-chopshop:server:request", false, netId, plate, vehicleClass, modelName)
     if type(result) ~= "table" or not result.ok then
         chopping = false
         local reason = result and result.reason or "denied"
@@ -138,12 +142,14 @@ local function StartChop(entity)
             Notify("That vehicle is already being chopped.", "error")
         elseif reason == "cooldown" then
             Notify("Wait before chopping another car.", "error")
+        elseif reason == "cops" then
+            Notify("Not enough police / sheriff on duty.", "error")
         elseif reason == "occupied" then
             Notify("Someone is still in that vehicle.", "error")
         elseif reason == "class" then
             Notify("This vehicle type cannot be chopped.", "error")
         elseif reason == "zone" then
-            Notify("Bring the vehicle into the chop yard.", "error")
+            Notify("Bring the vehicle into the illegal chop yard.", "error")
         elseif reason == "speed" then
             Notify("Stop the vehicle first.", "error")
         else
@@ -151,6 +157,8 @@ local function StartChop(entity)
         end
         return
     end
+
+    Notify("Police have been tipped off — finish before they arrive.", "warning")
 
     FreezeChopVehicle(entity)
 
@@ -197,6 +205,35 @@ RegisterNetEvent("cfx-keydi-chopshop:client:unlock", function()
     chopping = false
 end)
 
+-- LEO alert blip when someone starts an illegal chop
+RegisterNetEvent("cfx-keydi-chopshop:client:policeAlert", function(data)
+    if type(data) ~= "table" or type(data.coords) ~= "table" then return end
+    local c = data.coords
+    local blip = AddBlipForCoord(c.x + 0.0, c.y + 0.0, c.z + 0.0)
+    SetBlipSprite(blip, data.sprite or 380)
+    SetBlipColour(blip, data.color or 1)
+    SetBlipScale(blip, data.scale or 1.0)
+    SetBlipFlashes(blip, true)
+    SetBlipAsShortRange(blip, false)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentString(data.label or "Illegal Chop")
+    EndTextCommandSetBlipName(blip)
+
+    lib.notify({
+        title = "Dispatch",
+        description = ("Illegal chop reported: %s"):format(data.label or "Unknown yard"),
+        type = "error",
+        duration = 10000,
+    })
+
+    CreateThread(function()
+        Wait(tonumber(data.time) or 180000)
+        if DoesBlipExist(blip) then
+            RemoveBlip(blip)
+        end
+    end)
+end)
+
 local function AddVehicleTarget()
     if targetAdded then return end
     if GetResourceState("ox_target") ~= "started" then return end
@@ -205,7 +242,7 @@ local function AddVehicleTarget()
         {
             name = "cfx-keydi-chopshop:chop",
             icon = "fa-solid fa-screwdriver-wrench",
-            label = "Chop Vehicle",
+            label = "Illegal Chop Vehicle",
             distance = Config.ChopShop.InteractionDistance or 3.2,
             canInteract = function(entity)
                 return CanTargetVehicle(entity)
@@ -231,7 +268,7 @@ local function CreateBlips()
         SetBlipColour(blip, blipCfg.color or 1)
         SetBlipAsShortRange(blip, true)
         BeginTextCommandSetBlipName("STRING")
-        AddTextComponentString(blipCfg.label or loc.label or "Chop Shop")
+        AddTextComponentString(blipCfg.label or loc.label or "Illegal Chop Yard")
         EndTextCommandSetBlipName(blip)
     end
 end

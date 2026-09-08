@@ -162,7 +162,9 @@ local function SetupPlayerOutfitRoomTargets()
                 label = targetConfig.label,
                 canInteract = function()
                     return IsPlayerAllowedForOutfitRoom(v)
-                end
+                end,
+                job = v.job,
+                gang = v.gang
             }},
             distance = targetConfig.distance,
             rotation = v.rotation

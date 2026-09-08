@@ -277,6 +277,17 @@ local function GrantReward(src, session)
         end
     end
 
+    -- VIP Harvest Perk (+5 / +10 / +15 All Grindings based on VIP tier)
+    local grindBonus = 0
+    pcall(function()
+        if exports["kodebykarl-ui"] and exports["kodebykarl-ui"].GetVipGrindBonus then
+            grindBonus = exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0
+        end
+    end)
+    if grindBonus > 0 then
+        amount = amount + grindBonus
+    end
+
     local carryable = exports.ox_inventory:CanCarryAmount(src, itemName) or 0
     if carryable < 1 then
         ClearSession(src)

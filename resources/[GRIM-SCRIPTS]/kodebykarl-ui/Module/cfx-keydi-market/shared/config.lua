@@ -9,10 +9,10 @@ ConfigMarket = {
     PhoneApp = {
         Enabled = true,
         DefaultApp = true, -- home screen, no App Store download
-        Identifier = 'pandora-market',
-        Name = 'Pandora Market',
-        Description = 'Live sell market prices. View only — sell at the market NPC.',
-        Developer = 'Pandora City',
+        Identifier = 'pandora-market', -- keep stable for installed lb-phone apps
+        Name = 'Grim Market',
+        Description = 'Live sell prices for autofarm & raven loot. View only — sell at the market NPC.',
+        Developer = 'Grim City',
     },
 
     -- Server rolls a new sell price per item in [minPrice, maxPrice] on this interval
@@ -40,39 +40,11 @@ ConfigMarket = {
         },
     },
 
-    -- Sell prices: each update rolls a random price between minPrice and maxPrice
+    -- Sell catalog seed (copied into grim_market_items DB on first boot).
+    -- Live min/max are edited from iPad Market app (owner/developer) — not only here.
     Items = {
-        -- Farming
-        { item = 'mango',        label = 'Mango',         category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'apple',        label = 'Apple',         category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'pumpkin',      label = 'Pumpkin',       category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'arabica',      label = 'Arabica',       category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'lettuce',      label = 'Lettuce',       category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'tomato',       label = 'Tomato',        category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'potato',       label = 'Potato',        category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'carrot',       label = 'Carrot',        category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'honey',        label = 'Honey',         category = 'Farming',  minPrice = 50,  maxPrice = 100 },
-        { item = 'cocoa',        label = 'Cocoa',         category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'mushroom',     label = 'Mushroom',      category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'onion',        label = 'Onion',         category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-        { item = 'crab',         label = 'Crab',          category = 'Farming',  minPrice = 30,  maxPrice = 80 },
-
-        -- Hunting
-        { item = 'raw_chicken',  label = 'Chicken',       category = 'Hunting',  minPrice = 50,  maxPrice = 100 },
-        { item = 'raw_meat',     label = 'Meat',          category = 'Hunting',  minPrice = 50,  maxPrice = 100 },
-
-        -- Mining / materials
-        { item = 'scrapmetal',   label = 'Scrap Metal',   category = 'Mining',   minPrice = 50,  maxPrice = 100 },
-        { item = 'stone',        label = 'Stone',         category = 'Mining',   minPrice = 30,  maxPrice = 80 },
-        { item = 'washed_rocks', label = 'Wash Stone',    category = 'Mining',   minPrice = 30,  maxPrice = 80 },
-        { item = 'copper',       label = 'Copper',        category = 'Mining',   minPrice = 30,  maxPrice = 80 },
-        { item = 'iron',         label = 'Iron',          category = 'Mining',   minPrice = 35,  maxPrice = 75 },
-        { item = 'aluminum',     label = 'Aluminum',      category = 'Mining',   minPrice = 35,  maxPrice = 80 },
-        { item = 'steel',        label = 'Steel',         category = 'Mining',   minPrice = 40,  maxPrice = 80 },
-        { item = 'titanium',     label = 'Titanium',      category = 'Mining',   minPrice = 50,  maxPrice = 100 },
-        { item = 'cloth',        label = 'Cloth',         category = 'Mining',   minPrice = 25,  maxPrice = 55 },
-        { item = 'kevlar',       label = 'Kevlar',        category = 'Mining',   minPrice = 80,  maxPrice = 150 },
-        { item = 'emerald',      label = 'Emerald',       category = 'Mining',   minPrice = 200, maxPrice = 400 },
-        { item = 'diamond',      label = 'Diamond',       category = 'Mining',   minPrice = 150, maxPrice = 300 },
+        { item = 'orange',   label = 'Orange',   category = 'Farming', minPrice = 30, maxPrice = 80 },
+        { item = 'wood',     label = 'Wood',     category = 'Lumber',  minPrice = 35, maxPrice = 85 },
+        { item = 'raw_meat', label = 'Raw Meat', category = 'Hunting', minPrice = 50, maxPrice = 100 },
     },
 }

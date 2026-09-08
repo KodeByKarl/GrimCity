@@ -48,7 +48,10 @@ Config.Accounts = {
     },
 }
 
-Config.StartingAccountMoney = { bank = 50000 }
+Config.StartingAccountMoney = {
+    money = 50000,
+    bank = 250000,
+}
 
 Config.StartingInventoryItems = false -- table/false
 
@@ -96,6 +99,8 @@ Config.CommandPermissions = {
     ["goto"]                = { "developer", "owner", "superadmin", "admin" },
     ["bring"]               = { "developer", "owner", "superadmin", "admin" },
     ["kill"]                = { "developer", "owner", "superadmin", "admin" },
+    ["revive"]              = { "developer", "owner", "superadmin", "admin" },
+    ["heal"]                = { "developer", "owner", "superadmin", "admin" },
     ["freeze"]              = { "developer", "owner", "superadmin", "admin" },
     ["unfreeze"]            = { "developer", "owner", "superadmin", "admin" },
     ["setdim"]              = { "developer", "owner", "superadmin", "admin" }, -- /setdim, /setbucket

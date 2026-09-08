@@ -319,9 +319,13 @@ lib.callback.register("jg-advancedgarages:server:store-vehicle", function(player
         owners[#owners + 1] = playerJob.name
     end
 
-    -- Update vehicle in database
-    MySQL.update.await(
-        Framework.Queries.StoreVehicle:format(Framework.VehiclesTable, Framework.PlayerIdentifier),
+    -- Update vehicle in database (ignore spaces in plate — ESX pads plates)
+    local plateKey = type(plateNumber) == "string" and plateNumber:gsub("%s+", "") or plateNumber
+    local affected = MySQL.update.await(
+        ("UPDATE %s SET in_garage = 1, garage_id = ?, fuel = ?, body = ?, engine = ?, damage = ? WHERE %s IN (?) AND REPLACE(plate, ' ', '') = ?"):format(
+            Framework.VehiclesTable,
+            Framework.PlayerIdentifier
+        ),
         {
             garageId,
             fuelLevel or 0,
@@ -329,9 +333,25 @@ lib.callback.register("jg-advancedgarages:server:store-vehicle", function(player
             engineHealth or 0,
             damageData and json.encode(damageData) or nil,
             owners,
-            plateNumber
+            plateKey
         }
     )
+
+    if not affected or affected < 1 then
+        -- Fallback exact plate match
+        MySQL.update.await(
+            Framework.Queries.StoreVehicle:format(Framework.VehiclesTable, Framework.PlayerIdentifier),
+            {
+                garageId,
+                fuelLevel or 0,
+                bodyHealth or 0,
+                engineHealth or 0,
+                damageData and json.encode(damageData) or nil,
+                owners,
+                plateNumber
+            }
+        )
+    end
     
     -- Send webhook notification
     sendWebhook(playerId, Webhooks.VehicleTakeOutAndInsert, "Vehicle stored in garage", "success", {
@@ -341,10 +361,16 @@ lib.callback.register("jg-advancedgarages:server:store-vehicle", function(player
     
     -- Save vehicle properties if enabled
     if Config.SaveVehiclePropsOnInsert and vehicleProps then
-        MySQL.update.await(
-            Framework.Queries.UpdateProps:format(Framework.VehiclesTable, Framework.VehProps),
-            {json.encode(vehicleProps), plateNumber}
+        local propsAffected = MySQL.update.await(
+            ("UPDATE %s SET %s = ? WHERE REPLACE(plate, ' ', '') = ?"):format(Framework.VehiclesTable, Framework.VehProps),
+            {json.encode(vehicleProps), plateKey}
         )
+        if not propsAffected or propsAffected < 1 then
+            MySQL.update.await(
+                Framework.Queries.UpdateProps:format(Framework.VehiclesTable, Framework.VehProps),
+                {json.encode(vehicleProps), plateNumber}
+            )
+        end
     end
     
     -- Handle client-side vehicle exit

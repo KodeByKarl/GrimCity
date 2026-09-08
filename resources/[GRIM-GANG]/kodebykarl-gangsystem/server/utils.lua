@@ -114,6 +114,17 @@ local function getHireConfig()
     return Config.DiscordHire or {}
 end
 
+local function getHireGuildId()
+    local cfg = getHireConfig()
+    if cfg.GuildID and cfg.GuildID ~= '' then
+        return tostring(cfg.GuildID)
+    end
+    if Config.Logs and Config.Logs.GuildID and Config.Logs.GuildID ~= '' then
+        return tostring(Config.Logs.GuildID)
+    end
+    return nil
+end
+
 local function getBotToken()
     local cfg = getHireConfig()
     if cfg.BotToken and cfg.BotToken ~= '' then
@@ -160,7 +171,8 @@ end
 local function fetchGuildMember(discordId, forceRefresh)
     local cfg = getHireConfig()
     local token = getBotToken()
-    if not token or not cfg.GuildID or cfg.GuildID == '' then
+    local guildId = getHireGuildId()
+    if not token or not guildId then
         return nil, 0
     end
 
@@ -171,7 +183,7 @@ local function fetchGuildMember(discordId, forceRefresh)
     end
 
     local p = promise.new()
-    local url = ('%s/guilds/%s/members/%s'):format(DISCORD_API, cfg.GuildID, discordId)
+    local url = ('%s/guilds/%s/members/%s'):format(DISCORD_API, guildId, discordId)
 
     PerformHttpRequest(url, function(status, body)
         status = tonumber(status) or 0
@@ -235,7 +247,8 @@ function Gang.VerifyDiscordRoleById(discordId, gangKey)
         return true
     end
 
-    if not getBotToken() or not cfg.GuildID or cfg.GuildID == '' then
+    local guildId = getHireGuildId()
+    if not getBotToken() or not guildId then
         print('^1[cfx-keydi-gang]^0 DiscordHire: BotToken / GuildID missing — blocking hire.')
         return false, cfg.Messages and cfg.Messages.ApiError or 'Discord not configured.'
     end
@@ -248,12 +261,12 @@ function Gang.VerifyDiscordRoleById(discordId, gangKey)
     -- Always force-refresh on hire so newly added roles are seen immediately
     local member, status = fetchGuildMember(discordId, true)
     if status == 401 or status == 403 then
-        print(('^1[cfx-keydi-gang]^0 DiscordHire bot cannot access guild %s (HTTP %s). Invite bot + enable Server Members Intent.'):format(tostring(cfg.GuildID), tostring(status)))
+        print(('^1[cfx-keydi-gang]^0 DiscordHire bot cannot access guild %s (HTTP %s). Invite bot + enable Server Members Intent.'):format(tostring(guildId), tostring(status)))
         return false, cfg.Messages and cfg.Messages.BotCannotAccess or 'Bot cannot access Discord.'
     end
 
     if status == 404 then
-        print(('^3[cfx-keydi-gang]^0 DiscordHire: member %s not found in guild %s (HTTP 404). Either not in Discord, or bot is not in that guild.'):format(discordId, tostring(cfg.GuildID)))
+        print(('^3[cfx-keydi-gang]^0 DiscordHire: member %s not found in guild %s (HTTP 404). Either not in Discord, or bot is not in that guild.'):format(discordId, tostring(guildId)))
         if cfg.RequireInGuild ~= false then
             return false, cfg.Messages and cfg.Messages.NotInGuild or 'Not in Discord.'
         end
@@ -347,23 +360,24 @@ CreateThread(function()
     if not cfg.Enabled then return end
 
     local token = getBotToken()
-    if not token or not cfg.GuildID or cfg.GuildID == '' then
+    local guildId = getHireGuildId()
+    if not token or not guildId then
         print('^1[cfx-keydi-gang]^0 DiscordHire enabled but BotToken/GuildID missing.')
         return
     end
 
-    PerformHttpRequest(('https://discord.com/api/v10/guilds/%s'):format(cfg.GuildID), function(status, body)
+    PerformHttpRequest(('https://discord.com/api/v10/guilds/%s'):format(guildId), function(status, body)
         status = tonumber(status) or 0
         if status == 200 then
-            local name = cfg.GuildID
+            local name = guildId
             if body and body ~= '' then
                 local ok, data = pcall(json.decode, body)
                 if ok and data and data.name then name = data.name end
             end
-            print(('^2[cfx-keydi-gang]^0 DiscordHire OK — bot can access guild "%s" (%s). Roles checked live on each hire.'):format(tostring(name), tostring(cfg.GuildID)))
+            print(('^2[cfx-keydi-gang]^0 DiscordHire OK — bot can access guild "%s" (%s). Roles checked live on each hire.'):format(tostring(name), tostring(guildId)))
         else
-            print(('^1[cfx-keydi-gang]^0 DiscordHire FAILED (HTTP %s). Bot cannot access GuildID %s.'):format(tostring(status), tostring(cfg.GuildID)))
-            print('^3[cfx-keydi-gang]^0 Fix: invite Config.Logs / DiscordHire bot into that Discord, enable Server Members Intent, then restart cfx-keydi-gang.^0')
+            print(('^1[cfx-keydi-gang]^0 DiscordHire FAILED (HTTP %s). Bot cannot access GuildID %s.'):format(tostring(status), tostring(guildId)))
+            print('^3[cfx-keydi-gang]^0 Fix: invite the kodebykarl_discord_bot_token bot into that Discord, enable Server Members Intent, then restart kodebykarl-gangsystem.^0')
         end
     end, 'GET', '', {
         ['Authorization'] = ('Bot %s'):format(token),

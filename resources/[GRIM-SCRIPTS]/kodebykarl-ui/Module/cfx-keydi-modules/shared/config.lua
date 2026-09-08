@@ -10,3 +10,13 @@ ConfigModules.RequireSafezone = true
 ConfigModules.LockInJail = true
 ConfigModules.LockInArena = true
 ConfigModules.LockInJobInstance = false -- job instances are left by switching back to a public server
+
+-- Department of Justice civic services (on-duty doj staff → nearby citizen)
+ConfigModules.DOJ = {
+    MenuCommand = 'doj',
+    MenuKey = 'F6',
+    MaxDistance = 3.0,
+    CitizenIdPrice = 250000,
+    ChangeNamePrice = 500000,
+    SocietyAccount = 'society_doj',
+}

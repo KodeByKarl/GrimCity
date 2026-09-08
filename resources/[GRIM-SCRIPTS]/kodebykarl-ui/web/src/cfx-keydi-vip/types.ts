@@ -16,6 +16,8 @@ export interface VipMembership {
   pedMenu?: boolean;
   /** Edit own welcome banner */
   welcomeBanner?: boolean;
+  /** VIP All Grindings bonus (+5 / +10 / +15) */
+  grindBonus?: number;
 }
 
 export const EMPTY_VIP: VipMembership = {
@@ -31,6 +33,7 @@ export const EMPTY_VIP: VipMembership = {
   characterSlots: 1,
   pedMenu: false,
   welcomeBanner: false,
+  grindBonus: 0,
 };
 
 export type VipDurationUnit = "days" | "months";
@@ -45,6 +48,23 @@ export interface VipPlayerRow {
   id: number;
   name: string;
   vip: VipMembership;
+}
+
+export interface DbVipMember {
+  identifier: string;
+  name: string;
+  onlineId?: number | null;
+  isOnline: boolean;
+  tier: string;
+  label: string;
+  characterSlots: number;
+  expiresAt: string | null;
+  startedAt: string | null;
+  autoRenew: boolean;
+  grantedBy: string;
+  daysRemaining: number;
+  hoursRemaining: number;
+  active: boolean;
 }
 
 export const PREVIEW_VIP: VipMembership = {

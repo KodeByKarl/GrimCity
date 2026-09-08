@@ -101,7 +101,9 @@ return {
 	Medicine = {
 		name = 'Medicine Cabinet',
 		groups = {
-			['ambulance'] = 0
+			['ambulance'] = 0,
+			['pambulance'] = 0,
+			['sambulance'] = 0,
 		},
 		blip = {
 			id = 403, colour = 69, scale = 0.8
@@ -109,7 +111,7 @@ return {
 			{ name = 'medikit', price = 26 },
 			{ name = 'bandage', price = 5 }
 		}, locations = {
-			vec3(306.3687, -601.5139, 43.28406)
+			vec3(-1040.5308, -1355.7512, 5.9474)
 		}, targets = {
 
 		}

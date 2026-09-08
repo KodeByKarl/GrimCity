@@ -17,17 +17,24 @@ import {
   UsersRound,
   Zap,
   GraduationCap,
+  Store,
+  Tags,
+  Ambulance,
+  Star,
+  Scale,
 } from "lucide-react";
 import type { UniversityRole } from "./universityTypes";
 export type { UniversityRole } from "./universityTypes";
 
 const LeaderboardApp = lazy(() => import("./LeaderboardApp"));
 const EconomyApp = lazy(() => import("./EconomyApp"));
-const PoliceBossApp = lazy(() => import("./PoliceBossApp"));
-const PoliceMdtApp = lazy(() => import("./PoliceMdtApp"));
+const MarketAdminApp = lazy(() => import("./MarketAdminApp"));
+const DeptBossApp = lazy(() => import("./DeptBossApp"));
+const LeoMdtApp = lazy(() => import("./LeoMdtApp"));
 const PartyApp = lazy(() => import("./PartyApp"));
 const PvpApp = lazy(() => import("./PvpApp"));
 const UniversityPortalApp = lazy(() => import("./UniversityPortalApp"));
+const BusinessBossApp = lazy(() => import("./BusinessBossApp"));
 
 type IpadView = "lock" | "home" | "app";
 
@@ -41,7 +48,13 @@ export interface IpadPlayerData {
   playtime?: string;
   canEditEconomy?: boolean;
   canPoliceBoss?: boolean;
+  canSheriffBoss?: boolean;
+  canAmbulanceBoss?: boolean;
+  canPambulanceBoss?: boolean;
+  canDojBoss?: boolean;
   canPoliceMdt?: boolean;
+  canSheriffMdt?: boolean;
+  canBusinessBoss?: boolean;
   /** University portal role — visitor if unset */
   universityRole?: UniversityRole;
 }
@@ -65,17 +78,30 @@ const APPS: AppDef[] = [
   { id: "grim", label: "Grim City", icon: AppWindow, color: "#8b0000" },
   { id: "leaderboard", label: "Leaderboards", icon: Trophy, color: "#e10600" },
   { id: "economy", label: "Economy", icon: CircleDollarSign, color: "#2e7d32" },
+  { id: "market", label: "Market", icon: Tags, color: "#c99212" },
   { id: "policeboss", label: "PD Boss", icon: Shield, color: "#1d4ed8" },
+  { id: "sheriffboss", label: "Sheriff Boss", icon: Star, color: "#b45309" },
+  { id: "ambulanceboss", label: "EMS Boss", icon: Ambulance, color: "#b91c1c" },
+  { id: "pambulanceboss", label: "Paleto EMS", icon: Ambulance, color: "#9f1239" },
+  { id: "dojboss", label: "DOJ Boss", icon: Scale, color: "#4c1d95" },
   { id: "policemdt", label: "Police MDT", icon: ClipboardList, color: "#1e3a8a" },
+  { id: "sheriffmdt", label: "Sheriff MDT", icon: ClipboardList, color: "#92400e" },
   { id: "party", label: "Squad", icon: UsersRound, color: "#8b0000" },
   { id: "pvp", label: "PvP", icon: Zap, color: "#f97316" },
   { id: "university", label: "ULS Portal", icon: GraduationCap, color: "#9a7b4f" },
+  { id: "business", label: "Business", icon: Store, color: "#d97706" },
 ];
 
 const HOME_APPS = ["university", "party", "pvp", "leaderboard"] as const;
-const HOME_APPS_OWNER = ["economy"] as const;
+const HOME_APPS_OWNER = ["economy", "market"] as const;
 const HOME_APPS_POLICE_BOSS = ["policeboss"] as const;
+const HOME_APPS_SHERIFF_BOSS = ["sheriffboss"] as const;
+const HOME_APPS_AMBULANCE_BOSS = ["ambulanceboss"] as const;
+const HOME_APPS_PAMBULANCE_BOSS = ["pambulanceboss"] as const;
+const HOME_APPS_DOJ_BOSS = ["dojboss"] as const;
 const HOME_APPS_POLICE_MDT = ["policemdt"] as const;
+const HOME_APPS_SHERIFF_MDT = ["sheriffmdt"] as const;
+const HOME_APPS_BUSINESS = ["business"] as const;
 const DOCK = ["party", "pvp", "leaderboard", "grim"] as const;
 
 async function fetchNui(event: string, data: Record<string, unknown> = {}) {
@@ -344,10 +370,26 @@ function HomeScreen({
     // Public citizen apps only — restricted icons never listed unless session grants access
     const apps: string[] = [...HOME_APPS];
     if (player?.canPoliceMdt) apps.unshift(...HOME_APPS_POLICE_MDT);
+    if (player?.canSheriffMdt) apps.unshift(...HOME_APPS_SHERIFF_MDT);
     if (player?.canPoliceBoss) apps.unshift(...HOME_APPS_POLICE_BOSS);
+    if (player?.canSheriffBoss) apps.unshift(...HOME_APPS_SHERIFF_BOSS);
+    if (player?.canAmbulanceBoss) apps.unshift(...HOME_APPS_AMBULANCE_BOSS);
+    if (player?.canPambulanceBoss) apps.unshift(...HOME_APPS_PAMBULANCE_BOSS);
+    if (player?.canDojBoss) apps.unshift(...HOME_APPS_DOJ_BOSS);
+    if (player?.canBusinessBoss) apps.unshift(...HOME_APPS_BUSINESS);
     if (player?.canEditEconomy) apps.unshift(...HOME_APPS_OWNER);
     return apps;
-  }, [player?.canEditEconomy, player?.canPoliceBoss, player?.canPoliceMdt]);
+  }, [
+    player?.canEditEconomy,
+    player?.canPoliceBoss,
+    player?.canSheriffBoss,
+    player?.canAmbulanceBoss,
+    player?.canPambulanceBoss,
+    player?.canDojBoss,
+    player?.canPoliceMdt,
+    player?.canSheriffMdt,
+    player?.canBusinessBoss,
+  ]);
 
   return (
     <div
@@ -504,11 +546,51 @@ function AppScreen({
       </Suspense>
     );
   }
+  if (appId === "market") {
+    if (!player?.canEditEconomy) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <MarketAdminApp player={player} />
+      </Suspense>
+    );
+  }
   if (appId === "policeboss") {
     if (!player?.canPoliceBoss) return null;
     return (
       <Suspense fallback={fallback}>
-        <PoliceBossApp player={player} />
+        <DeptBossApp player={player} department="police" />
+      </Suspense>
+    );
+  }
+  if (appId === "sheriffboss") {
+    if (!player?.canSheriffBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <DeptBossApp player={player} department="sheriff" />
+      </Suspense>
+    );
+  }
+  if (appId === "ambulanceboss") {
+    if (!player?.canAmbulanceBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <DeptBossApp player={player} department="ambulance" />
+      </Suspense>
+    );
+  }
+  if (appId === "pambulanceboss") {
+    if (!player?.canPambulanceBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <DeptBossApp player={player} department="pambulance" />
+      </Suspense>
+    );
+  }
+  if (appId === "dojboss") {
+    if (!player?.canDojBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <DeptBossApp player={player} department="doj" />
       </Suspense>
     );
   }
@@ -516,7 +598,15 @@ function AppScreen({
     if (!player?.canPoliceMdt) return null;
     return (
       <Suspense fallback={fallback}>
-        <PoliceMdtApp player={player} />
+        <LeoMdtApp player={player} department="police" />
+      </Suspense>
+    );
+  }
+  if (appId === "sheriffmdt") {
+    if (!player?.canSheriffMdt) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <LeoMdtApp player={player} department="sheriff" />
       </Suspense>
     );
   }
@@ -538,6 +628,14 @@ function AppScreen({
     return (
       <Suspense fallback={fallback}>
         <UniversityPortalApp player={player} />
+      </Suspense>
+    );
+  }
+  if (appId === "business") {
+    if (!player?.canBusinessBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <BusinessBossApp player={player} />
       </Suspense>
     );
   }

@@ -32,7 +32,7 @@ local function openServiceMenu(jobName)
         TriggerEvent('cfx-cs-police:client:openQuickMenu')
         return
     end
-    if jobName == 'ambulance' or jobName == 'sambulance' then
+    if jobName == 'ambulance' or jobName == 'sambulance' or jobName == 'pambulance' then
         TriggerEvent('cfx-keydi-ambulance:client:openMenu')
     end
 end

@@ -75,7 +75,7 @@ RegisterNetEvent('kodebykarl-pvp:requestLeave', function()
     local state = Player(src).state
     if state and (state.dead or state.isReviving) then
         pcall(function()
-            exports['cfx-keydi-ambulance']:AdminClearDeath(src)
+            exports['kodebykarl-ambulance']:AdminClearDeath(src)
         end)
         TriggerClientEvent('cfx-keydi-ambulance:revive', src)
         TriggerClientEvent('cfx-keydi-ambulance:client:ResetLimbs', src)
@@ -95,7 +95,7 @@ RegisterNetEvent('kodebykarl-pvp:requestRevive', function()
     lastReviveAt[src] = now
 
     pcall(function()
-        exports['cfx-keydi-ambulance']:AdminClearDeath(src)
+        exports['kodebykarl-ambulance']:AdminClearDeath(src)
     end)
     TriggerClientEvent('cfx-keydi-ambulance:revive', src)
     TriggerClientEvent('cfx-keydi-ambulance:client:ResetLimbs', src)

@@ -23,9 +23,9 @@ local function isActuallyDead()
     if LocalPlayer.state and LocalPlayer.state.isReviving then
         return false
     end
-    if GetResourceState('cfx-keydi-ambulance') == 'started' then
+    if GetResourceState('kodebykarl-ambulance') == 'started' then
         local ok, dead = pcall(function()
-            return exports['cfx-keydi-ambulance']:isDead()
+            return exports['kodebykarl-ambulance']:isDead()
         end)
         if ok and dead == true then
             return true
@@ -577,10 +577,6 @@ local function openForKiller(killerServerId, killerPed, isSuicide)
             },
             isSuicide = isSuicide,
         }
-
-        pcall(function()
-            exports['cfx-keydi-ui']:UpdateSpawnRecap(lastRecap)
-        end)
 
         showDeathScreen(payload)
         isOpening = false

@@ -474,20 +474,21 @@ export default function Scoreboard({ data = {} }: ScoreboardProps) {
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-semibold text-white">{event.name}</p>
                       <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/35">
-                        {event.status === "ACTIVE" ? (
-                          <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
-                        ) : (
-                          <Clock className="h-3 w-3" style={{ color: ACCENT }} />
-                        )}
-                        {event.status === "ACTIVE"
-                          ? event.location
-                          : event.timeLeft || event.location || "Waiting"}
+                        <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
+                        {event.location || "—"}
                       </p>
                     </div>
-                    {event.status === "ACTIVE" ? (
+                    {event.timeLeft ? (
+                      <Pill tone={event.status === "ACTIVE" ? "amber" : "muted"}>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {event.timeLeft}
+                        </span>
+                      </Pill>
+                    ) : event.status === "ACTIVE" ? (
                       <Pill tone="amber">Active</Pill>
                     ) : (
-                      <Pill tone="muted">Inactive</Pill>
+                      <Pill tone="muted">—</Pill>
                     )}
                   </div>
                 </InnerCard>

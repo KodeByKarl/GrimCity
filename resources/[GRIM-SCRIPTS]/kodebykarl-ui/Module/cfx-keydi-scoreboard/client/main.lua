@@ -127,7 +127,7 @@ RegisterNUICallback('closeScoreboard', function(data, cb)
     end
 end)
 
--- Used by cfx-cs-robbery (and legacy cfx-cs-scoreboard provide)
+-- Used by kodebykarl-robbery (and legacy cfx-cs-scoreboard provide)
 exports('CheckLawEnforcementByTable', function(requireTable)
     return lib.callback.await('cfx-keydi-scoreboard:checkLawEnforcement', false, requireTable)
 end)

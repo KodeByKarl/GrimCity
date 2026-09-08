@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Play, Trash2, Plus, UserCheck, Shield, DollarSign, Calendar, User, Ruler, ChevronDown, AlertTriangle, Lock, Crown } from 'lucide-react';
 
 export interface Character {
@@ -76,8 +76,6 @@ const Multicharacter: React.FC<MulticharacterProps> = ({ characters, maxSlots = 
     sex: 'm',
     height: 175,
   });
-  const didAutoPreview = useRef(false);
-
   const allowedSlots = Math.max(1, Math.min(maxSlots, TOTAL_SLOTS));
   const isExpanded = selectedChar !== null;
 
@@ -93,15 +91,6 @@ const Multicharacter: React.FC<MulticharacterProps> = ({ characters, maxSlots = 
     setSelectedChar(char);
     nui('previewCharacter', { skin: char.skin, rawSex: char.rawSex, sex: char.sex });
   };
-
-  // Auto-select + preview first character as soon as the UI opens
-  useEffect(() => {
-    if (didAutoPreview.current) return;
-    if (!characters || characters.length === 0) return;
-    didAutoPreview.current = true;
-    handleSelectChar(characters[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters]);
 
   const handleLockedSlot = (slotNumber: number) => {
     nui('vipSlotLocked', { slot: slotNumber });
@@ -181,7 +170,11 @@ const Multicharacter: React.FC<MulticharacterProps> = ({ characters, maxSlots = 
                 <div
                   key={index}
                   className="slot-item empty"
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => {
+                    setSelectedChar(null);
+                    nui('previewCharacter', { clearPreview: true });
+                    setShowCreateModal(true);
+                  }}
                 >
                   <div className="slot-badge">SLOT #{index + 1}</div>
                   <div className="slot-info create-info">

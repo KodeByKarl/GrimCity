@@ -94,7 +94,7 @@ ConfigServerLocations.SideJobServers = {
         type = "job",
         maxPlayers = 30,
         bucket = 12,
-        spawn = vec4(2326.0691, 4761.2773, 35.9651, 47.1926),
+        spawn = vec4(281.1007, 6530.7979, 30.1681, 87.7354),
         description = "Pick oranges in a dedicated orchard instance.",
         functions = { "grind", "autofarm", "job_orange" },
     },

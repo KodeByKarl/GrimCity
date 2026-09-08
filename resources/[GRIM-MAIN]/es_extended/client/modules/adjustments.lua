@@ -38,9 +38,34 @@ function Adjustments:SeatShuffle()
 end
 
 function Adjustments:HealthRegeneration()
-    if Config.DisableHealthRegeneration then
-        SetPlayerHealthRechargeMultiplier(ESX.playerId, 0.0)
+    if not Config.DisableHealthRegeneration then
+        return
     end
+
+    -- GTA re-enables passive regen (up to ~50% HP) after damage/respawn — keep it locked off
+    local function applyNoRegen()
+        local playerId = ESX.playerId or PlayerId()
+        SetPlayerHealthRechargeMultiplier(playerId, 0.0)
+        SetPlayerHealthRechargeLimit(playerId, 0.0)
+    end
+
+    applyNoRegen()
+
+    if self.healthRegenThread then
+        return
+    end
+    self.healthRegenThread = true
+
+    CreateThread(function()
+        while true do
+            if ESX.PlayerLoaded and Config.DisableHealthRegeneration then
+                applyNoRegen()
+                Wait(1000)
+            else
+                Wait(2000)
+            end
+        end
+    end)
 end
 
 function Adjustments:AmmoAndVehicleRewards()

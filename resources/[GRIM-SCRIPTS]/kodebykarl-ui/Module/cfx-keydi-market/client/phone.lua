@@ -1,5 +1,5 @@
 --[[
-    cfx-keydi-market — lb-phone app (Pandora Market, prices only)
+    cfx-keydi-market — lb-phone app (Grim Market, prices only)
 ]]
 
 if ConfigMarket and ConfigMarket.Enabled == false then return end
@@ -49,9 +49,9 @@ local function addApp()
     local resource = GetCurrentResourceName()
     local payload = {
         identifier = APP_ID,
-        name = phoneCfg.Name or 'Pandora Market',
-        description = phoneCfg.Description or 'Live sell market prices',
-        developer = phoneCfg.Developer or 'Pandora City',
+        name = phoneCfg.Name or 'Grim Market',
+        description = phoneCfg.Description or 'Live sell prices for autofarm & raven loot',
+        developer = phoneCfg.Developer or 'Grim City',
         defaultApp = phoneCfg.DefaultApp ~= false,
         size = 18432,
         ui = resource .. '/Module/cfx-keydi-market/phone/index.html',

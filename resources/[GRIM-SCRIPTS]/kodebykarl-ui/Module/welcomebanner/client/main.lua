@@ -177,16 +177,6 @@ local function OpenVolumePanel()
         return
     end
 
-    if isIdentityOpen then
-        lib.notify({
-            title = "Banner Volume",
-            description = "Finish identity registration first.",
-            type = "error",
-            position = "top-center",
-        })
-        return
-    end
-
     if panelOpen then
         panelOpen = false
         SendNUIMessage({
@@ -214,16 +204,6 @@ end
 local function OpenPanel()
     if panelOpen then
         ClosePanel()
-        return
-    end
-
-    if isIdentityOpen then
-        lib.notify({
-            title = "Welcome Banner",
-            description = "Finish identity registration first.",
-            type = "error",
-            position = "top-center",
-        })
         return
     end
 

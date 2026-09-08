@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   BatteryFull,
   BookOpen,
   Building2,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
   GraduationCap,
   IdCard,
   MapPin,
@@ -17,8 +19,8 @@ import {
   Landmark,
   ClipboardList,
   Bell,
-  ChevronRight,
   BadgeCheck,
+  UserRound,
 } from "lucide-react";
 import type { IpadPlayerData } from "./Ipad";
 import type { UniversityRole } from "./universityTypes";
@@ -112,42 +114,52 @@ const ROLE_META: Record<
 > = {
   visitor: {
     label: "Visitor",
-    accent: "#c4a574",
+    accent: "#b45309",
     blurb: "Explore campus · Apply when ready",
   },
   student: {
     label: "Student",
-    accent: "#6eb5ff",
+    accent: "#1d4ed8",
     blurb: "Courses · ID · Schedule",
   },
   teacher: {
     label: "Faculty",
-    accent: "#7dd3a8",
+    accent: "#047857",
     blurb: "Classes · Roster · Grades",
   },
   dean: {
     label: "Dean",
-    accent: "#e8b86d",
+    accent: "#a16207",
     blurb: "College oversight · Curriculum",
   },
   director: {
     label: "Director",
-    accent: "#f0c27a",
+    accent: "#9a3412",
     blurb: "Campus command · Programs",
   },
 };
 
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "G";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
 function StatusBar() {
   const [now, setNow] = useState(() => new Date());
-  React.useEffect(() => {
+  useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(id);
   }, []);
   const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return (
-    <div className="relative z-40 flex items-center justify-between px-7 pt-[18px] text-[12px] font-semibold tracking-tight text-[#f4efe6]/90">
+    <div
+      className="relative z-40 flex items-center justify-between px-7 pt-[18px] text-[12px] font-semibold tracking-tight"
+      style={{ color: "#334155" }}
+    >
       <span className="min-w-[54px]">{time}</span>
-      <div className="flex items-center gap-1.5 opacity-90">
+      <div className="flex items-center gap-1.5" style={{ color: "#475569" }}>
         <Signal className="h-3.5 w-3.5" strokeWidth={2.4} />
         <Wifi className="h-3.5 w-3.5" strokeWidth={2.4} />
         <BatteryFull className="h-4 w-4" strokeWidth={2.2} />
@@ -165,18 +177,137 @@ function SeatBar({ enrolled, seats }: { enrolled: number; seats: number }) {
   const pct = Math.min(100, Math.round((enrolled / Math.max(1, seats)) * 100));
   return (
     <div className="mt-2">
-      <div className="flex items-center justify-between text-[11px] text-[#9aa3b2]">
+      <div className="flex items-center justify-between text-[11px] font-medium text-[#475569]">
         <span>
           {enrolled}/{seats} seats
         </span>
         <span>{pct}%</span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/8">
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#e2e8f0]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#c4a574] to-[#e8d5b0]"
+          className="h-full rounded-full bg-[#1d4ed8]"
           style={{ width: `${pct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+function ProfileMenu({
+  name,
+  role,
+  meta,
+}: {
+  name: string;
+  role: UniversityRole;
+  meta: (typeof ROLE_META)[UniversityRole];
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative z-[80] shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "relative z-[81] flex items-center gap-2 rounded-full border border-[#cbd5e1] bg-white py-1 pl-1 pr-2.5 shadow-sm transition-colors",
+          "hover:border-[#94a3b8] hover:bg-[#f8fafc]",
+          "active:bg-[#f1f5f9]",
+          open && "border-[#94a3b8] bg-[#f8fafc]",
+        )}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <span
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold"
+          style={{ backgroundColor: meta.accent, color: "#ffffff" }}
+        >
+          {initials(name)}
+        </span>
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 shrink-0 transition-transform", open && "rotate-180")}
+          style={{ color: "#475569" }}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+8px)] z-[90] w-[260px] rounded-2xl border border-[#cbd5e1] shadow-[0_20px_50px_rgba(15,23,42,0.28)]"
+          style={{ backgroundColor: "#ffffff", color: "#0f172a" }}
+        >
+          <div
+            className="rounded-t-2xl border-b border-[#e2e8f0] px-3.5 py-3"
+            style={{ backgroundColor: "#f1f5f9" }}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[13px] font-bold"
+                style={{ backgroundColor: meta.accent, color: "#ffffff" }}
+              >
+                {initials(name)}
+              </span>
+              <div className="min-w-0">
+                <p
+                  className="truncate text-[14px] font-semibold"
+                  style={{ color: "#0f172a" }}
+                >
+                  {name}
+                </p>
+                <p
+                  className="mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={{
+                    backgroundColor: "#ffffff",
+                    color: "#0f172a",
+                    border: "1px solid #cbd5e1",
+                  }}
+                >
+                  <BadgeCheck className="h-3 w-3" style={{ color: meta.accent }} />
+                  {meta.label}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-b-2xl px-3.5 py-3" style={{ backgroundColor: "#ffffff" }}>
+            <p
+              className="text-[10px] font-bold uppercase"
+              style={{ color: "#64748b", letterSpacing: "0.14em" }}
+            >
+              Signed in
+            </p>
+            <p
+              className="mt-1.5 text-[13px] leading-relaxed"
+              style={{ color: "#334155" }}
+            >
+              {meta.blurb}
+            </p>
+            <div
+              className="mt-3 flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12px] font-semibold"
+              style={{ backgroundColor: "#f1f5f9", color: "#1e3a5f" }}
+            >
+              <UserRound className="h-3.5 w-3.5" style={{ color: "#1e3a5f" }} />
+              Role · {role}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -188,7 +319,8 @@ export default function UniversityPortalApp({
 }) {
   const role = resolveRole(player);
   const meta = ROLE_META[role];
-  const name = [player?.firstName, player?.lastName].filter(Boolean).join(" ") || "Guest";
+  const name =
+    [player?.firstName, player?.lastName].filter(Boolean).join(" ") || "Guest";
   const [tab, setTab] = useState<"home" | "courses" | "campus" | "admin">(
     role === "visitor" ? "campus" : "home",
   );
@@ -200,6 +332,14 @@ export default function UniversityPortalApp({
   const [draftCode, setDraftCode] = useState("");
   const [draftName, setDraftName] = useState("");
   const [draftCollege, setDraftCollege] = useState(COLLEGES[0]);
+  const [pendingApps, setPendingApps] = useState<PendingApp[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+
+  const flash = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2200);
+  }, []);
+
   const createCourse = () => {
     if (!draftCode.trim() || !draftName.trim()) {
       flash("Code and course name required");
@@ -218,7 +358,7 @@ export default function UniversityPortalApp({
     setCourses((prev) => [next, ...prev]);
     setDraftCode("");
     setDraftName("");
-    flash("Course created · Keydi.dev portal");
+    flash("Course created");
     setTab("courses");
   };
 
@@ -238,7 +378,7 @@ export default function UniversityPortalApp({
     });
   }, [courses, collegeFilter, query]);
 
-  const loadPending = React.useCallback(async () => {
+  const loadPending = useCallback(async () => {
     if (!(role === "dean" || role === "director")) return;
     setPendingLoading(true);
     const res = await fetchNui<{ ok?: boolean; rows?: PendingApp[] }>(
@@ -267,7 +407,7 @@ export default function UniversityPortalApp({
     setPendingApps(res?.rows || []);
   }, [role]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (tab === "admin" && (role === "dean" || role === "director")) {
       void loadPending();
     }
@@ -303,84 +443,62 @@ export default function UniversityPortalApp({
 
   return (
     <div
-      className="absolute inset-0 flex flex-col select-none overflow-hidden"
+      className="absolute inset-0 flex flex-col select-none overflow-hidden bg-[#e8eef5] text-[#0f172a]"
       style={{
         fontFamily:
-          '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif',
-        background:
-          "radial-gradient(120% 80% at 0% 0%, #1a2740 0%, #0c111c 42%, #080a10 100%)",
+          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif',
       }}
     >
-      {/* Atmosphere */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_10%,rgba(196,165,116,0.16),transparent_42%)]" />
-      <div className="pointer-events-none absolute -left-20 top-40 h-64 w-64 rounded-full bg-[#1e3a5f]/35 blur-3xl" />
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
+            "linear-gradient(rgba(30,58,95,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(30,58,95,0.06) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
         }}
       />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/80 to-transparent" />
 
       <StatusBar />
 
-      {/* Brand header */}
-      <div className="relative z-10 px-6 pb-3 pt-2">
-        <div className="flex items-start justify-between gap-4">
+      <div className="relative z-30 px-5 pb-3 pt-2">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#e8d5b0] to-[#9a7b4f] text-[#1a1208] shadow-[0_8px_24px_rgba(196,165,116,0.35)]">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1e3a5f] text-white shadow-md">
                 <GraduationCap className="h-5 w-5" strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#c4a574]">
+                <p
+                  className="text-[10px] font-bold uppercase"
+                  style={{ color: "#1e3a5f", letterSpacing: "0.18em" }}
+                >
                   University of Los Santos
                 </p>
                 <h1
-                  className="truncate text-[26px] font-semibold leading-none tracking-[-0.02em] text-[#f7f2ea]"
-                  style={{ fontFamily: '"Iowan Old Style", Georgia, serif' }}
+                  className="truncate text-[22px] font-bold leading-none tracking-tight"
+                  style={{ color: "#0f172a" }}
                 >
                   Campus Portal
                 </h1>
               </div>
             </div>
-            <p className="mt-2 text-[12px] tracking-wide text-[#8b93a3]">
-              Built by{" "}
-              <span className="font-semibold text-[#e8d5b0]">Keydi.dev</span>
-              {" · "}
-              First Philippine FiveM university tablet portal
-            </p>
           </div>
-
-          <div className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-right backdrop-blur-md">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-[#8b93a3]">Signed in</p>
-            <p className="mt-0.5 max-w-[140px] truncate text-[14px] font-semibold text-[#f4efe6]">
-              {name}
-            </p>
-            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-              style={{ backgroundColor: `${meta.accent}22`, color: meta.accent }}
-            >
-              <BadgeCheck className="h-3 w-3" strokeWidth={2.4} />
-              {meta.label}
-            </div>
-          </div>
+          <ProfileMenu name={name} role={role} meta={meta} />
         </div>
 
-        {/* Tabs */}
-        <div className="mt-4 flex gap-1 rounded-2xl border border-white/8 bg-black/25 p-1">
+        <div className="mt-4 flex gap-1 rounded-2xl border border-[#e2e8f0] bg-white p-1 shadow-sm">
           {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex-1 rounded-xl px-2 py-2 text-[12px] font-semibold tracking-wide transition-all",
+                "flex-1 rounded-xl px-2 py-2 text-[12px] font-semibold tracking-wide transition-colors",
                 tab === t.id
-                  ? "bg-gradient-to-b from-[#e8d5b0] to-[#b8955f] text-[#1a1208] shadow-md"
-                  : "text-[#9aa3b2] hover:bg-white/5 hover:text-[#f4efe6]",
+                  ? "bg-[#1e3a5f] text-white shadow-sm"
+                  : "bg-transparent text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a] active:bg-[#e2e8f0] active:text-[#0f172a]",
               )}
-              style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
             >
               {t.label}
             </button>
@@ -388,59 +506,54 @@ export default function UniversityPortalApp({
         </div>
       </div>
 
-      {/* Body */}
-      <div
-        className="relative z-10 min-h-0 flex-1 overflow-y-auto px-6 pb-16"
-        style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif' }}
-      >
+      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-5 pb-16" style={{ color: "#0f172a" }}>
         {tab === "home" && (
           <div className="space-y-3">
-            <div className="overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-br from-[#162033] to-[#0d1320] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
-              <div className="flex items-center gap-2 text-[#c4a574]">
+            <div className="overflow-hidden rounded-[22px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-[#1e3a5f]">
                 <Sparkles className="h-4 w-4" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <span className="text-[11px] font-bold uppercase tracking-[0.16em]">
                   Role workspace
                 </span>
               </div>
-              <p className="mt-2 text-[20px] font-semibold tracking-tight text-[#f7f2ea]">
+              <p className="mt-2 text-[20px] font-bold tracking-tight text-[#0f172a]">
                 Welcome, {name.split(" ")[0]}
               </p>
-              <p className="mt-1 text-[13px] leading-relaxed text-[#9aa3b2]">{meta.blurb}</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-[#475569]">{meta.blurb}</p>
 
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="rounded-2xl bg-white/[0.04] px-3 py-3">
-                  <BookOpen className="h-4 w-4 text-[#c4a574]" />
-                  <p className="mt-2 text-[18px] font-semibold text-white">{courses.length}</p>
-                  <p className="text-[11px] text-[#8b93a3]">Courses</p>
-                </div>
-                <div className="rounded-2xl bg-white/[0.04] px-3 py-3">
-                  <Users className="h-4 w-4 text-[#c4a574]" />
-                  <p className="mt-2 text-[18px] font-semibold text-white">
-                    {role === "student" ? enrolledIds.length : "128"}
-                  </p>
-                  <p className="text-[11px] text-[#8b93a3]">
-                    {role === "student" ? "Enrolled" : "Students"}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-white/[0.04] px-3 py-3">
-                  <Landmark className="h-4 w-4 text-[#c4a574]" />
-                  <p className="mt-2 text-[18px] font-semibold text-white">{COLLEGES.length}</p>
-                  <p className="text-[11px] text-[#8b93a3]">Colleges</p>
-                </div>
+                {[
+                  { icon: BookOpen, value: courses.length, label: "Courses" },
+                  {
+                    icon: Users,
+                    value: role === "student" ? enrolledIds.length : "128",
+                    label: role === "student" ? "Enrolled" : "Students",
+                  },
+                  { icon: Landmark, value: COLLEGES.length, label: "Colleges" },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-2xl border border-[#f1f5f9] bg-[#f8fafc] px-3 py-3"
+                  >
+                    <stat.icon className="h-4 w-4 text-[#1e3a5f]" />
+                    <p className="mt-2 text-[18px] font-bold text-[#0f172a]">{stat.value}</p>
+                    <p className="text-[11px] font-medium text-[#64748b]">{stat.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
             {role === "visitor" && (
-              <div className="rounded-[22px] border border-dashed border-[#c4a574]/35 bg-[#c4a574]/08 p-4">
-                <p className="text-[15px] font-semibold text-[#f4efe6]">Not enrolled yet</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-[#9aa3b2]">
+              <div className="rounded-[22px] border border-[#fde68a] bg-[#fffbeb] p-4">
+                <p className="text-[15px] font-bold text-[#451a03]">Not enrolled yet</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#78350f]/80">
                   Visit the Director office or Registrar to get your Student ID. Until then, browse
                   campus and course catalogs as a guest.
                 </p>
                 <button
                   type="button"
                   onClick={() => setTab("campus")}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#c4a574] px-4 py-2 text-[12px] font-semibold text-[#1a1208]"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#1e3a5f] px-4 py-2 text-[12px] font-semibold text-white hover:bg-[#274b78] active:bg-[#16304f]"
                 >
                   View campus map <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -450,12 +563,12 @@ export default function UniversityPortalApp({
             {role === "student" && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#8b93a3]">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#64748b]">
                     My schedule
                   </p>
                   <button
                     type="button"
-                    className="text-[12px] font-semibold text-[#c4a574]"
+                    className="text-[12px] font-semibold text-[#1d4ed8] hover:text-[#1e3a8a]"
                     onClick={() => setTab("courses")}
                   >
                     Browse all
@@ -466,19 +579,19 @@ export default function UniversityPortalApp({
                   .map((c) => (
                     <div
                       key={c.id}
-                      className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3"
+                      className="rounded-2xl border border-[#e2e8f0] bg-white px-4 py-3 shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[11px] font-semibold tracking-wide text-[#c4a574]">
+                          <p className="text-[11px] font-bold tracking-wide text-[#1d4ed8]">
                             {c.code}
                           </p>
-                          <p className="text-[15px] font-semibold text-[#f4efe6]">{c.name}</p>
-                          <p className="mt-1 flex items-center gap-1.5 text-[12px] text-[#8b93a3]">
+                          <p className="text-[15px] font-semibold text-[#0f172a]">{c.name}</p>
+                          <p className="mt-1 flex items-center gap-1.5 text-[12px] text-[#475569]">
                             <CalendarDays className="h-3.5 w-3.5" /> {c.schedule}
                           </p>
                         </div>
-                        <IdCard className="h-5 w-5 shrink-0 text-[#6eb5ff]" />
+                        <IdCard className="h-5 w-5 shrink-0 text-[#1d4ed8]" />
                       </div>
                     </div>
                   ))}
@@ -490,20 +603,20 @@ export default function UniversityPortalApp({
                 <button
                   type="button"
                   onClick={() => setTab("courses")}
-                  className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-left transition-colors hover:bg-white/[0.07]"
+                  className="rounded-2xl border border-[#e2e8f0] bg-white p-4 text-left shadow-sm transition-colors hover:bg-[#f8fafc] active:bg-[#f1f5f9]"
                 >
-                  <ClipboardList className="h-5 w-5 text-[#7dd3a8]" />
-                  <p className="mt-3 text-[14px] font-semibold text-white">Class roster</p>
-                  <p className="mt-1 text-[12px] text-[#8b93a3]">Preview · live data soon</p>
+                  <ClipboardList className="h-5 w-5 text-[#059669]" />
+                  <p className="mt-3 text-[14px] font-semibold text-[#0f172a]">Class roster</p>
+                  <p className="mt-1 text-[12px] text-[#64748b]">Preview · live data soon</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => flash("Announcements wire next pass")}
-                  className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-left transition-colors hover:bg-white/[0.07]"
+                  className="rounded-2xl border border-[#e2e8f0] bg-white p-4 text-left shadow-sm transition-colors hover:bg-[#f8fafc] active:bg-[#f1f5f9]"
                 >
-                  <Bell className="h-5 w-5 text-[#e8b86d]" />
-                  <p className="mt-3 text-[14px] font-semibold text-white">Campus feed</p>
-                  <p className="mt-1 text-[12px] text-[#8b93a3]">Broadcast to students</p>
+                  <Bell className="h-5 w-5 text-[#d97706]" />
+                  <p className="mt-3 text-[14px] font-semibold text-[#0f172a]">Campus feed</p>
+                  <p className="mt-1 text-[12px] text-[#64748b]">Broadcast to students</p>
                 </button>
               </div>
             )}
@@ -512,16 +625,14 @@ export default function UniversityPortalApp({
 
         {tab === "courses" && (
           <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b93a3]" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search courses, codes, colleges…"
-                  className="w-full rounded-2xl border border-white/10 bg-black/30 py-2.5 pl-10 pr-3 text-[13px] text-white outline-none placeholder:text-[#6b7383] focus:border-[#c4a574]/50"
-                />
-              </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search courses, grades, college…"
+                className="w-full rounded-2xl border border-[#e2e8f0] bg-white py-2.5 pl-10 pr-3 text-[13px] font-medium text-[#0f172a] outline-none placeholder:text-[#94a3b8] shadow-sm focus:border-[#1d4ed8] focus:ring-2 focus:ring-[#1d4ed8]/20"
+              />
             </div>
 
             <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -533,8 +644,8 @@ export default function UniversityPortalApp({
                   className={cn(
                     "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
                     collegeFilter === col
-                      ? "bg-[#c4a574] text-[#1a1208]"
-                      : "bg-white/5 text-[#9aa3b2] hover:bg-white/10",
+                      ? "bg-[#1e3a5f] text-white"
+                      : "bg-white text-[#475569] ring-1 ring-[#e2e8f0] hover:bg-[#f1f5f9] hover:text-[#0f172a] active:bg-[#e2e8f0]",
                   )}
                 >
                   {col === "All" ? "All colleges" : col.replace("College of ", "")}
@@ -547,25 +658,25 @@ export default function UniversityPortalApp({
               return (
                 <div
                   key={c.id}
-                  className="rounded-[20px] border border-white/8 bg-gradient-to-br from-white/[0.05] to-transparent p-4"
+                  className="rounded-[20px] border border-[#e2e8f0] bg-white p-4 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold tracking-[0.14em] text-[#c4a574]">
+                      <p className="text-[11px] font-bold tracking-[0.12em] text-[#1d4ed8]">
                         {c.code}
                       </p>
-                      <p className="mt-0.5 text-[16px] font-semibold leading-snug text-[#f7f2ea]">
+                      <p className="mt-0.5 text-[16px] font-semibold leading-snug text-[#0f172a]">
                         {c.name}
                       </p>
-                      <p className="mt-1 text-[12px] text-[#8b93a3]">{c.college}</p>
+                      <p className="mt-1 text-[12px] text-[#64748b]">{c.college}</p>
                     </div>
                     {mine && (
-                      <span className="rounded-full bg-[#6eb5ff]/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#6eb5ff]">
+                      <span className="rounded-full bg-[#eff6ff] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1d4ed8] ring-1 ring-[#dbeafe]">
                         Enrolled
                       </span>
                     )}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[#9aa3b2]">
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[#475569]">
                     <span className="inline-flex items-center gap-1">
                       <CalendarDays className="h-3.5 w-3.5" /> {c.schedule}
                     </span>
@@ -578,10 +689,10 @@ export default function UniversityPortalApp({
                     <button
                       type="button"
                       className={cn(
-                        "mt-3 w-full rounded-xl py-2.5 text-[13px] font-semibold transition-transform active:scale-[0.99]",
+                        "mt-3 w-full rounded-xl py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.99]",
                         mine
-                          ? "border border-white/15 bg-transparent text-[#9aa3b2]"
-                          : "bg-gradient-to-r from-[#e8d5b0] to-[#b8955f] text-[#1a1208]",
+                          ? "border border-[#e2e8f0] bg-white text-[#334155] hover:bg-[#f8fafc]"
+                          : "bg-[#1e3a5f] text-white hover:bg-[#274b78] active:bg-[#16304f]",
                       )}
                       onClick={() => {
                         if (mine) {
@@ -601,7 +712,7 @@ export default function UniversityPortalApp({
                               x.id === c.id ? { ...x, enrolled: x.enrolled + 1 } : x,
                             ),
                           );
-                          flash("Enrolled · Keydi.dev");
+                          flash("Enrolled");
                         }
                       }}
                     >
@@ -616,14 +727,14 @@ export default function UniversityPortalApp({
 
         {tab === "campus" && (
           <div className="space-y-3">
-            <div className="rounded-[22px] border border-white/10 bg-[#121a2a] p-4">
-              <div className="flex items-center gap-2 text-[#c4a574]">
+            <div className="rounded-[22px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-[#1e3a5f]">
                 <Building2 className="h-4 w-4" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em]">
                   Campus directory
                 </span>
               </div>
-              <p className="mt-2 text-[15px] leading-relaxed text-[#c8d0dc]">
+              <p className="mt-2 text-[14px] leading-relaxed text-[#475569]">
                 Main Campus · Blip on map · Director office, classrooms, lockers, shops, and
                 whiteboards live in-world.
               </p>
@@ -637,16 +748,16 @@ export default function UniversityPortalApp({
             ].map((item) => (
               <div
                 key={item.title}
-                className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3.5"
+                className="flex items-center gap-3 rounded-2xl border border-[#e2e8f0] bg-white px-4 py-3.5 shadow-sm"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#c4a574]/12 text-[#c4a574]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f1f5f9] text-[#1e3a5f]">
                   <item.icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-semibold text-[#f4efe6]">{item.title}</p>
-                  <p className="text-[12px] text-[#8b93a3]">{item.desc}</p>
+                  <p className="text-[14px] font-semibold text-[#0f172a]">{item.title}</p>
+                  <p className="text-[12px] text-[#64748b]">{item.desc}</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-[#5c6575]" />
+                <ChevronRight className="h-4 w-4 text-[#94a3b8]" />
               </div>
             ))}
           </div>
@@ -654,20 +765,20 @@ export default function UniversityPortalApp({
 
         {tab === "admin" && isAdmin && (
           <div className="space-y-3">
-            <div className="rounded-[22px] border border-[#c4a574]/25 bg-gradient-to-br from-[#2a2114] to-[#121820] p-4">
+            <div className="rounded-[22px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#e8d5b0]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#1e3a5f]">
                     Enrollment queue
                   </p>
-                  <p className="mt-1 text-[12px] text-[#9aa3b2]">
+                  <p className="mt-1 text-[12px] text-[#64748b]">
                     Approve Registrar applications · live from database
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => void loadPending()}
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-[#c4a574] hover:bg-white/5"
+                  className="rounded-full border border-[#e2e8f0] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#334155] hover:bg-[#f8fafc] active:bg-[#f1f5f9]"
                 >
                   {pendingLoading ? "Loading…" : "Refresh"}
                 </button>
@@ -675,40 +786,38 @@ export default function UniversityPortalApp({
 
               <div className="mt-3 space-y-2">
                 {pendingApps.length === 0 && (
-                  <p className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-center text-[12px] text-[#8b93a3]">
+                  <p className="rounded-xl border border-dashed border-[#e2e8f0] bg-[#f8fafc] px-3 py-4 text-center text-[12px] text-[#64748b]">
                     No pending applications
                   </p>
                 )}
                 {pendingApps.map((app) => (
                   <div
                     key={app.id}
-                    className="rounded-2xl border border-white/10 bg-black/25 px-3.5 py-3"
+                    className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-3"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-[14px] font-semibold text-white">
-                          {app.citizenName || "Applicant"}
-                        </p>
-                        <p className="mt-0.5 text-[12px] text-[#c4a574]">
-                          {app.programCode} · {app.programLabel}
-                        </p>
-                        {app.createdAt && (
-                          <p className="mt-1 text-[11px] text-[#8b93a3]">{app.createdAt}</p>
-                        )}
-                      </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-semibold text-[#0f172a]">
+                        {app.citizenName || "Applicant"}
+                      </p>
+                      <p className="mt-0.5 text-[12px] font-medium text-[#1d4ed8]">
+                        {app.programCode} · {app.programLabel}
+                      </p>
+                      {app.createdAt && (
+                        <p className="mt-1 text-[11px] text-[#64748b]">{app.createdAt}</p>
+                      )}
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
                         type="button"
                         onClick={() => void reviewApp(app.id, "approve")}
-                        className="flex-1 rounded-xl bg-gradient-to-r from-[#e8d5b0] to-[#b8955f] py-2 text-[12px] font-bold text-[#1a1208]"
+                        className="flex-1 rounded-xl bg-[#1e3a5f] py-2 text-[12px] font-bold text-white hover:bg-[#274b78] active:bg-[#16304f]"
                       >
                         Approve
                       </button>
                       <button
                         type="button"
                         onClick={() => void reviewApp(app.id, "deny")}
-                        className="flex-1 rounded-xl border border-red-400/30 bg-red-500/10 py-2 text-[12px] font-semibold text-red-300"
+                        className="flex-1 rounded-xl border border-[#fecaca] bg-[#fef2f2] py-2 text-[12px] font-semibold text-[#b91c1c] hover:bg-[#fee2e2]"
                       >
                         Deny
                       </button>
@@ -718,10 +827,10 @@ export default function UniversityPortalApp({
               </div>
             </div>
 
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+            <div className="rounded-[22px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2">
-                <Plus className="h-4 w-4 text-[#e8d5b0]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#e8d5b0]">
+                <Plus className="h-4 w-4 text-[#1e3a5f]" />
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#1e3a5f]">
                   Create college course
                 </p>
               </div>
@@ -730,21 +839,21 @@ export default function UniversityPortalApp({
                   value={draftCode}
                   onChange={(e) => setDraftCode(e.target.value)}
                   placeholder="Course code · e.g. BSIT-220"
-                  className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2.5 text-[13px] text-white outline-none placeholder:text-[#6b7383] focus:border-[#c4a574]/45"
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2.5 text-[13px] text-[#0f172a] outline-none placeholder:text-[#94a3b8] focus:border-[#1d4ed8] focus:ring-2 focus:ring-[#1d4ed8]/20"
                 />
                 <input
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="Course title"
-                  className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2.5 text-[13px] text-white outline-none placeholder:text-[#6b7383] focus:border-[#c4a574]/45"
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2.5 text-[13px] text-[#0f172a] outline-none placeholder:text-[#94a3b8] focus:border-[#1d4ed8] focus:ring-2 focus:ring-[#1d4ed8]/20"
                 />
                 <select
                   value={draftCollege}
                   onChange={(e) => setDraftCollege(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2.5 text-[13px] text-white outline-none focus:border-[#c4a574]/45"
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2.5 text-[13px] text-[#0f172a] outline-none focus:border-[#1d4ed8] focus:ring-2 focus:ring-[#1d4ed8]/20"
                 >
                   {COLLEGES.map((c) => (
-                    <option key={c} value={c} className="bg-[#121820]">
+                    <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
@@ -752,7 +861,7 @@ export default function UniversityPortalApp({
                 <button
                   type="button"
                   onClick={createCourse}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#e8d5b0] to-[#b8955f] py-3 text-[13px] font-bold text-[#1a1208]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3a5f] py-3 text-[13px] font-bold text-white hover:bg-[#274b78] active:bg-[#16304f]"
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.4} />
                   Publish course
@@ -763,15 +872,14 @@ export default function UniversityPortalApp({
         )}
       </div>
 
-      {/* Footer brand */}
       <div className="pointer-events-none absolute bottom-9 left-0 right-0 z-20 flex justify-center">
-        <p className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[10px] font-semibold tracking-[0.2em] text-[#c4a574]/90 backdrop-blur-md">
-          KEYDI.DEV · ULS PORTAL
+        <p className="rounded-full border border-[#e2e8f0] bg-white/90 px-3 py-1 text-[10px] font-bold tracking-[0.18em] text-[#64748b] shadow-sm backdrop-blur-md">
+          ULS CAMPUS PORTAL
         </p>
       </div>
 
       {toast && (
-        <div className="absolute bottom-16 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#f4efe6] px-4 py-2 text-[12px] font-semibold text-[#1a1208] shadow-xl">
+        <div className="absolute bottom-16 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#0f172a] px-4 py-2 text-[12px] font-semibold text-white shadow-xl">
           {toast}
         </div>
       )}

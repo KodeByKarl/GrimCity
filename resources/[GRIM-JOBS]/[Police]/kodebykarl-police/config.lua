@@ -119,6 +119,7 @@ Config.Documents = {
         sheriff = true,
         ambulance = true,
         sambulance = true,
+        pambulance = true,
     },
     birthdateFormat = 'DD/MM/YYYY',
     paperProp = {
@@ -151,8 +152,15 @@ Config.Documents = {
             icon = 'fa-solid fa-file-lines',
         },
         {
-            jobs = { ['ambulance'] = 0, ['sambulance'] = 0 },
-            coords = vector3(1125.2184, -1537.4072, 37.1248),
+            jobs = { ['ambulance'] = 0, ['sambulance'] = 0, ['pambulance'] = 0 },
+            coords = vector3(-1043.5010, -1352.3008, 5.9474),
+            radius = 1.5,
+            label = 'Medical Certificate',
+            icon = 'fa-solid fa-file-medical',
+        },
+        {
+            jobs = { ['pambulance'] = 0, ['sambulance'] = 0, ['ambulance'] = 0 },
+            coords = vector3(-243.7424, 6317.6816, 32.4270),
             radius = 1.5,
             label = 'Medical Certificate',
             icon = 'fa-solid fa-file-medical',
@@ -260,6 +268,23 @@ Config.Documents = {
             },
         },
         sambulance = {
+            {
+                minGrade = 0,
+                documentName = 'Medical Certificate',
+                documentDescription = 'Official EMS medical certificate',
+                fields = {
+                    { name = 'Patient Name', value = '' },
+                    { name = 'Date of Birth', value = '' },
+                    { name = 'Diagnosis', value = '' },
+                    { name = 'Treatment Given', value = '' },
+                    { name = 'Fit for Duty / Work', value = '' },
+                    { name = 'Issuing Medic', value = '' },
+                },
+                infoName = 'MEDICAL DETAILS',
+                infoTemplate = '',
+            },
+        },
+        pambulance = {
             {
                 minGrade = 0,
                 documentName = 'Medical Certificate',

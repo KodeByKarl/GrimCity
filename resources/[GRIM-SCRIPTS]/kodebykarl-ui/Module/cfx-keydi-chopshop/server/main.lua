@@ -6,7 +6,7 @@ local cooldowns = {} -- [src] = unix
 
 local function Notify(src, msg, nType)
     TriggerClientEvent("ox_lib:notify", src, {
-        title = "Chop Shop",
+        title = Config.ChopShop.Label or "Illegal Chop",
         description = msg,
         type = nType or "inform",
     })
@@ -42,7 +42,7 @@ end
 
 local function RollRewards()
     local rewards = {}
-    local list = Config.ChopShop.Rewards
+    local list = Config.ChopShop.Rewards or {}
     for i = 1, #list do
         local entry = list[i]
         if math.random(100) <= (entry.chance or 100) then
@@ -58,10 +58,155 @@ local function RollRewards()
     return rewards
 end
 
-local function AddItem(src, item, amount)
+local function CountOnlineJobs(jobs)
+    local total = 0
+    if type(jobs) ~= "table" then return 0 end
+    for i = 1, #jobs do
+        local players = ESX.GetExtendedPlayers("job", jobs[i])
+        if players then
+            total = total + #players
+        end
+    end
+    return total
+end
+
+local function AlertPoliceChop(src, locationLabel, coords)
+    local dispatch = Config.ChopShop.Dispatch
+    if not dispatch or dispatch.enabled == false then return end
+
+    local jobs = dispatch.jobs or { "police", "sheriff" }
+    local spot = locationLabel or "Illegal Chop Yard"
+    local msg = ("%s at %s"):format(dispatch.message or "Illegal vehicle chop in progress", spot)
+
+    if ESX.SendDispatch then
+        ESX.SendDispatch(jobs, msg, dispatch.duration or 15000)
+    else
+        for i = 1, #jobs do
+            local players = ESX.GetExtendedPlayers("job", jobs[i])
+            for j = 1, #players do
+                TriggerClientEvent("esx:Notify", players[j].source, "Dispatch", msg, "police", dispatch.duration or 15000)
+            end
+        end
+    end
+
+    -- LEO map blip (everyone on those jobs)
+    if coords then
+        for i = 1, #jobs do
+            local players = ESX.GetExtendedPlayers("job", jobs[i])
+            for j = 1, #players do
+                local leoSrc = players[j].source
+                if leoSrc ~= src then
+                    TriggerClientEvent("cfx-keydi-chopshop:client:policeAlert", leoSrc, {
+                        coords = { x = coords.x, y = coords.y, z = coords.z },
+                        label = spot,
+                        sprite = dispatch.blipSprite or 380,
+                        color = dispatch.blipColor or 1,
+                        scale = dispatch.blipScale or 1.0,
+                        time = dispatch.blipTime or 180000,
+                    })
+                end
+            end
+        end
+    end
+
+    -- Optional scoreboard sticky robbery
+    if GetResourceState("kodebykarl-ui") == "started" then
+        pcall(function()
+            exports["kodebykarl-ui"]:AddActiveRobbery("illegal_chop_" .. tostring(src), {
+                name = "Illegal Chop",
+                location = spot,
+                timer = math.floor((Config.ChopShop.ProgressDuration or 45000) / 1000),
+                sticky = true,
+            })
+        end)
+    end
+end
+
+local function ClearPoliceRobberyTrack(src)
+    if GetResourceState("kodebykarl-ui") == "started" then
+        pcall(function()
+            exports["kodebykarl-ui"]:RemoveActiveRobbery("illegal_chop_" .. tostring(src))
+        end)
+    end
+end
+
+local function ResolveLocationLabel(coords)
+    local bestLabel = "Illegal Chop Yard"
+    local bestDist = 9999.0
+    for i = 1, #Config.ChopShop.Locations do
+        local loc = Config.ChopShop.Locations[i]
+        local d = #(coords - loc.coords)
+        if d < bestDist then
+            bestDist = d
+            bestLabel = loc.label or bestLabel
+        end
+    end
+    return bestLabel
+end
+
+local ProjectPartItems = {
+    car_door = true,
+    car_hood = true,
+    car_wheel = true,
+    car_battery = true,
+    car_alternator = true,
+    car_radiator = true,
+    car_engine_part = true,
+    brake_pads = true,
+    spark_plugs = true,
+    car_transmission = true,
+}
+
+local function ResolveChopPartModel(choppedModel)
+    choppedModel = tostring(choppedModel or ""):lower():gsub("%s+", "")
+    if GetResourceState("kodebykarl-projectcars") == "started" then
+        local ok, isLoot = pcall(function()
+            local vehicles = exports["kodebykarl-projectcars"]:GetProjectVehicles()
+            local data = vehicles and vehicles[choppedModel]
+            return data ~= nil and data.loot ~= false
+        end)
+        if ok and isLoot then
+            return choppedModel
+        end
+        local rolled, model = pcall(function()
+            return exports["kodebykarl-projectcars"]:PickRandomProjectModel()
+        end)
+        if rolled and type(model) == "string" and model ~= "" then
+            return model
+        end
+    end
+    if choppedModel ~= "" then
+        return choppedModel
+    end
+    return nil
+end
+
+local function BuildChopPartMetadata(item, modelName)
+    if not ProjectPartItems[item] then return nil end
+    modelName = tostring(modelName or ""):lower():gsub("%s+", "")
+    if modelName == "" then return nil end
+
+    if GetResourceState("kodebykarl-projectcars") == "started" then
+        local ok, meta = pcall(function()
+            return exports["kodebykarl-projectcars"]:BuildPartMetadata(item, modelName)
+        end)
+        if ok and type(meta) == "table" then
+            return meta
+        end
+    end
+
+    return {
+        model = modelName,
+        vehicle = modelName:upper(),
+        label = "Project Vehicle Part",
+        description = ("Fits %s project cars only."):format(modelName:upper()),
+    }
+end
+
+local function AddItem(src, item, amount, metadata)
     if GetResourceState("ox_inventory") ~= "started" then return false end
     local ok, res = pcall(function()
-        return exports.ox_inventory:AddItem(src, item, amount)
+        return exports.ox_inventory:AddItem(src, item, amount, metadata)
     end)
     return ok and res
 end
@@ -135,6 +280,7 @@ local function ClearSession(src, unlockClient)
         end
     end
     activeChops[src] = nil
+    ClearPoliceRobberyTrack(src)
     if unlockClient then
         TriggerClientEvent("cfx-keydi-chopshop:client:unlock", src)
     end
@@ -225,7 +371,7 @@ local function ValidateChopVehicle(src, netId, clientPlate, vehicleClass)
     }, nil
 end
 
-lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, clientPlate, vehicleClass)
+lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, clientPlate, vehicleClass, modelName)
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return { ok = false, reason = "denied" } end
 
@@ -236,6 +382,14 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
     local now = os.time()
     if cooldowns[src] and now < cooldowns[src] then
         return { ok = false, reason = "cooldown" }
+    end
+
+    local needLeo = tonumber(Config.ChopShop.RequirePolice) or 0
+    if needLeo > 0 then
+        local jobs = (Config.ChopShop.Dispatch and Config.ChopShop.Dispatch.jobs) or { "police", "sheriff" }
+        if CountOnlineJobs(jobs) < needLeo then
+            return { ok = false, reason = "cops" }
+        end
     end
 
     local veh, reason = ValidateChopVehicle(src, netId, clientPlate, vehicleClass)
@@ -260,8 +414,10 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
         end
     end
 
-    local duration = Config.ChopShop.ProgressDuration or 12000
+    local duration = Config.ChopShop.ProgressDuration or 45000
     local rewards = RollRewards()
+    modelName = tostring(modelName or ""):lower():gsub("%s+", "")
+    local locationLabel = ResolveLocationLabel(veh.coords)
 
     plateLocks[veh.plate] = src
     activeChops[src] = {
@@ -270,11 +426,16 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
         owner = row.owner,
         netId = veh.netId,
         vehicleClass = tonumber(vehicleClass),
+        modelName = modelName,
         startAt = GetGameTimer(),
         durationMs = duration,
         rewards = rewards,
         isOwner = row.owner == xPlayer.identifier,
+        locationLabel = locationLabel,
     }
+
+    -- Alert LEO immediately when illegal chop starts
+    AlertPoliceChop(src, locationLabel, veh.coords)
 
     return {
         ok = true,
@@ -328,24 +489,64 @@ RegisterNetEvent("cfx-keydi-chopshop:server:complete", function()
     DeleteWorldVehicle(session.netId)
 
     local given = {}
+
+    -- Fixed illegal payout (500k dirty by default)
+    local moneyCfg = Config.ChopShop.MoneyReward
+    if moneyCfg and moneyCfg.item and (moneyCfg.amount or 0) > 0 then
+        if AddItem(src, moneyCfg.item, moneyCfg.amount) then
+            given[#given + 1] = ("$%s %s"):format(moneyCfg.amount, moneyCfg.item)
+        end
+    end
+
     local rewards = session.rewards or {}
+    local choppedIsProject = false
+    if GetResourceState("kodebykarl-projectcars") == "started" then
+        local ok, isLoot = pcall(function()
+            local vehicles = exports["kodebykarl-projectcars"]:GetProjectVehicles()
+            local data = vehicles and vehicles[tostring(session.modelName or ""):lower():gsub("%s+", "")]
+            return data ~= nil and data.loot ~= false
+        end)
+        choppedIsProject = ok and isLoot == true
+    end
+
     for i = 1, #rewards do
         local reward = rewards[i]
         if reward.item and reward.count and reward.count > 0 then
-            if AddItem(src, reward.item, reward.count) then
-                given[#given + 1] = ("%sx %s"):format(reward.count, reward.item)
+            if ProjectPartItems[reward.item] then
+                -- Project car chop = matching parts. Anything else = each part rolls a random pack car.
+                if choppedIsProject then
+                    local meta = BuildChopPartMetadata(reward.item, session.modelName)
+                    if AddItem(src, reward.item, reward.count, meta) then
+                        given[#given + 1] = ("%sx %s"):format(reward.count, reward.item)
+                    end
+                else
+                    local added = 0
+                    for _ = 1, reward.count do
+                        local meta = BuildChopPartMetadata(reward.item, ResolveChopPartModel(session.modelName))
+                        if AddItem(src, reward.item, 1, meta) then
+                            added = added + 1
+                        end
+                    end
+                    if added > 0 then
+                        given[#given + 1] = ("%sx %s"):format(added, reward.item)
+                    end
+                end
+            else
+                if AddItem(src, reward.item, reward.count) then
+                    given[#given + 1] = ("%sx %s"):format(reward.count, reward.item)
+                end
             end
         end
     end
 
-    local cooldownMs = Config.ChopShop.Cooldown or 20000
+    local cooldownMs = Config.ChopShop.Cooldown or 120000
     cooldowns[src] = os.time() + math.floor(cooldownMs / 1000)
     ClearSession(src, false)
 
     if #given > 0 then
-        Notify(src, ("Vehicle chopped. You got: %s"):format(table.concat(given, ", ")), "success")
+        Notify(src, ("Illegal chop done. Loot: %s"):format(table.concat(given, ", ")), "success")
     else
-        Notify(src, "Vehicle chopped. Inventory was full — parts were lost.", "error")
+        Notify(src, "Vehicle chopped. Inventory was full — payout lost.", "error")
     end
 
     if not session.isOwner and session.owner then

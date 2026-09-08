@@ -1,10 +1,27 @@
 local ESX = exports['es_extended']:getSharedObject()
 
 local sessions = {} -- [src] = { identifier, name, coins, total_earned, progress, dirty }
+local itemStock = {} -- [productId] = remaining (nil key = unlimited)
 
-local INTERVAL = math.floor((ConfigPlaytimeShop.RewardIntervalMinutes or 25) * 60)
-local REWARD = math.floor(ConfigPlaytimeShop.RewardCoins or 5)
+local INTERVAL = math.floor((ConfigPlaytimeShop.RewardIntervalMinutes or 35) * 60)
+local REWARD = math.floor(ConfigPlaytimeShop.RewardCoins or 3)
 local TICK = math.floor(ConfigPlaytimeShop.TickSeconds or 60)
+
+local function InitItemStock()
+    itemStock = {}
+    local function seed(list)
+        for i = 1, #(list or {}) do
+            local p = list[i]
+            if p.stock ~= nil then
+                itemStock[p.id] = math.floor(tonumber(p.stock) or 0)
+            end
+        end
+    end
+    seed(ConfigPlaytimeShop.Items)
+    seed(ConfigPlaytimeShop.Cars)
+end
+
+InitItemStock()
 
 local function EnsureTable()
     MySQL.query.await([[
@@ -90,12 +107,57 @@ local function GenerateUniquePlate()
 end
 
 --- SERVER ONLY — never called from client trust of item names
-local function GiveItem(src, itemName, amount)
+local function ResolveShopProjectModel()
+    if GetResourceState('kodebykarl-projectcars') == 'started' then
+        local ok, model = pcall(function()
+            return exports['kodebykarl-projectcars']:PickRandomProjectModel()
+        end)
+        if ok and type(model) == 'string' and model ~= '' then
+            return model
+        end
+    end
+    return ConfigPlaytimeShop.ProjectModel or 'ody18'
+end
+
+local function BuildProjectMetadata(itemName, product, model)
+    if product and product.metadata then
+        return product.metadata
+    end
+    local projectItems = ConfigPlaytimeShop.ProjectPartItems
+    if not projectItems or not projectItems[itemName] then
+        return nil
+    end
+    if itemName == 'project_parts_box' then
+        return {
+            label = 'Project Parts Box',
+            description = 'Unpacks mixed project-car parts. Each part fits one random pack vehicle.',
+        }
+    end
+    model = tostring(model or ResolveShopProjectModel()):lower():gsub('%s+', '')
+    if GetResourceState('kodebykarl-projectcars') == 'started' then
+        local ok, meta = pcall(function()
+            return exports['kodebykarl-projectcars']:BuildPartMetadata(itemName, model)
+        end)
+        if ok and type(meta) == 'table' then
+            return meta
+        end
+    end
+    return { model = model, vehicle = model:upper(), label = itemName }
+end
+
+local function GiveItem(src, itemName, amount, metadata)
     amount = math.floor(tonumber(amount) or 1)
     if amount < 1 then return false, 'invalid_amount' end
-    local ok = exports.ox_inventory:AddItem(src, itemName, amount)
+    local ok = exports.ox_inventory:AddItem(src, itemName, amount, metadata)
     if not ok then return false, 'inventory_full' end
     return true
+end
+
+local function GetStock(product)
+    if not product or product.stock == nil then return nil end
+    local left = itemStock[product.id]
+    if left == nil then return math.floor(tonumber(product.stock) or 0) end
+    return left
 end
 
 local function GiveCar(src, model)
@@ -143,24 +205,31 @@ local function CatalogForClient()
     local items = {}
     for i = 1, #(ConfigPlaytimeShop.Items or {}) do
         local p = ConfigPlaytimeShop.Items[i]
+        local stock = GetStock(p)
         items[#items + 1] = {
             id = p.id,
             label = p.label,
             amount = p.amount or 1,
             price = p.price,
             image = p.image or p.item,
+            stock = stock,
+            kind = 'item',
         }
     end
     local cars = {}
     for i = 1, #(ConfigPlaytimeShop.Cars or {}) do
         local p = ConfigPlaytimeShop.Cars[i]
+        local kind = p.kind or (p.item and 'part' or 'vehicle')
+        local stock = GetStock(p)
         cars[#cars + 1] = {
             id = p.id,
             label = p.label,
-            amount = 1,
+            amount = p.amount or 1,
             price = p.price,
-            image = p.image or 'car',
+            image = p.image or p.item or 'car',
             model = p.model,
+            stock = stock,
+            kind = kind,
         }
     end
     return items, cars
@@ -311,13 +380,46 @@ lib.callback.register('cfx-keydi-playtimeshop:buy', function(source, data)
         return { ok = false, error = 'insufficient', coins = s.coins }
     end
 
+    local stockLeft = GetStock(product)
+    if stockLeft ~= nil and stockLeft < 1 then
+        local items, cars = CatalogForClient()
+        return { ok = false, error = 'out_of_stock', coins = s.coins, items = items, cars = cars }
+    end
+
     -- Deduct first (atomic enough for single-threaded FiveM)
     s.coins = s.coins - price
     s.dirty = true
+    if stockLeft ~= nil then
+        itemStock[product.id] = stockLeft - 1
+    end
 
+    local isPart = product.item ~= nil and (product.kind == 'part' or product.kind == 'item' or not product.model)
     local ok, err
-    if category == 'items' then
-        ok, err = GiveItem(source, product.item, product.amount or 1)
+    local shopVehicleLabel
+    if isPart or (category == 'items') then
+        local amount = math.floor(tonumber(product.amount) or 1)
+        local projectItems = ConfigPlaytimeShop.ProjectPartItems
+        local isProjectPart = product.item and projectItems and projectItems[product.item] and not product.metadata
+        if isProjectPart then
+            local given = 0
+            for _ = 1, amount do
+                local meta = BuildProjectMetadata(product.item, product)
+                local gOk = GiveItem(source, product.item, 1, meta)
+                if not gOk then
+                    break
+                end
+                given = given + 1
+                shopVehicleLabel = meta and meta.vehicle or shopVehicleLabel
+            end
+            ok = given > 0
+            if given == 0 then
+                err = 'inventory_full'
+            end
+        else
+            local meta = BuildProjectMetadata(product.item, product)
+            shopVehicleLabel = meta and meta.vehicle
+            ok, err = GiveItem(source, product.item, amount, meta)
+        end
     else
         ok, err = GiveCar(source, product.model)
     end
@@ -325,23 +427,36 @@ lib.callback.register('cfx-keydi-playtimeshop:buy', function(source, data)
     if not ok then
         s.coins = s.coins + price -- refund
         s.dirty = true
+        if stockLeft ~= nil then
+            itemStock[product.id] = stockLeft
+        end
         SaveSession(source)
         return { ok = false, error = err or 'give_failed', coins = s.coins }
     end
 
     SaveSession(source)
+    local boughtAmount = math.floor(tonumber(product.amount) or 1)
+    local itemMsg = ('Purchased %sx %s'):format(boughtAmount, product.label)
+    if shopVehicleLabel and boughtAmount == 1 then
+        itemMsg = ('Purchased %s (%s)'):format(product.label, shopVehicleLabel)
+    elseif shopVehicleLabel and boughtAmount > 1 then
+        itemMsg = ('Purchased %sx %s — mixed vehicles, check item descriptions'):format(boughtAmount, product.label)
+    end
     Notify(
         source,
-        category == 'cars'
+        (not isPart and category == 'cars')
             and ('Purchased %s — stored in garage (plate %s)'):format(product.label, tostring(err))
-            or ('Purchased %sx %s'):format(product.amount or 1, product.label),
+            or itemMsg,
         'success'
     )
 
+    local items, cars = CatalogForClient()
     return {
         ok = true,
         coins = s.coins,
         nextRewardSeconds = SecondsLeft(s),
+        items = items,
+        cars = cars,
     }
 end)
 

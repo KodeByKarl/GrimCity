@@ -5,8 +5,9 @@ ConfigVip.Debug = false
 --[[
   Tier features (connected systems):
     characterSlots  → kodebykarl-multicharacter (multicharacter_slots)
-    pedMenu         → /pedmenu via illenium-appearance (VIP 2+)
-    welcomeBanner   → /wcb self-edit welcome banner
+    pedMenu         → /ped or /pedmenu via illenium-appearance (VIP 2 & 3: 1 Month Access /ped)
+    welcomeBanner   → /wcb self-edit welcome banner with audio
+    grindBonus      → bonus amount added to all grindings (+5 / +10 / +15)
 ]]
 ConfigVip.Tiers = {
     vip1 = {
@@ -14,57 +15,41 @@ ConfigVip.Tiers = {
         characterSlots = 1,
         pedMenu = false,
         welcomeBanner = true,
-        perks = { "VIP chat tag", "Edit own welcome banner" },
+        grindBonus = 5,
+        perks = {
+            "+ 5 ALL GRINDINGS",
+            "DISCORD ROLE",
+            "WELCOME BANNER WITH AUDIO",
+        },
     },
     vip2 = {
-        label = "VIP 2",
+        label = "IMMORTAL",
         characterSlots = 2,
         pedMenu = true,
         welcomeBanner = true,
+        grindBonus = 10,
         perks = {
-            "VIP chat tag",
-            "Ped Menu (/pedmenu)",
-            "2 character slots (MultiVIP)",
-            "Edit own welcome banner",
+            "1 MONTH ACCESS /PED",
+            "+ 10 ALL GRINDINGS",
+            "WELCOME BANNER WITH AUDIO",
+            "DISCORD ROLE",
+            "VIP CAR  ( CARDEALER)",
         },
     },
     vip3 = {
-        label = "VIP 3",
+        label = "SUPREME",
         characterSlots = 3,
         pedMenu = true,
         welcomeBanner = true,
+        grindBonus = 15,
         perks = {
-            "Priority queue",
-            "Ped Menu (/pedmenu)",
-            "3 character slots (MultiVIP)",
-            "Edit own welcome banner",
-            "VIP chat tag",
-        },
-    },
-    vip4 = {
-        label = "VIP 4",
-        characterSlots = 3,
-        pedMenu = true,
-        welcomeBanner = true,
-        perks = {
-            "Priority queue",
-            "Ped Menu (/pedmenu)",
-            "Max character slots",
-            "Custom banner + sound",
-            "VIP chat tag",
-        },
-    },
-    vip5 = {
-        label = "VIP 5",
-        characterSlots = 3,
-        pedMenu = true,
-        welcomeBanner = true,
-        perks = {
-            "Highest priority",
-            "Ped Menu (/pedmenu)",
-            "Max character slots",
-            "Custom banner + sound",
-            "VIP chat tag",
+            "1 MONTH ACCESS /PED",
+            "+ 15 ALL GRINDINGS",
+            "WELCOME BANNER WITH AUDIO",
+            "1 EXCLUSIVE CAR  OWN SCRIPT",
+            "DEATH CAM AUDIO/Banner",
+            "1 FREE CLOTHES w/ 2 variant",
+            "DISCORD ROLE",
         },
     },
 }

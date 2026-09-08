@@ -5,9 +5,9 @@
 return {
     Enabled = true,
 
-    -- Discord bot (enable Server Members Intent)
-    BotToken = 'MTUzNTMwMzIxMTA2ODY5NDUyOQ.GGvn6j.OBVZ2DlCdGNS4R1IzAwF9URZbnL-0R_WJGSsWk',
-    GuildID = '1526937565926654065',
+    -- Discord bot (enable Server Members Intent). Prefer convar kodebykarl_discord_bot_token.
+    BotToken = '',
+    GuildID = '1240677650348118148',
 
     -- Comparison
     CaseInsensitive = true,

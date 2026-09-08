@@ -267,29 +267,6 @@ local function SendHudState(action)
 end
 
 local function ShowSessionReport()
-    if not sessionActive then return end
-    if sessionGathered < 1 and (GetGameTimer() - sessionStartedAt) < 1500 then
-        ResetSessionStats()
-        return
-    end
-
-    local farm = GetActiveFarm()
-    local durationMs = math.max(0, GetGameTimer() - (sessionStartedAt > 0 and sessionStartedAt or GetGameTimer()))
-    local durationSeconds = math.floor(durationMs / 1000.0)
-
-    SendNUIMessage({
-        action = "cfx-keydi-autofarm:report",
-        data = {
-            zone = farm and GetFarmZone(farm) or "Farm Zone",
-            label = itemData and itemData.label or (farm and farm.item) or "Items",
-            rarity = farm and GetFarmRarity(farm) or "common",
-            gathered = sessionGathered,
-            weightGained = sessionWeightGained,
-            durationSeconds = durationSeconds,
-            image = itemData and itemData.image or nil,
-        },
-    })
-
     ResetSessionStats()
 end
 

@@ -307,6 +307,7 @@ export default function App() {
         canPoliceBoss: isBoss || isOwner,
         canSheriffBoss: isOwner || preview === "sheriff",
         canAmbulanceBoss: isOwner || preview === "ems" || preview === "ambulance",
+        canPambulanceBoss: isOwner || preview === "pambulance" || preview === "paletoems",
         canDojBoss: isOwner || preview === "doj",
         canPoliceMdt: isPolice || isOwner || preview === "doj",
         canSheriffMdt: isOwner || preview === "sheriff",

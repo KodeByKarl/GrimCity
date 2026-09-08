@@ -492,7 +492,7 @@ export default function Chat() {
         </div>
 
         {/* Messages List Area */}
-        <div ref={openListRef} className="h-[290px] overflow-y-auto overflow-x-hidden pr-1 my-3 flex flex-col gap-2 custom-scrollbar w-full max-w-full">
+        <div ref={openListRef} className="h-[280px] overflow-y-auto overflow-x-hidden pr-1 my-3 flex flex-col gap-2.5 no-scrollbar w-full max-w-full">
           {isOpen ? messageNodes : null}
         </div>
 
@@ -533,7 +533,7 @@ export default function Chat() {
         {/* Command Suggestions Popup */}
         {isOpen && formattedSuggestions.length > 0 && (
           <div
-            className="mt-2 border border-[#ff3a3a]/40 rounded-xl shadow-[0_15px_35px_rgba(0,0,0,0.9)] p-1.5 flex flex-col gap-1 max-h-[170px] overflow-y-auto custom-scrollbar backdrop-blur-xl"
+            className="mt-2 border border-[#ff3a3a]/40 rounded-xl shadow-[0_15px_35px_rgba(0,0,0,0.9)] p-1.5 flex flex-col gap-1 max-h-[160px] overflow-y-auto no-scrollbar backdrop-blur-xl"
             style={{ backgroundColor: "rgba(13, 13, 18, 0.98)" }}
           >
             {formattedSuggestions.map((s) => (

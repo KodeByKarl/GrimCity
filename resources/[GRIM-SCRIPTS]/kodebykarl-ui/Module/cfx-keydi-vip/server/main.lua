@@ -46,6 +46,7 @@ local function EnsureTable()
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `grim_vip` (
             `identifier` VARCHAR(72) NOT NULL,
+            `name` VARCHAR(64) DEFAULT NULL,
             `tier` VARCHAR(16) NOT NULL DEFAULT 'vip1',
             `label` VARCHAR(64) DEFAULT NULL,
             `started_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,6 +57,9 @@ local function EnsureTable()
             PRIMARY KEY (`identifier`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ]])
+    pcall(function()
+        MySQL.query.await("ALTER TABLE `grim_vip` ADD COLUMN IF NOT EXISTS `name` VARCHAR(64) DEFAULT NULL AFTER `identifier`")
+    end)
 end
 
 CreateThread(function()
@@ -224,6 +228,7 @@ local function BuildStatus(identifier)
         characterSlots = slots,
         pedMenu = meta.pedMenu == true,
         welcomeBanner = meta.welcomeBanner == true,
+        grindBonus = tonumber(meta.grindBonus) or 0,
     }
 end
 
@@ -272,9 +277,10 @@ local function UpsertVip(identifier, tier, expires, autoRenew, grantedBy, player
 
     EnsureTable()
     MySQL.insert.await([[
-        INSERT INTO grim_vip (identifier, tier, label, expires_at, auto_renew, granted_by)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO grim_vip (identifier, name, tier, label, expires_at, auto_renew, granted_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
+            name = COALESCE(VALUES(name), name),
             tier = VALUES(tier),
             label = VALUES(label),
             expires_at = VALUES(expires_at),
@@ -282,6 +288,7 @@ local function UpsertVip(identifier, tier, expires, autoRenew, grantedBy, player
             granted_by = VALUES(granted_by)
     ]], {
         identifier,
+        playerName,
         tier,
         meta.label,
         expires,
@@ -316,11 +323,27 @@ local function RevokeVip(identifier)
     return true
 end
 
---- Public helpers for other resources (illenium / welcomebanner / multichar)
+--- Public helpers for other resources (illenium / welcomebanner / multichar / autofarm)
 exports("GetVipStatus", function(src)
     local license = LicenseFromSource(src)
     if not license then return nil end
     return BuildStatus(license)
+end)
+
+exports("IsPlayerVip", function(src)
+    if not src then return false end
+    local license = LicenseFromSource(src)
+    if not license then return false end
+    local status = BuildStatus(license)
+    return status.active == true
+end)
+
+exports("GetPlayerVipTier", function(src)
+    if not src then return "none" end
+    local license = LicenseFromSource(src)
+    if not license then return "none" end
+    local status = BuildStatus(license)
+    return status.active and status.tier or "none"
 end)
 
 exports("GetVipSlotsForIdentifier", function(identifier)
@@ -338,6 +361,16 @@ end)
 exports("CanEditWelcomeBanner", function(src)
     local status = BuildStatus(LicenseFromSource(src))
     return status.active and status.welcomeBanner == true
+end)
+
+exports("GetVipGrindBonus", function(src)
+    if not src then return 0 end
+    local license = LicenseFromSource(src)
+    if not license then return 0 end
+    local status = BuildStatus(license)
+    if not status.active then return 0 end
+    local meta = TierMeta(status.tier)
+    return tonumber(meta.grindBonus) or 0
 end)
 
 exports("GetVipLicense", function(src)
@@ -516,6 +549,181 @@ lib.callback.register("cfx-keydi-vip:staffRevoke", function(source, targetId)
         vip = BuildStatus(LicenseFromSource(targetId)),
         players = CollectOnlinePlayers(),
     }
+end)
+
+lib.callback.register("cfx-keydi-vip:getAllVipMembers", function(source)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+    EnsureTable()
+
+    local rows = MySQL.query.await([[
+        SELECT 
+            v.identifier, 
+            COALESCE(NULLIF(v.name, ''), u.name, 'Unknown Player') as name, 
+            v.tier, 
+            v.label, 
+            v.expires_at, 
+            v.auto_renew, 
+            v.granted_by,
+            v.started_at
+        FROM grim_vip v
+        LEFT JOIN users u ON u.identifier = v.identifier
+        ORDER BY v.expires_at DESC
+    ]]) or {}
+
+    local list = {}
+    local onlineMap = {}
+    for _, sid in ipairs(GetPlayers()) do
+        local sId = tonumber(sid)
+        if sId then
+            local lic = LicenseFromSource(sId)
+            if lic then onlineMap[lic] = sId end
+        end
+    end
+
+    for _, row in ipairs(rows) do
+        local days, hours, active = RemainingFromExpires(row.expires_at)
+        local meta = TierMeta(row.tier)
+        local onlineId = onlineMap[row.identifier]
+
+        list[#list + 1] = {
+            identifier = row.identifier,
+            name = row.name or "Unknown Player",
+            onlineId = onlineId,
+            isOnline = onlineId ~= nil,
+            tier = row.tier,
+            label = meta.label or row.label or row.tier,
+            characterSlots = meta.characterSlots or 1,
+            expiresAt = IsoFromDb(row.expires_at),
+            startedAt = IsoFromDb(row.started_at),
+            autoRenew = row.auto_renew == 1 or row.auto_renew == true,
+            grantedBy = row.granted_by or "system",
+            daysRemaining = days,
+            hoursRemaining = hours,
+            active = active,
+        }
+    end
+
+    return {
+        ok = true,
+        members = list,
+        tiers = CollectTiers(),
+        players = CollectOnlinePlayers(),
+    }
+end)
+
+lib.callback.register("cfx-keydi-vip:staffEditVip", function(source, data)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+
+    data = type(data) == "table" and data or {}
+    local identifier = NormalizeLicense(data.identifier)
+    if not identifier and data.targetId then
+        identifier = LicenseFromSource(tonumber(data.targetId))
+    end
+    if not identifier then
+        return { ok = false, error = "Invalid player or identifier" }
+    end
+
+    local tier = tostring(data.tier or "vip1")
+    if not ConfigVip.Tiers[tier] then
+        return { ok = false, error = "Invalid VIP tier" }
+    end
+
+    local staffName = GetPlayerName(source) or "staff"
+    local autoRenew = data.autoRenew == true
+    local meta = TierMeta(tier)
+    local expires = nil
+
+    if data.customExpires and tostring(data.customExpires) ~= "" then
+        expires = FormatExpiresForSql(data.customExpires)
+    elseif data.addDays and tonumber(data.addDays) then
+        local addSec = tonumber(data.addDays) * 86400
+        local currentRow = GetActiveVipRow(identifier)
+        local baseUnix = os.time()
+        if currentRow and currentRow.expires_at then
+            local _, _, stillActive = RemainingFromExpires(currentRow.expires_at)
+            if stillActive then
+                local y, m, d, H, M, S = tostring(currentRow.expires_at):match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
+                if y then
+                    baseUnix = os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = tonumber(H), min = tonumber(M), sec = tonumber(S) })
+                end
+            end
+        end
+        expires = os.date("%Y-%m-%d %H:%M:%S", baseUnix + addSec)
+    elseif data.keepExpiry then
+        local currentRow = GetActiveVipRow(identifier)
+        if not currentRow then
+            return { ok = false, error = "Player has no active VIP to keep expiration for." }
+        end
+        expires = FormatExpiresForSql(currentRow.expires_at)
+    else
+        local unit = data.unit == "months" and "months" or "days"
+        local ok, expOrErr = ComputeExpiresSql(data.amount or 30, unit)
+        if not ok then return { ok = false, error = expOrErr } end
+        expires = expOrErr
+    end
+
+    if not expires then
+        return { ok = false, error = "Could not calculate expiration date." }
+    end
+
+    local playerName = data.name or nil
+    if not playerName then
+        local targetXPlayer = ESX.GetPlayerFromIdentifier and ESX.GetPlayerFromIdentifier(identifier)
+        if targetXPlayer then
+            playerName = targetXPlayer.getName and targetXPlayer.getName() or GetPlayerName(targetXPlayer.source)
+        end
+    end
+
+    if not UpsertVip(identifier, tier, expires, autoRenew, staffName, playerName) then
+        return { ok = false, error = "Could not update VIP database record." }
+    end
+
+    for _, sid in ipairs(GetPlayers()) do
+        local sId = tonumber(sid)
+        if sId and LicenseFromSource(sId) == identifier then
+            TriggerClientEvent("esx:showNotification", sId, ("VIP updated · %s"):format(meta.label), "success")
+            break
+        end
+    end
+
+    TriggerClientEvent("esx:showNotification", source, ("Updated %s for %s"):format(meta.label, playerName or identifier), "success")
+
+    return {
+        ok = true,
+        member = {
+            identifier = identifier,
+            tier = tier,
+            expiresAt = IsoFromDb(expires),
+            label = meta.label,
+        }
+    }
+end)
+
+lib.callback.register("cfx-keydi-vip:staffRevokeByIdentifier", function(source, identifier)
+    if not IsStaff(ESX.GetPlayerFromId(source)) then
+        return StaffDenied()
+    end
+    identifier = NormalizeLicense(identifier)
+    if not identifier then
+        return { ok = false, error = "Invalid identifier" }
+    end
+
+    RevokeVip(identifier)
+
+    for _, sid in ipairs(GetPlayers()) do
+        local sId = tonumber(sid)
+        if sId and LicenseFromSource(sId) == identifier then
+            TriggerClientEvent("esx:showNotification", sId, "Your VIP was revoked", "error")
+            break
+        end
+    end
+
+    TriggerClientEvent("esx:showNotification", source, ("Revoked VIP for %s"):format(identifier), "success")
+    return { ok = true }
 end)
 
 lib.callback.register("cfx-keydi-vip:canPedMenu", function(source)

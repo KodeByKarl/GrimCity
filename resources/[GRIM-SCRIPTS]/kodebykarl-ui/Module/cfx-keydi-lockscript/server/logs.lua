@@ -111,7 +111,6 @@ local function resolveChannels()
                 end
             end
         end
-        print(("^2%s^0 Discord channels ready."):format(PREFIX))
     end)
 end
 

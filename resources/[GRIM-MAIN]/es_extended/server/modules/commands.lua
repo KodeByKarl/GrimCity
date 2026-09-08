@@ -733,6 +733,139 @@ ESX.RegisterCommand(
     }
 )
 
+local function resolveCommandTarget(xPlayer, args, showError)
+    if args.playerId then
+        return args.playerId
+    end
+    if xPlayer then
+        return xPlayer
+    end
+    showError("Specify a player id")
+    return nil
+end
+
+local function ambulanceStarted()
+    return GetResourceState("kodebykarl-ambulance") == "started"
+        or GetResourceState("cfx-keydi-ambulance") == "started"
+end
+
+local function ambulanceResource()
+    if GetResourceState("kodebykarl-ambulance") == "started" then
+        return "kodebykarl-ambulance"
+    end
+    if GetResourceState("cfx-keydi-ambulance") == "started" then
+        return "cfx-keydi-ambulance"
+    end
+    return nil
+end
+
+local function clearBleedAndInjuries(src)
+    TriggerClientEvent("cfx-keydi-ambulance:client:ResetLimbs", src)
+    TriggerClientEvent("cfx-keydi-ambulance:client:RemoveBleed", src)
+end
+
+--- /revive [id] — full HP, clear bleed, hunger/thirst 100
+ESX.RegisterCommand(
+    "revive",
+    FilterGroups(CommandPermissions.revive),
+    function(xPlayer, args, showError)
+        local target = resolveCommandTarget(xPlayer, args, showError)
+        if not target then return end
+
+        local src = target.source
+        pcall(function()
+            exports["es_extended"]:MarkRespawn(src, 8000)
+        end)
+        pcall(function()
+            exports["es_extended"]:GrantHealthArmorBudget(src, 200, 100, 8000)
+        end)
+
+        local amb = ambulanceResource()
+        if amb then
+            pcall(function()
+                exports[amb]:AdminClearDeath(src)
+            end)
+            TriggerClientEvent("cfx-keydi-ambulance:revive", src)
+        else
+            TriggerClientEvent("esx:adminRevive", src)
+        end
+
+        clearBleedAndInjuries(src)
+        exports["es_extended"]:SecureSetStatus(src, { hunger = 100, thirst = 100, stress = 0 })
+
+        if xPlayer then
+            xPlayer.showNotification(("Revived %s"):format(target.name))
+        end
+        if not xPlayer or xPlayer.source ~= src then
+            target.showNotification("You have been revived")
+        end
+
+        if Config.AdminLogging then
+            ESX.DiscordLogFields("UserActions", "Revive Command /revive Triggered!", "pink", {
+                { name = "Player", value = xPlayer and xPlayer.name or "Server Console", inline = true },
+                { name = "ID", value = xPlayer and xPlayer.source or "Unknown ID", inline = true },
+                { name = "Target", value = target.name, inline = true },
+            })
+        end
+    end,
+    true,
+    {
+        help = "Revive player (full health, anti-bleed, 100 hunger/thirst)",
+        validate = false,
+        arguments = {
+            { name = "playerId", help = "Player id (optional, default: you)", type = "player", validate = false },
+        },
+    }
+)
+
+--- /heal [id] — 100% health, clear bleed, hunger/thirst 50
+ESX.RegisterCommand(
+    "heal",
+    FilterGroups(CommandPermissions.heal),
+    function(xPlayer, args, showError)
+        local target = resolveCommandTarget(xPlayer, args, showError)
+        if not target then return end
+
+        local src = target.source
+        pcall(function()
+            exports["es_extended"]:MarkRespawn(src, 6000)
+        end)
+        pcall(function()
+            exports["es_extended"]:GrantHealthArmorBudget(src, 200, 0, 6000)
+        end)
+
+        if ambulanceStarted() then
+            TriggerClientEvent("cfx-keydi-ambulance:syncHeal", src)
+        end
+        TriggerClientEvent("esx:adminHeal", src)
+        clearBleedAndInjuries(src)
+        exports["es_extended"]:SecureSetStatus(src, { hunger = 50, thirst = 50, stress = 0 })
+
+        if xPlayer then
+            xPlayer.showNotification(("Healed %s"):format(target.name))
+        end
+        if not xPlayer or xPlayer.source ~= src then
+            target.showNotification("You have been healed")
+        end
+
+        if Config.AdminLogging then
+            ESX.DiscordLogFields("UserActions", "Heal Command /heal Triggered!", "pink", {
+                { name = "Player", value = xPlayer and xPlayer.name or "Server Console", inline = true },
+                { name = "ID", value = xPlayer and xPlayer.source or "Unknown ID", inline = true },
+                { name = "Target", value = target.name, inline = true },
+            })
+        end
+    end,
+    true,
+    {
+        help = "Heal player (full health, anti-bleed, 50 hunger/thirst)",
+        validate = false,
+        arguments = {
+            { name = "playerId", help = "Player id (optional, default: you)", type = "player", validate = false },
+        },
+    }
+)
+
 ESX.RegisterCommand(
     "freeze",
     FilterGroups(CommandPermissions.freeze),

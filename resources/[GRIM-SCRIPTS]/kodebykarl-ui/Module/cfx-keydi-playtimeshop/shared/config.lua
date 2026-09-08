@@ -3,17 +3,35 @@ ConfigPlaytimeShop = {}
 ConfigPlaytimeShop.Command = 'playtimeshop'
 ConfigPlaytimeShop.OpenKey = 'F7'
 
--- Every 25 minutes online → +5 Grim Coins
-ConfigPlaytimeShop.RewardIntervalMinutes = 25
-ConfigPlaytimeShop.RewardCoins = 5
+-- Every 35 minutes online → +3 Grim Coins
+ConfigPlaytimeShop.RewardIntervalMinutes = 35
+ConfigPlaytimeShop.RewardCoins = 3
 
 -- Server tick interval (seconds) — keep high for 0.00 idle feel
 ConfigPlaytimeShop.TickSeconds = 60
 
 ConfigPlaytimeShop.GarageId = 'Legion Square'
+-- Fallback only if kodebykarl-projectcars is down. Live shop rolls a random pack car per item.
+ConfigPlaytimeShop.ProjectModel = 'ody18'
 
--- Catalog — server is source of truth (client never chooses arbitrary item names)
--- type: 'item' | 'car'
+-- Items that get per-vehicle metadata (Vehicle: Odyssey 2018, etc.)
+ConfigPlaytimeShop.ProjectPartItems = {
+    vehicle_shell = true,
+    project_parts_box = true,
+    car_blueprint = true,
+    car_battery = true,
+    car_alternator = true,
+    car_radiator = true,
+    car_engine_part = true,
+    spark_plugs = true,
+    car_transmission = true,
+    car_hood = true,
+    car_door = true,
+    brake_pads = true,
+    car_wheel = true,
+}
+
+-- Street kit (Items tab)
 ConfigPlaytimeShop.Items = {
     { id = 'bandage', label = 'BANDAGE', item = 'bandage', amount = 5, price = 15, image = 'bandage' },
     { id = 'lockpick', label = 'LOCKPICK', item = 'lockpick', amount = 1, price = 35, image = 'lockpick' },
@@ -25,13 +43,48 @@ ConfigPlaytimeShop.Items = {
     { id = 'burger', label = 'BURGER', item = 'burger', amount = 5, price = 12, image = 'burger' },
 }
 
+-- Car parts catalog (Cars tab) — kind 'part' = inventory item, kind 'vehicle' = garage car
 ConfigPlaytimeShop.Cars = {
-    { id = 'panto', label = 'PANTO', model = 'panto', price = 250, image = 'car' },
-    { id = 'blista', label = 'BLISTA', model = 'blista', price = 400, image = 'car' },
-    { id = 'futo', label = 'FUTO', model = 'futo', price = 550, image = 'car' },
-    { id = 'sultan', label = 'SULTAN', model = 'sultan', price = 900, image = 'car' },
-    { id = 'elegy', label = 'ELEGY', model = 'elegy2', price = 1200, image = 'car' },
-    { id = 'buffalo', label = 'BUFFALO', model = 'buffalo2', price = 1000, image = 'car' },
+    {
+        id = 'vehicle_shell',
+        label = 'VEHICLE SHELL',
+        kind = 'part',
+        item = 'vehicle_shell',
+        amount = 1,
+        price = 10,
+        stock = 5,
+        image = 'vehicle_shell',
+    },
+    {
+        id = 'project_parts_box',
+        label = 'PROJECT PARTS BOX',
+        kind = 'part',
+        item = 'project_parts_box',
+        amount = 1,
+        price = 10,
+        stock = 2,
+        image = 'project_parts_box',
+    },
+    {
+        id = 'car_blueprint',
+        label = 'CAR BLUEPRINT',
+        kind = 'part',
+        item = 'car_blueprint',
+        amount = 1,
+        price = 10,
+        stock = 100,
+        image = 'car_blueprint',
+    },
+    { id = 'car_battery', label = 'CAR BATTERY', kind = 'part', item = 'car_battery', amount = 1, price = 10, stock = 3, image = 'car_battery' },
+    { id = 'car_alternator', label = 'CAR ALTERNATOR', kind = 'part', item = 'car_alternator', amount = 1, price = 10, stock = 4, image = 'car_alternator' },
+    { id = 'car_radiator', label = 'CAR RADIATOR', kind = 'part', item = 'car_radiator', amount = 1, price = 10, stock = 6, image = 'car_radiator' },
+    { id = 'car_engine_part', label = 'ENGINE PART', kind = 'part', item = 'car_engine_part', amount = 1, price = 10, stock = 3, image = 'car_engine_part' },
+    { id = 'spark_plugs', label = 'SPARK PLUGS', kind = 'part', item = 'spark_plugs', amount = 1, price = 10, stock = 2, image = 'spark_plugs' },
+    { id = 'car_transmission', label = 'TRANSMISSION', kind = 'part', item = 'car_transmission', amount = 1, price = 10, stock = 5, image = 'car_transmission' },
+    { id = 'car_hood', label = 'CAR HOOD', kind = 'part', item = 'car_hood', amount = 1, price = 10, stock = 3, image = 'car_hood' },
+    { id = 'car_door', label = 'CAR DOOR SET', kind = 'part', item = 'car_door', amount = 4, price = 10, stock = 5, image = 'car_door' },
+    { id = 'brake_pads', label = 'BRAKE PADS SET', kind = 'part', item = 'brake_pads', amount = 4, price = 10, stock = 6, image = 'brake_pads' },
+    { id = 'car_wheel', label = 'CAR WHEEL SET', kind = 'part', item = 'car_wheel', amount = 4, price = 10, stock = 6, image = 'car_wheel' },
 }
 
 ConfigPlaytimeShop.PageSize = 6

@@ -27,6 +27,30 @@ local function isPoliceBoss(xPlayer)
     return (tonumber(xPlayer.job.grade) or 0) >= minGrade
 end
 
+local function isBusinessBoss(xPlayer)
+    if not xPlayer or not xPlayer.job then return false end
+    local jobs = ConfigIpad.BusinessJobs or {}
+    if not jobs[xPlayer.job.name] then return false end
+    local gradeName = type(xPlayer.job.grade_name) == 'string' and xPlayer.job.grade_name:lower() or ''
+    if gradeName == 'boss' or gradeName == 'owner' or gradeName == 'director' then
+        return true
+    end
+    local minGrade = tonumber(ConfigIpad.BusinessBossMinGrade)
+    if minGrade and (tonumber(xPlayer.job.grade) or 0) >= minGrade then
+        return true
+    end
+    local allJobs = ESX.GetJobs() or {}
+    local job = allJobs[xPlayer.job.name]
+    local maxGrade = 0
+    if job and job.grades then
+        for key, grade in pairs(job.grades) do
+            local g = tonumber(grade.grade) or tonumber(key) or 0
+            if g > maxGrade then maxGrade = g end
+        end
+    end
+    return maxGrade > 0 and (tonumber(xPlayer.job.grade) or 0) >= maxGrade
+end
+
 local function resolveUniversityRole(xPlayer)
     if not xPlayer or not xPlayer.job then return 'visitor' end
     local jobName = xPlayer.job.name
@@ -99,15 +123,53 @@ local function invalidateJobsCache()
 end
 
 local function syncOnlineJobPlayers(jobName, grade)
+    local gradeNum = tonumber(grade)
     local players = ESX.GetExtendedPlayers('job', jobName) or {}
     for i = 1, #players do
         local xP = players[i]
-        if xP and xP.job and tonumber(xP.job.grade) == tonumber(grade) then
+        if xP and xP.job and tonumber(xP.job.grade) == gradeNum then
             local onDuty = xP.job.onDuty
             if onDuty == nil then onDuty = true end
-            xP.setJob(jobName, grade, onDuty)
+            local ok, err = pcall(function()
+                xP.setJob(jobName, gradeNum, onDuty)
+            end)
+            if not ok then
+                print(('[kodebykarl-ui] economy sync setJob failed: %s'):format(tostring(err)))
+            end
         end
     end
+end
+
+local function isDeptBossFor(xPlayer, dept)
+    if not xPlayer then return false end
+    if isOwnerDev(xPlayer) then return true end
+    local cfg = ConfigIpad.Departments and ConfigIpad.Departments[dept]
+    if not cfg or not xPlayer.job then return false end
+    local jobName = xPlayer.job.name
+    local jobs = cfg.jobs or {}
+    local matched = false
+    for i = 1, #jobs do
+        if jobs[i] == jobName then matched = true break end
+    end
+    if not matched then return false end
+    local gradeName = type(xPlayer.job.grade_name) == 'string' and xPlayer.job.grade_name:lower() or ''
+    local names = cfg.bossGradeNames or { boss = true, director = true, chief = true }
+    if names[gradeName] then return true end
+    local minGrade = tonumber(cfg.bossMinGrade) or tonumber(ConfigIpad.PoliceBossMinGrade) or 5
+    return (tonumber(xPlayer.job.grade) or 0) >= minGrade
+end
+
+local function isDeptMemberFor(xPlayer, dept)
+    if not xPlayer then return false end
+    if isOwnerDev(xPlayer) then return true end
+    local cfg = ConfigIpad.Departments and ConfigIpad.Departments[dept]
+    if not cfg or not xPlayer.job then return false end
+    local jobName = xPlayer.job.name
+    local jobs = cfg.jobs or {}
+    for i = 1, #jobs do
+        if jobs[i] == jobName then return true end
+    end
+    return false
 end
 
 --- Single lightweight open-session payload (permissions only — client fills cash/job locally)
@@ -117,17 +179,48 @@ lib.callback.register('cfx-keydi-ipad:session', function(source)
         return {
             canEditEconomy = false,
             canPoliceBoss = false,
+            canSheriffBoss = false,
+            canAmbulanceBoss = false,
+            canPambulanceBoss = false,
+            canDojBoss = false,
             canPoliceMdt = false,
+            canSheriffMdt = false,
+            canBusinessBoss = false,
             universityRole = 'visitor',
+        }
+    end
+
+    -- Owner / Developer: full iPad app visibility
+    if isOwnerDev(xPlayer) then
+        local uni = resolveUniversityRole(xPlayer)
+        if uni == 'visitor' then uni = 'director' end
+        return {
+            canEditEconomy = true,
+            canPoliceBoss = true,
+            canSheriffBoss = true,
+            canAmbulanceBoss = true,
+            canPambulanceBoss = true,
+            canDojBoss = true,
+            canPoliceMdt = true,
+            canSheriffMdt = true,
+            canBusinessBoss = true,
+            universityRole = uni,
         }
     end
 
     local jobName = xPlayer.job and xPlayer.job.name or nil
     return {
-        canEditEconomy = isOwnerDev(xPlayer),
-        canPoliceBoss = isPoliceBoss(xPlayer),
-        canPoliceMdt = isPoliceJob(jobName),
+        canEditEconomy = false,
+        canPoliceBoss = isDeptBossFor(xPlayer, 'police'),
+        canSheriffBoss = isDeptBossFor(xPlayer, 'sheriff'),
+        canAmbulanceBoss = isDeptBossFor(xPlayer, 'ambulance'),
+        canPambulanceBoss = isDeptBossFor(xPlayer, 'pambulance'),
+        canDojBoss = isDeptBossFor(xPlayer, 'doj'),
+        canPoliceMdt = isDeptMemberFor(xPlayer, 'police') or isDeptMemberFor(xPlayer, 'doj'),
+        canSheriffMdt = isDeptMemberFor(xPlayer, 'sheriff'),
+        canBusinessBoss = isBusinessBoss(xPlayer),
         universityRole = resolveUniversityRole(xPlayer),
+        jobName = jobName,
     }
 end)
 
@@ -149,16 +242,25 @@ lib.callback.register('cfx-keydi-ipad:economy:setSalary', function(source, data)
         return { ok = false, error = 'denied' }
     end
 
-    local jobName = type(data) == 'table' and data.job or nil
-    local grade = type(data) == 'table' and tonumber(data.grade) or nil
-    local salary = type(data) == 'table' and tonumber(data.salary) or nil
+    if type(data) ~= 'table' then
+        return { ok = false, error = 'invalid' }
+    end
 
-    if not jobName or grade == nil or salary == nil then
+    local jobName = data.job or data.jobName
+    if type(jobName) ~= 'string' or jobName == '' then
+        return { ok = false, error = 'invalid' }
+    end
+
+    local grade = tonumber(data.grade)
+    local salary = tonumber(data.salary)
+    if grade == nil or salary == nil then
         return { ok = false, error = 'invalid' }
     end
 
     if salary < 0 then salary = 0 end
-    salary = math.floor(salary)
+    -- INT column hard limit (signed)
+    if salary > 2147483647 then salary = 2147483647 end
+    salary = math.floor(salary + 0.0)
 
     local jobs = ESX.GetJobs() or {}
     local job = jobs[jobName]
@@ -166,23 +268,74 @@ lib.callback.register('cfx-keydi-ipad:economy:setSalary', function(source, data)
         return { ok = false, error = 'job_not_found' }
     end
 
-    local gradeData = job.grades[tostring(grade)]
+    local gradeKey = tostring(grade)
+    local gradeData = job.grades[gradeKey]
+    if not gradeData then
+        -- fallback: match by numeric grade field
+        for key, row in pairs(job.grades) do
+            if tonumber(row.grade) == grade or tonumber(key) == grade then
+                gradeData = row
+                gradeKey = tostring(key)
+                break
+            end
+        end
+    end
     if not gradeData then
         return { ok = false, error = 'grade_not_found' }
     end
 
-    local affected = MySQL.update.await(
-        'UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?',
-        { salary, jobName, grade }
-    )
+    local okUpdate, affectedOrErr = pcall(function()
+        if gradeData.id then
+            return MySQL.update.await(
+                'UPDATE job_grades SET salary = ? WHERE id = ?',
+                { salary, gradeData.id }
+            )
+        end
+        return MySQL.update.await(
+            'UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?',
+            { salary, jobName, grade }
+        )
+    end)
 
-    if not affected or affected < 1 then
+    if not okUpdate then
+        print(('[kodebykarl-ui] economy setSalary MySQL error: %s'):format(tostring(affectedOrErr)))
         return { ok = false, error = 'db_failed' }
     end
 
-    gradeData.salary = salary
+    -- Verify persisted value (don't trust affected-rows alone — 0 when value unchanged)
+    local dbSalary = MySQL.scalar.await(
+        'SELECT salary FROM job_grades WHERE job_name = ? AND grade = ? LIMIT 1',
+        { jobName, grade }
+    )
+    if tonumber(dbSalary) ~= salary then
+        -- retry by id if present
+        if gradeData.id then
+            dbSalary = MySQL.scalar.await(
+                'SELECT salary FROM job_grades WHERE id = ? LIMIT 1',
+                { gradeData.id }
+            )
+        end
+    end
+    if tonumber(dbSalary) ~= salary then
+        print(('[kodebykarl-ui] economy setSalary verify failed job=%s grade=%s want=%s got=%s'):format(
+            jobName, tostring(grade), tostring(salary), tostring(dbSalary)
+        ))
+        return { ok = false, error = 'db_failed' }
+    end
+
+    -- Reload ESX job table from DB so paycheck + other resources see the new salary
+    if ESX.RefreshJobs then
+        ESX.RefreshJobs()
+    else
+        gradeData.salary = salary
+    end
+
     invalidateJobsCache()
-    syncOnlineJobPlayers(jobName, grade)
+
+    -- Sync online players after responding — never block / fail the save on setJob issues
+    CreateThread(function()
+        syncOnlineJobPlayers(jobName, grade)
+    end)
 
     return {
         ok = true,
@@ -192,3 +345,26 @@ lib.callback.register('cfx-keydi-ipad:economy:setSalary', function(source, data)
         jobs = serializeJobs(),
     }
 end)
+
+------------------------------------------------------------
+-- Load Department Boss + MDT (dept.lua) — guaranteed with economy
+------------------------------------------------------------
+do
+    local path = 'Module/cfx-keydi-ipad/server/dept.lua'
+    local src = LoadResourceFile(GetCurrentResourceName(), path)
+    if not src then
+        print('^1[cfx-keydi-ipad]^0 FATAL: missing ' .. path)
+    else
+        local chunk, err = load(src, ('@%s/%s'):format(GetCurrentResourceName(), path))
+        if not chunk then
+            print('^1[cfx-keydi-ipad]^0 dept.lua compile error: ' .. tostring(err))
+        else
+            local ok, runtimeErr = xpcall(chunk, function(e)
+                return tostring(e) .. '\n' .. tostring(debug and debug.traceback and debug.traceback() or '')
+            end)
+            if not ok then
+                print('^1[cfx-keydi-ipad]^0 dept.lua runtime error: ' .. tostring(runtimeErr))
+            end
+        end
+    end
+end

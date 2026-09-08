@@ -90,7 +90,13 @@ local function BuildLocalPayload()
         gang = gangLabel,
         canEditEconomy = false,
         canPoliceBoss = false,
+        canSheriffBoss = false,
+        canAmbulanceBoss = false,
+        canPambulanceBoss = false,
+        canDojBoss = false,
         canPoliceMdt = false,
+        canSheriffMdt = false,
+        canBusinessBoss = false,
         universityRole = 'visitor',
     }
 end
@@ -160,11 +166,44 @@ end)
 
 RegisterNUICallback('cfx-keydi-ipad:economy:setSalary', function(data, cb)
     if not isOpen then
-        cb({ ok = false })
+        cb({ ok = false, error = 'closed' })
         return
     end
-    local result = lib.callback.await('cfx-keydi-ipad:economy:setSalary', false, data or {})
-    cb(result or { ok = false })
+    data = type(data) == 'table' and data or {}
+    local payload = {
+        job = data.job or data.jobName,
+        grade = tonumber(data.grade),
+        salary = tonumber(data.salary),
+    }
+    local result = lib.callback.await('cfx-keydi-ipad:economy:setSalary', false, payload)
+    cb(result or { ok = false, error = 'no_response' })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:market:get', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, items = {} })
+        return
+    end
+    local result = lib.callback.await('cfx-keydi-market:server:adminGet', false)
+    cb(result or { ok = false, items = {} })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:market:setRange', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    local result = lib.callback.await('cfx-keydi-market:server:adminSetRange', false, data or {})
+    cb(result or { ok = false, error = 'no_response' })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:market:reroll', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    local result = lib.callback.await('cfx-keydi-market:server:adminReroll', false)
+    cb(result or { ok = false, error = 'no_response' })
 end)
 
 local function PvpResourceStarted()
@@ -211,6 +250,195 @@ RegisterNUICallback('cfx-keydi-ipad:leaderboard:pvp', function(_, cb)
     end
     local result = lib.callback.await('kodebykarl-pvp:getLeaderboard', false)
     cb(result or { ok = false, rows = {} })
+end)
+
+local function leaderboardCb(name)
+    return lib.callback.await(name, false) or { ok = false, rows = {} }
+end
+
+RegisterNUICallback('cfx-keydi-ipad:leaderboard:turfwar', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, rows = {} })
+        return
+    end
+    cb(leaderboardCb('cfx-keydi-ipad:leaderboard:turfwar'))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:leaderboard:traphouse', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, rows = {} })
+        return
+    end
+    cb(leaderboardCb('cfx-keydi-ipad:leaderboard:traphouse'))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:leaderboard:party', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, rows = {} })
+        return
+    end
+    cb(leaderboardCb('cfx-keydi-ipad:leaderboard:party'))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:leaderboard:topplayer', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, rows = {} })
+        return
+    end
+    cb(leaderboardCb('cfx-keydi-ipad:leaderboard:topplayer'))
+end)
+
+local function businessCb(name, data)
+    return lib.callback.await(name, false, data)
+end
+
+RegisterNUICallback('cfx-keydi-ipad:business:dashboard', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(businessCb('cfx-keydi-ipad:business:dashboard') or { ok = false })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:business:transfer', function(data, cb)
+    if not isOpen then
+        cb({ ok = false })
+        return
+    end
+    cb(businessCb('cfx-keydi-ipad:business:transfer', data or {}) or { ok = false })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:business:hire', function(data, cb)
+    if not isOpen then
+        cb({ ok = false })
+        return
+    end
+    cb(businessCb('cfx-keydi-ipad:business:hire', data or {}) or { ok = false })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:business:setGrade', function(data, cb)
+    if not isOpen then
+        cb({ ok = false })
+        return
+    end
+    cb(businessCb('cfx-keydi-ipad:business:setGrade', data or {}) or { ok = false })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:business:fire', function(data, cb)
+    if not isOpen then
+        cb({ ok = false })
+        return
+    end
+    cb(businessCb('cfx-keydi-ipad:business:fire', data or {}) or { ok = false })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:business:nearby', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, players = {} })
+        return
+    end
+    local ped = PlayerPedId()
+    local coords = GetEntityCoords(ped)
+    local myId = PlayerId()
+    local players = {}
+    for _, player in ipairs(GetActivePlayers()) do
+        if player ~= myId then
+            local tped = GetPlayerPed(player)
+            if tped ~= 0 and #(coords - GetEntityCoords(tped)) <= 5.0 then
+                players[#players + 1] = {
+                    id = GetPlayerServerId(player),
+                    name = GetPlayerName(player) or 'Citizen',
+                }
+            end
+        end
+    end
+    cb({ ok = true, players = players })
+end)
+
+local function deptCb(name, data)
+    local ok, result = pcall(function()
+        return lib.callback.await(name, false, data)
+    end)
+    if not ok then
+        print(('[cfx-keydi-ipad] callback failed %s: %s'):format(name, tostring(result)))
+        return { ok = false, error = 'callback_missing', detail = tostring(result) }
+    end
+    if type(result) ~= 'table' then
+        return { ok = false, error = 'no_response' }
+    end
+    return result
+end
+
+RegisterNUICallback('cfx-keydi-ipad:dept:dashboard', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:dept:dashboard', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:dept:transfer', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:dept:transfer', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:dept:hire', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:dept:hire', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:dept:setGrade', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:dept:setGrade', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:dept:fire', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:dept:fire', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:dept:announce', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:dept:announce', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:mdt:dashboard', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:mdt:dashboard', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:mdt:addBolo', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:mdt:addBolo', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:mdt:removeBolo', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:mdt:removeBolo', data or {}))
 end)
 
 AddEventHandler('onResourceStop', function(res)

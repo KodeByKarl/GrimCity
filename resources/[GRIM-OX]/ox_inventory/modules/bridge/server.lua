@@ -56,6 +56,8 @@ function server.playerDropped(source)
 	local inv = Inventory(source) --[[@as OxInventory]]
 
 	if inv?.player then
+		-- Let resources (ambulance death loot) convert pockets to a ground drop before save/remove
+		TriggerEvent('ox_inventory:beforePlayerDropped', source)
 		inv:closeInventory()
 		Inventory.Remove(inv)
 	end

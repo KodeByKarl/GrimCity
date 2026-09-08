@@ -44,9 +44,60 @@ const MOCK_JOBS: EconomyJob[] = [
     name: "mechanic",
     label: "Mechanic",
     grades: [
-      { grade: 0, name: "recruit", label: "Recruit", salary: 40000 },
-      { grade: 1, name: "employee", label: "Employee", salary: 50000 },
-      { grade: 2, name: "boss", label: "Boss", salary: 75000 },
+      { grade: 0, name: "recruit", label: "Recruit", salary: 0 },
+      { grade: 1, name: "employee", label: "Mechanic", salary: 0 },
+      { grade: 2, name: "lead", label: "Lead Mechanic", salary: 0 },
+      { grade: 3, name: "boss", label: "Boss", salary: 0 },
+    ],
+  },
+  {
+    name: "8ball",
+    label: "8Ball",
+    grades: [
+      { grade: 0, name: "trainee", label: "Trainee", salary: 0 },
+      { grade: 1, name: "staff", label: "Staff", salary: 0 },
+      { grade: 2, name: "manager", label: "Manager", salary: 0 },
+      { grade: 3, name: "boss", label: "Owner", salary: 0 },
+    ],
+  },
+  {
+    name: "burgershot",
+    label: "Burger Shot",
+    grades: [
+      { grade: 0, name: "trainee", label: "Trainee", salary: 0 },
+      { grade: 1, name: "crew", label: "Crew", salary: 0 },
+      { grade: 2, name: "manager", label: "Manager", salary: 0 },
+      { grade: 3, name: "boss", label: "Owner", salary: 0 },
+    ],
+  },
+  {
+    name: "uwu",
+    label: "UwU Cafe",
+    grades: [
+      { grade: 0, name: "trainee", label: "Trainee", salary: 0 },
+      { grade: 1, name: "barista", label: "Barista", salary: 0 },
+      { grade: 2, name: "manager", label: "Manager", salary: 0 },
+      { grade: 3, name: "boss", label: "Owner", salary: 0 },
+    ],
+  },
+  {
+    name: "tacoshop",
+    label: "Taco Shop",
+    grades: [
+      { grade: 0, name: "trainee", label: "Trainee", salary: 0 },
+      { grade: 1, name: "cook", label: "Cook", salary: 0 },
+      { grade: 2, name: "manager", label: "Manager", salary: 0 },
+      { grade: 3, name: "boss", label: "Owner", salary: 0 },
+    ],
+  },
+  {
+    name: "weedshop",
+    label: "Weed Shop",
+    grades: [
+      { grade: 0, name: "trimmer", label: "Trimmer", salary: 0 },
+      { grade: 1, name: "budtender", label: "Budtender", salary: 0 },
+      { grade: 2, name: "manager", label: "Manager", salary: 0 },
+      { grade: 3, name: "boss", label: "Owner", salary: 0 },
     ],
   },
   {
@@ -85,7 +136,8 @@ const MOCK_JOBS: EconomyJob[] = [
 async function nui<T>(event: string, data: Record<string, unknown> = {}): Promise<T | null> {
   const isBrowser =
     !(window as unknown as { invokeNative?: unknown }).invokeNative &&
-    !navigator.userAgent.includes("FiveM");
+    !navigator.userAgent.includes("FiveM") &&
+    !navigator.userAgent.includes("CitizenFX");
   if (isBrowser) return null;
   const resourceName = (window as unknown as { GetParentResourceName?: () => string })
     .GetParentResourceName
@@ -159,7 +211,8 @@ export default function EconomyApp({
     setLoading(true);
     const isBrowser =
       !(window as unknown as { invokeNative?: unknown }).invokeNative &&
-      !navigator.userAgent.includes("FiveM");
+      !navigator.userAgent.includes("FiveM") &&
+      !navigator.userAgent.includes("CitizenFX");
 
     if (isBrowser) {
       applyJobs(MOCK_JOBS);
@@ -200,12 +253,16 @@ export default function EconomyApp({
 
   const saveGrade = async (jobName: string, grade: number) => {
     const key = `${jobName}:${grade}`;
-    const salary = Math.max(0, Math.floor(Number(drafts[key]) || 0));
+    // CEF number inputs are flaky — parse digits from text draft
+    const raw = String(drafts[key] ?? "").replace(/[^\d]/g, "");
+    const salary = Math.max(0, Math.min(2147483647, Math.floor(Number(raw) || 0)));
     setSaving(key);
+    setDrafts((d) => ({ ...d, [key]: String(salary) }));
 
     const isBrowser =
       !(window as unknown as { invokeNative?: unknown }).invokeNative &&
-      !navigator.userAgent.includes("FiveM");
+      !navigator.userAgent.includes("FiveM") &&
+      !navigator.userAgent.includes("CitizenFX");
 
     if (isBrowser) {
       setJobs((prev) =>
@@ -220,7 +277,6 @@ export default function EconomyApp({
               },
         ),
       );
-      setDrafts((d) => ({ ...d, [key]: String(salary) }));
       showToast("Saved (preview)");
       setSaving(null);
       return;
@@ -235,9 +291,33 @@ export default function EconomyApp({
 
     if (result?.ok) {
       if (result.jobs) applyJobs(result.jobs);
+      else {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.name !== jobName
+              ? j
+              : {
+                  ...j,
+                  grades: j.grades.map((g) =>
+                    g.grade === grade ? { ...g, salary: result.salary ?? salary } : g,
+                  ),
+                },
+          ),
+        );
+        setDrafts((d) => ({ ...d, [key]: String(result.salary ?? salary) }));
+      }
       showToast("Salary updated");
     } else {
-      showToast(result?.error === "denied" ? "Access denied" : "Save failed");
+      const err = result?.error;
+      showToast(
+        err === "denied"
+          ? "Access denied"
+          : err === "db_failed"
+            ? "DB save failed"
+            : err === "invalid"
+              ? "Invalid salary"
+              : "Save failed",
+      );
     }
     setSaving(null);
   };
@@ -380,13 +460,16 @@ export default function EconomyApp({
                         <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
                           <span className="text-[14px] font-semibold text-white/50">$</span>
                           <input
-                            type="number"
-                            min={0}
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            spellCheck={false}
                             value={drafts[key] ?? String(g.salary)}
-                            onChange={(e) =>
-                              setDrafts((d) => ({ ...d, [key]: e.target.value }))
-                            }
-                            className="w-[110px] bg-transparent text-[15px] font-semibold text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            onChange={(e) => {
+                              const next = e.target.value.replace(/[^\d]/g, "");
+                              setDrafts((d) => ({ ...d, [key]: next }));
+                            }}
+                            className="w-[140px] bg-transparent text-[15px] font-semibold text-white outline-none"
                           />
                         </div>
                         <button

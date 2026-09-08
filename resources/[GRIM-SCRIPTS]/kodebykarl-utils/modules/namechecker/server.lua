@@ -7,6 +7,17 @@ local Config = require 'configs.namechecker'
 
 local DISCORD_API = 'https://discord.com/api/v10'
 
+local function getBotToken()
+    if Config.BotToken and Config.BotToken ~= '' and not Config.BotToken:find('YOUR_', 1, true) then
+        return Config.BotToken
+    end
+    local convar = GetConvar('kodebykarl_discord_bot_token', '')
+    if convar ~= '' then
+        return convar
+    end
+    return nil
+end
+
 ---Normalize a name for comparison using config toggles.
 ---@param name string?
 ---@return string
@@ -38,6 +49,11 @@ end
 ---@param discordId string
 ---@param cb fun(ok: boolean, data: table|nil, status: number)
 local function fetchGuildMember(discordId, cb)
+    local token = getBotToken()
+    if not token then
+        return cb(false, nil, 0)
+    end
+
     local url = ('%s/guilds/%s/members/%s'):format(DISCORD_API, Config.GuildID, discordId)
 
     PerformHttpRequest(url, function(status, body)
@@ -53,7 +69,7 @@ local function fetchGuildMember(discordId, cb)
 
         cb(false, nil, status)
     end, 'GET', '', {
-        ['Authorization'] = ('Bot %s'):format(Config.BotToken),
+        ['Authorization'] = ('Bot %s'):format(token),
         ['Content-Type'] = 'application/json',
     })
 end
@@ -82,8 +98,8 @@ local function resolveDiscordDisplayName(member)
 end
 
 local function isConfigured()
-    if not Config.BotToken or Config.BotToken:find('YOUR_', 1, true) then return false end
-    if not Config.GuildID or Config.GuildID:find('YOUR_', 1, true) then return false end
+    if not getBotToken() then return false end
+    if not Config.GuildID or Config.GuildID == '' or Config.GuildID:find('YOUR_', 1, true) then return false end
     return true
 end
 

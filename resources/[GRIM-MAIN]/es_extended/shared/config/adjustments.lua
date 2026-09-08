@@ -1,4 +1,4 @@
-Config.DisableHealthRegeneration = false -- Player will no longer regenerate health
+Config.DisableHealthRegeneration = true -- Player will no longer regenerate health
 Config.DisableVehicleRewards = true      -- Disables Player Receiving weapons from vehicles
 Config.DisableNPCDrops = true            -- stops NPCs from dropping weapons on death
 Config.DisableDispatchServices = true    -- Disable Dispatch services

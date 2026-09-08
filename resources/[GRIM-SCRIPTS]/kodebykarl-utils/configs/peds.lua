@@ -45,31 +45,24 @@ return {
             sprite = 498,
             color = 3, 
             scale = 0.5,
-            label = 'ID Card',
+            label = 'City Hall',
             data = 0, -- Do not touch
         },
         target = {
             options = {
                 {
-                    icon = 'fa-solid fa-id-card',
-                    label = 'Request License',
+                    icon = 'fa-solid fa-building-columns',
+                    label = 'DOJ Services Info',
                     onSelect = function()
-                        if GetResourceState('kodebykarl-ui') == 'started' then
-                            exports['kodebykarl-ui']:RequestLicense()
-                        else
-                            TriggerServerEvent('cfx-keydi-identification:server:giveIdItem')
-                        end
+                        lib.notify({
+                            title = 'City Hall',
+                            description = 'Citizen ID ($250,000) and legal name changes ($500,000) are processed by on-duty DOJ staff.',
+                            type = 'inform',
+                            duration = 8000,
+                        })
                     end,
                     distance = 2.5
                 },
-                {
-                    icon = 'fa-solid fa-user-pen',
-                    label = 'Change Name',
-                    onSelect = function()
-                        exports['kodebykarl-ui']:OpenChangeNameMenu()
-                    end,
-                    distance = 2.5
-                }
             },
         }
     },

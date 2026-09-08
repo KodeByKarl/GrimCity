@@ -61,11 +61,10 @@ Config.Gangs = {
 Config.DiscordHire = {
     Enabled = true,
     AllowOfflineHire = true, -- Hire by Discord ID even if recruit is offline
-    -- Discord SERVER id (right-click server name → Copy Server ID). Must match where the gang roles live.
-    -- Uses the same guild as Config.Logs (where the bot already is).
-    GuildID = '1526937565926654065',
-    -- MUST be a bot that is IN that GuildID, with Server Members Intent enabled.
-    -- Empty = reuse Config.Logs.BotToken
+    -- Main Grim City Discord (same guild as loadingscreen staff roles).
+    -- Bot token: convar kodebykarl_discord_bot_token (must be invited here + Server Members Intent).
+    GuildID = '1240677650348118148',
+    -- Empty = reuse Config.Logs.BotToken, then kodebykarl_discord_bot_token convar
     BotToken = '',
     RequireDiscordLinked = true,
     RequireInGuild = true,

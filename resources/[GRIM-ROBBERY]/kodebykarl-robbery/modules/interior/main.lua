@@ -33,19 +33,42 @@ local function CreateShell(spawn, exitXYZH, model)
     local objects = {}
     local POIOffsets = {}
     POIOffsets.exit = exitXYZH
+
     DoScreenFadeOut(500)
     while not IsScreenFadedOut() do
         Wait(10)
     end
-    RequestModel(model)
-    while not HasModelLoaded(model) do
-        Wait(1000)
+
+    local modelHash = type(model) == 'number' and model or joaat(model)
+    if not IsModelInCdimage(modelHash) and not IsModelValid(modelHash) then
+        print(('[^1kodebykarl-robbery^0] Interior model missing from game/stream: %s'):format(tostring(model)))
+        DoScreenFadeIn(500)
+        return nil
     end
-    local house = CreateObject(model, spawn.x, spawn.y, spawn.z, false, false, false)
+
+    RequestModel(modelHash)
+    local timeoutAt = GetGameTimer() + 10000
+    while not HasModelLoaded(modelHash) do
+        if GetGameTimer() > timeoutAt then
+            print(('[^1kodebykarl-robbery^0] Timed out loading interior model: %s (check stream/furnitured_midapart.ydr + ytyp)'):format(tostring(model)))
+            DoScreenFadeIn(500)
+            return nil
+        end
+        Wait(100)
+    end
+
+    local house = CreateObject(modelHash, spawn.x, spawn.y, spawn.z, false, false, false)
+    if not house or house == 0 or not DoesEntityExist(house) then
+        print(('[^1kodebykarl-robbery^0] Failed to create interior object: %s'):format(tostring(model)))
+        SetModelAsNoLongerNeeded(modelHash)
+        DoScreenFadeIn(500)
+        return nil
+    end
 
     FreezeEntityPosition(house, true)
-    objects[#objects+1] = house
+    objects[#objects + 1] = house
     TeleportToInterior(spawn.x + POIOffsets.exit.x, spawn.y + POIOffsets.exit.y, spawn.z + POIOffsets.exit.z, POIOffsets.exit.h)
+    SetModelAsNoLongerNeeded(modelHash)
     return { objects, POIOffsets }
 end
 

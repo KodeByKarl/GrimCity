@@ -318,6 +318,17 @@ function storeVehicleInGarage(garageId, vehicleType)
     vehicleProperties.plate = vehiclePlate
     local vehicleFuel = Framework.Client.VehicleGetFuel(currentVehicle)
     local bodyDamage, engineDamage, fuelTankDamage = getVehicleDamage(currentVehicle)
+
+    -- Keep props in sync so SetVehicleProperties on take-out does not restore full health/fuel
+    if type(vehicleProperties) == "table" then
+        vehicleProperties.fuelLevel = tonumber(vehicleFuel) or vehicleProperties.fuelLevel
+        if type(bodyDamage) == "number" then
+            vehicleProperties.bodyHealth = bodyDamage + 0.0
+        end
+        if type(engineDamage) == "number" then
+            vehicleProperties.engineHealth = engineDamage + 0.0
+        end
+    end
     
     -- Run verification event
     local verificationPassed = false

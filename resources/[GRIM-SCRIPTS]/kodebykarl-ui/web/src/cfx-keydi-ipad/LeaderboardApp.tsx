@@ -17,103 +17,91 @@ const TABS: { id: TabId; label: string }[] = [
 interface RankRow {
   rank: number;
   name: string;
-  gang?: string;
+  gang?: string | null;
   score: string;
   subtitle?: string;
+  kills?: number;
+  deaths?: number;
+  kd?: number;
+  claims?: number;
 }
 
-interface PvpRow {
+interface MineRow {
   rank?: number | null;
   name: string;
-  kills: number;
-  deaths: number;
-  kd: number;
+  kills?: number;
+  deaths?: number;
+  kd?: number;
+  score?: string;
+  subtitle?: string;
 }
-
-const MOCK: Record<Exclude<TabId, "pvp">, RankRow[]> = {
-  turfwar: [
-    { rank: 1, name: "Ballas", gang: "South Side", score: "42 captures", subtitle: "Hot streak" },
-    { rank: 2, name: "Families", gang: "Grove", score: "37 captures", subtitle: "Rising" },
-    { rank: 3, name: "Vagos", gang: "East LS", score: "31 captures", subtitle: "Contested" },
-    { rank: 4, name: "Lost MC", gang: "Blaine", score: "24 captures", subtitle: "Steady" },
-    { rank: 5, name: "Marabunta", gang: "Rancho", score: "19 captures", subtitle: "Climbing" },
-    { rank: 6, name: "The Triads", gang: "Little Seoul", score: "14 captures" },
-    { rank: 7, name: "Aztecas", gang: "Cypress", score: "11 captures" },
-    { rank: 8, name: "Independent", gang: "—", score: "6 captures" },
-  ],
-  traphouse: [
-    { rank: 1, name: "Smoke King", gang: "Ballas", score: "$2.4M moved", subtitle: "Top cook" },
-    { rank: 2, name: "Night Shift", gang: "Vagos", score: "$1.9M moved", subtitle: "Active" },
-    { rank: 3, name: "Silent Bag", gang: "Families", score: "$1.6M moved" },
-    { rank: 4, name: "Corner Boss", gang: "Marabunta", score: "$1.1M moved" },
-    { rank: 5, name: "Lab Rat", gang: "Lost MC", score: "$890K moved" },
-    { rank: 6, name: "Street Chem", gang: "Independent", score: "$640K moved" },
-    { rank: 7, name: "Block Runner", gang: "Aztecas", score: "$420K moved" },
-    { rank: 8, name: "Rookie Cook", gang: "—", score: "$180K moved" },
-  ],
-  party: [
-    { rank: 1, name: "VIP Hosts", score: "128 parties", subtitle: "This week" },
-    { rank: 2, name: "Rooftop Crew", score: "96 parties" },
-    { rank: 3, name: "Yacht Club", score: "81 parties" },
-    { rank: 4, name: "Club 77", score: "64 parties" },
-    { rank: 5, name: "Beach Bash", score: "52 parties" },
-    { rank: 6, name: "Warehouse Rave", score: "41 parties" },
-    { rank: 7, name: "Casino Afters", score: "33 parties" },
-    { rank: 8, name: "Local Spot", score: "18 parties" },
-  ],
-  topplayer: [
-    { rank: 1, name: "Karl Dev", gang: "Staff", score: "98.4 rating", subtitle: "All-time" },
-    { rank: 2, name: "Ace Walker", gang: "Families", score: "94.1 rating" },
-    { rank: 3, name: "Nova Cruz", gang: "Ballas", score: "91.7 rating" },
-    { rank: 4, name: "Rico Vale", gang: "Vagos", score: "88.2 rating" },
-    { rank: 5, name: "Mia Storm", gang: "Independent", score: "85.6 rating" },
-    { rank: 6, name: "Jay Knox", gang: "Lost MC", score: "82.0 rating" },
-    { rank: 7, name: "Lena Park", gang: "Marabunta", score: "79.4 rating" },
-    { rank: 8, name: "Tom Reed", gang: "Aztecas", score: "76.8 rating" },
-  ],
-};
 
 const TAB_META: Record<TabId, { title: string; blurb: string; glow: string; chip: string }> = {
   turfwar: {
     title: "Turfwar",
-    blurb: "Gangs ranked by territory captures this season.",
+    blurb: "Gangs ranked by Turf War claim wins.",
     glow: "rgba(225,6,0,0.22)",
     chip: "bg-[#e10600] text-white shadow-[0_4px_16px_rgba(225,6,0,0.4)]",
   },
   traphouse: {
     title: "Traphouse",
-    blurb: "Top movers by product volume and trap activity.",
+    blurb: "Most kills inside active TrapHouse redzones.",
     glow: "rgba(52,199,89,0.18)",
     chip: "bg-[#15803d] text-white shadow-[0_4px_16px_rgba(21,128,61,0.4)]",
   },
   pvp: {
     title: "PvP",
-    blurb: "Deathmatch standings by kills.",
+    blurb: "Deathmatch arena kills · deaths · KDA only.",
     glow: "rgba(249,115,22,0.22)",
     chip: "bg-[#ea580c] text-white shadow-[0_4px_16px_rgba(234,88,12,0.4)]",
   },
   party: {
     title: "Party",
-    blurb: "Most active party hosts across Los Santos.",
+    blurb: "Combined team kills · deaths · KDA while partied.",
     glow: "rgba(175,82,222,0.2)",
     chip: "bg-[#7c3aed] text-white shadow-[0_4px_16px_rgba(124,58,237,0.4)]",
   },
   topplayer: {
     title: "Top Player",
-    blurb: "Overall standings across Grim City systems.",
+    blurb: "Citywide player kills · deaths · KDA (outside PvP arena).",
     glow: "rgba(255,159,10,0.2)",
     chip: "bg-[#ca8a04] text-white shadow-[0_4px_16px_rgba(202,138,4,0.4)]",
   },
 };
 
-function pvpToRow(row: PvpRow, fallbackRank: number): RankRow {
-  const rank = row.rank ?? fallbackRank;
-  return {
-    rank,
-    name: row.name,
-    score: `${row.kills} K / ${row.deaths} D`,
-    subtitle: `KD ${row.kd}`,
-  };
+const NUI: Record<TabId, string> = {
+  turfwar: "cfx-keydi-ipad:leaderboard:turfwar",
+  traphouse: "cfx-keydi-ipad:leaderboard:traphouse",
+  pvp: "cfx-keydi-ipad:leaderboard:pvp",
+  party: "cfx-keydi-ipad:leaderboard:party",
+  topplayer: "cfx-keydi-ipad:leaderboard:topplayer",
+};
+
+function normalizeRows(tab: TabId, raw: RankRow[]): RankRow[] {
+  return (raw || []).map((row, i) => {
+    const rank = row.rank ?? i + 1;
+    if (tab === "turfwar") {
+      const claims = row.claims ?? 0;
+      return {
+        ...row,
+        rank,
+        score: row.score || `${claims} claims`,
+        subtitle: row.subtitle || "Turf wins",
+      };
+    }
+    const kills = row.kills ?? 0;
+    const deaths = row.deaths ?? 0;
+    const kd = row.kd ?? (deaths > 0 ? kills / deaths : kills);
+    return {
+      ...row,
+      rank,
+      kills,
+      deaths,
+      kd,
+      score: row.score || `${kills} K / ${deaths} D`,
+      subtitle: row.subtitle || `KDA ${Number(kd).toFixed(2)}`,
+    };
+  });
 }
 
 function StatusBar() {
@@ -162,32 +150,40 @@ export default function LeaderboardApp({
   player?: IpadPlayerData | null;
 }) {
   const [tab, setTab] = useState<TabId>("turfwar");
-  const [pvpRows, setPvpRows] = useState<RankRow[]>([]);
-  const [pvpMine, setPvpMine] = useState<PvpRow | null>(null);
-  const [pvpLoading, setPvpLoading] = useState(false);
+  const [rows, setRows] = useState<RankRow[]>([]);
+  const [mine, setMine] = useState<MineRow | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const loadPvp = useCallback(async () => {
-    setPvpLoading(true);
-    const result = await fetchNui<{ ok?: boolean; rows?: PvpRow[]; mine?: PvpRow | null }>(
-      "cfx-keydi-ipad:leaderboard:pvp",
+  const load = useCallback(async (active: TabId) => {
+    setLoading(true);
+    const result = await fetchNui<{ ok?: boolean; rows?: RankRow[]; mine?: MineRow | null }>(
+      NUI[active],
     );
-    const list = result?.rows || [];
-    setPvpRows(list.map((row, i) => pvpToRow(row, i + 1)));
-    setPvpMine(result?.mine || null);
-    setPvpLoading(false);
+    setRows(normalizeRows(active, result?.rows || []));
+    setMine(result?.mine || null);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (tab !== "pvp") return;
-    void loadPvp();
-  }, [tab, loadPvp]);
+    void load(tab);
+  }, [tab, load]);
 
-  const rows = tab === "pvp" ? pvpRows : MOCK[tab];
   const meta = TAB_META[tab];
   const you = useMemo(() => {
     const n = [player?.firstName, player?.lastName].filter(Boolean).join(" ");
     return n || null;
   }, [player]);
+
+  const scoreTone =
+    tab === "pvp"
+      ? "text-[#fdba74]"
+      : tab === "traphouse"
+        ? "text-[#86efac]"
+        : tab === "party"
+          ? "text-[#d8b4fe]"
+          : tab === "topplayer"
+            ? "text-[#fde047]"
+            : "text-[#fca5a5]";
 
   return (
     <div
@@ -233,17 +229,18 @@ export default function LeaderboardApp({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
         <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-[#1a1111]/90 px-5 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#fca5a5]">
-            Season standings
+            Live standings
           </p>
           <h2 className="mt-1 text-[26px] font-bold tracking-tight text-white">{meta.title}</h2>
           {you ? (
             <p className="mt-3 rounded-xl bg-black/35 px-3 py-2 text-[13px] text-white/80">
               Signed in as <span className="font-semibold text-white">{you}</span>
               {player?.gang ? ` · ${player.gang}` : ""}
-              {tab === "pvp" && pvpMine ? (
+              {mine ? (
                 <span className="mt-1 block text-white/55">
-                  {pvpMine.rank ? `Rank #${pvpMine.rank}` : "Unranked"} · {pvpMine.kills} K /{" "}
-                  {pvpMine.deaths} D · KD {pvpMine.kd}
+                  {mine.rank ? `Rank #${mine.rank}` : "Unranked"}
+                  {mine.score ? ` · ${mine.score}` : ""}
+                  {mine.subtitle ? ` · ${mine.subtitle}` : ""}
                 </span>
               ) : null}
             </p>
@@ -251,13 +248,15 @@ export default function LeaderboardApp({
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-white/8 bg-[#141010]">
-          {tab === "pvp" && pvpLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center gap-2 px-4 py-10 text-[13px] text-white/45">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading standings…
             </div>
           ) : rows.length === 0 ? (
-            <div className="px-4 py-10 text-center text-[13px] text-white/40">No records yet.</div>
+            <div className="px-4 py-10 text-center text-[13px] text-white/40">
+              No records yet. Play to climb the board.
+            </div>
           ) : (
             rows.map((row, i) => (
               <div
@@ -265,7 +264,7 @@ export default function LeaderboardApp({
                 className={cn(
                   "flex items-center gap-3 px-4 py-3.5",
                   i < rows.length - 1 && "border-b border-white/6",
-                  row.rank === 1 && (tab === "pvp" ? "bg-[#ea580c]/12" : "bg-[#e10600]/10"),
+                  row.rank === 1 && "bg-white/5",
                 )}
               >
                 <RankBadge rank={row.rank} />
@@ -277,12 +276,7 @@ export default function LeaderboardApp({
                     {row.subtitle || ""}
                   </p>
                 </div>
-                <p
-                  className={cn(
-                    "shrink-0 text-right text-[13px] font-semibold",
-                    tab === "pvp" ? "text-[#fdba74]" : "text-[#fca5a5]",
-                  )}
-                >
+                <p className={cn("shrink-0 text-right text-[13px] font-semibold", scoreTone)}>
                   {row.score}
                 </p>
               </div>

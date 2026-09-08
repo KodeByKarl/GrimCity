@@ -121,7 +121,7 @@ CreateThread(function()
     end
 end)
 
--- Priority bags used by cfx-cs-robbery
+-- Priority bags used by kodebykarl-robbery
 -- Safe = can rob | Hold = blocked | Cooldown = 15m then Safe | In Progress = robbery running
 local PRIORITY_BAGS = {
     { bag = 'rb_prio_police', name = 'LS Police', job = 'police' },
@@ -261,16 +261,14 @@ local function getFormattedWorldEvents()
         local timeLeft = nil
         if event.endsAt and event.endsAt > os.time() then
             timeLeft = formatTimeLeft(event.endsAt)
-        elseif not isActive and event.endsAt and event.endsAt > 0 and event.endsAt <= os.time() then
+        elseif event.endsAt and event.endsAt > 0 and event.endsAt <= os.time() then
             timeLeft = '0:00'
         end
 
-        -- ACTIVE → real location; INACTIVE → remaining time (replaces placeholder locations)
-        local location
-        if isActive then
-            location = (event.location and event.location ~= '' and event.location ~= '—') and event.location or '—'
-        else
-            location = timeLeft or '—'
+        -- Location stays location; timer is always timeLeft (shown as status in UI)
+        local location = event.location
+        if not location or location == '' then
+            location = '—'
         end
 
         list[#list + 1] = {
@@ -314,7 +312,7 @@ local function countJobOnline(job)
     return type(players) == 'table' and #players or 0
 end
 
---- Used by cfx-cs-robbery: { ['police'] = 10 } -> { enable, count, name }
+--- Used by kodebykarl-robbery: { ['police'] = 10 } -> { enable, count, name }
 local function CheckLawEnforcementByTable(requireTable)
     if type(requireTable) ~= 'table' then
         return { enable = true, count = 0, name = '' }
@@ -492,16 +490,21 @@ ESX.RegisterServerCallback('cfx-keydi-scoreboard:getServerData', function(source
     ensurePriorityBags()
     syncPriorityStatuses()
 
-    -- 1. Format play time
-    local playtimeStr = "12m" -- default fallback
-    if sessionStart[xPlayer.identifier] then
-        local diffSec = os.time() - sessionStart[xPlayer.identifier]
-        local diffMin = math.floor(diffSec / 60)
-        if diffMin >= 60 then
-            playtimeStr = string.format("%dh", math.floor(diffMin / 60))
-        else
-            playtimeStr = string.format("%dm", diffMin)
-        end
+    -- 1. Total playtime (ESX metadata + GetPlayerTimeOnline — same as /playtime / tx session tracking)
+    local playSeconds = 0
+    if xPlayer.getPlayTime then
+        playSeconds = tonumber(xPlayer.getPlayTime()) or 0
+    end
+    local days = math.floor(playSeconds / 86400)
+    local hours = math.floor((playSeconds % 86400) / 3600)
+    local mins = math.floor((playSeconds % 3600) / 60)
+    local playtimeStr
+    if days > 0 then
+        playtimeStr = string.format("%dd %dh", days, hours)
+    elseif hours > 0 then
+        playtimeStr = string.format("%dh %dm", hours, mins)
+    else
+        playtimeStr = string.format("%dm", math.max(0, mins))
     end
 
     -- 2. Count jobs
@@ -512,9 +515,13 @@ ESX.RegisterServerCallback('cfx-keydi-scoreboard:getServerData', function(source
 
     local players = ESX.GetExtendedPlayers()
     for _, targetPlayer in ipairs(players) do
-        local targetJob = targetPlayer.job.name
-        if jobCounts[targetJob] ~= nil then
-            jobCounts[targetJob] = jobCounts[targetJob] + 1
+        local targetJob = targetPlayer.job and targetPlayer.job.name
+        if targetJob then
+            if jobCounts[targetJob] ~= nil then
+                jobCounts[targetJob] = jobCounts[targetJob] + 1
+            elseif (targetJob == 'sheriff' or targetJob == 'bcso') and jobCounts['police'] ~= nil then
+                jobCounts['police'] = jobCounts['police'] + 1
+            end
         end
     end
 

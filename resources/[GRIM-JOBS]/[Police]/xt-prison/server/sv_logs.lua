@@ -127,9 +127,6 @@ local function mapGuildChannels(channels)
             end
         end
     end
-    for key, channelId in pairs(resolvedChannels) do
-        print(("^2%s^0 %s → %s"):format(PREFIX, key:upper(), channelId))
-    end
     if #missing > 0 then
         print(("^1%s^0 Missing channels: %s"):format(PREFIX, table.concat(missing, ", ")))
     end
@@ -151,9 +148,6 @@ local function resolveChannels()
     if allOverride then
         for key, override in pairs(ids) do
             resolvedChannels[key] = tostring(override):gsub("%s+", "")
-        end
-        for key, channelId in pairs(resolvedChannels) do
-            print(("^2%s^0 %s → %s (manual)"):format(PREFIX, key:upper(), channelId))
         end
         return
     end
@@ -314,8 +308,5 @@ CreateThread(function()
     Wait(2000)
     if isEnabled() then
         resolveChannels()
-        print(("^2%s^0 ready"):format(PREFIX))
-    else
-        print(("^3%s^0 Disabled or missing BotToken/GuildID."):format(PREFIX))
     end
 end)

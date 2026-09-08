@@ -5,7 +5,6 @@ RegisterNUICallback("previewCharacter", function(data, cb)
 
     if data.clearPreview then
         DestroyPreviewPed()
-        ClearScriptCam()
         cb("ok")
         return
     end

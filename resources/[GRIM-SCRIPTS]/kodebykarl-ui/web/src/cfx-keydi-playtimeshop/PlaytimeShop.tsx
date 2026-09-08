@@ -22,6 +22,8 @@ export interface PlaytimeProduct {
   price: number;
   image?: string;
   model?: string;
+  stock?: number | null;
+  kind?: "item" | "part" | "vehicle";
 }
 
 export interface PlaytimeShopData {
@@ -48,8 +50,8 @@ const MOCK: PlaytimeShopData = {
   playerName: "Karl Dev",
   coins: 45,
   nextRewardSeconds: 18 * 60 + 35,
-  rewardCoins: 5,
-  rewardMinutes: 25,
+  rewardCoins: 3,
+  rewardMinutes: 35,
   pageSize: 6,
   items: [
     { id: "bandage", label: "BANDAGE", amount: 5, price: 15, image: "bandage" },
@@ -62,12 +64,11 @@ const MOCK: PlaytimeShopData = {
     { id: "burger", label: "BURGER", amount: 5, price: 12, image: "burger" },
   ],
   cars: [
-    { id: "panto", label: "PANTO", price: 250, model: "panto" },
-    { id: "blista", label: "BLISTA", price: 400, model: "blista" },
-    { id: "futo", label: "FUTO", price: 550, model: "futo" },
-    { id: "sultan", label: "SULTAN", price: 900, model: "sultan" },
-    { id: "elegy", label: "ELEGY RETRO", price: 1200, model: "elegy2" },
-    { id: "buffalo", label: "BUFFALO S", price: 1000, model: "buffalo2" },
+    { id: "vehicle_shell", label: "VEHICLE SHELL", amount: 1, price: 10, image: "vehicle_shell", stock: 5, kind: "part" },
+    { id: "project_parts_box", label: "PROJECT PARTS BOX", amount: 1, price: 10, image: "project_parts_box", stock: 2, kind: "part" },
+    { id: "car_blueprint", label: "CAR BLUEPRINT", amount: 1, price: 10, image: "car_blueprint", stock: 100, kind: "part" },
+    { id: "car_battery", label: "CAR BATTERY", amount: 1, price: 10, image: "car_battery", stock: 3, kind: "part" },
+    { id: "car_wheel", label: "CAR WHEEL SET", amount: 4, price: 10, image: "car_wheel", stock: 6, kind: "part" },
   ],
 };
 
@@ -206,17 +207,21 @@ export default function PlaytimeShop({
   const [loadingTop, setLoadingTop] = useState(false);
   const [top, setTop] = useState<TopEarner[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [itemCatalog, setItemCatalog] = useState<PlaytimeProduct[] | null>(null);
+  const [carCatalog, setCarCatalog] = useState<PlaytimeProduct[] | null>(null);
 
   const shop = data || (isBrowser() ? MOCK : null);
   const pageSize = shop?.pageSize || 6;
-  const rewardCoins = shop?.rewardCoins ?? 5;
-  const rewardMinutes = shop?.rewardMinutes ?? 25;
+  const rewardCoins = shop?.rewardCoins ?? 3;
+  const rewardMinutes = shop?.rewardMinutes ?? 35;
   const totalCycleSeconds = rewardMinutes * 60;
 
   useEffect(() => {
     if (!visible || !shop) return;
     setCoins(shop.coins ?? 0);
     setNextSec(shop.nextRewardSeconds ?? totalCycleSeconds);
+    setItemCatalog(shop.items || null);
+    setCarCatalog(shop.cars || null);
     setPage(0);
     setCategory("items");
     setShowTopModal(false);
@@ -226,7 +231,9 @@ export default function PlaytimeShop({
     if (!visible || !data) return;
     if (typeof data.coins === "number") setCoins(data.coins);
     if (typeof data.nextRewardSeconds === "number") setNextSec(data.nextRewardSeconds);
-  }, [visible, data?.coins, data?.nextRewardSeconds]);
+    if (data.items) setItemCatalog(data.items);
+    if (data.cars) setCarCatalog(data.cars);
+  }, [visible, data?.coins, data?.nextRewardSeconds, data?.items, data?.cars]);
 
   useEffect(() => {
     if (!visible) return;
@@ -254,8 +261,8 @@ export default function PlaytimeShop({
 
   const products = useMemo(() => {
     if (!shop) return [];
-    return category === "cars" ? shop.cars || [] : shop.items || [];
-  }, [shop, category]);
+    return category === "cars" ? carCatalog || shop.cars || [] : itemCatalog || shop.items || [];
+  }, [shop, category, itemCatalog, carCatalog]);
 
   const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
   const pageSafe = Math.min(page, totalPages - 1);
@@ -302,6 +309,10 @@ export default function PlaytimeShop({
 
   const buy = async (product: PlaytimeProduct) => {
     if (buying) return;
+    if (typeof product.stock === "number" && product.stock < 1) {
+      flash("Out of stock!");
+      return;
+    }
     if (coins < product.price) {
       flash("Not enough Grim Coins!");
       return;
@@ -310,6 +321,16 @@ export default function PlaytimeShop({
 
     if (isBrowser()) {
       setCoins((c) => c - product.price);
+      if (typeof product.stock === "number") {
+        const bump = (prev: PlaytimeProduct[] | null, fallback: PlaytimeProduct[] | undefined) =>
+          (prev || fallback || []).map((row) =>
+            row.id === product.id && typeof row.stock === "number"
+              ? { ...row, stock: Math.max(0, row.stock - 1) }
+              : row,
+          );
+        if (category === "cars") setCarCatalog((prev) => bump(prev, MOCK.cars));
+        else setItemCatalog((prev) => bump(prev, MOCK.items));
+      }
       flash(`Purchased ${product.label} (Preview)`);
       setBuying(null);
       return;
@@ -320,19 +341,27 @@ export default function PlaytimeShop({
       coins?: number;
       error?: string;
       nextRewardSeconds?: number;
+      items?: PlaytimeProduct[];
+      cars?: PlaytimeProduct[];
     }>("cfx-keydi-playtimeshop:buy", { category, id: product.id });
 
     if (result?.ok) {
       if (typeof result.coins === "number") setCoins(result.coins);
       if (typeof result.nextRewardSeconds === "number") setNextSec(result.nextRewardSeconds);
+      if (result.items) setItemCatalog(result.items);
+      if (result.cars) setCarCatalog(result.cars);
       flash(`Successfully redeemed ${product.label}!`);
     } else {
+      if (result?.items) setItemCatalog(result.items);
+      if (result?.cars) setCarCatalog(result.cars);
       flash(
         result?.error === "insufficient"
           ? "Not enough Grim Coins!"
           : result?.error === "inventory_full"
             ? "Your inventory is full!"
-            : "Redemption failed.",
+            : result?.error === "out_of_stock"
+              ? "Out of stock!"
+              : "Redemption failed.",
       );
     }
     setBuying(null);
@@ -456,14 +485,14 @@ export default function PlaytimeShop({
             </p>
           </aside>
 
-          <main className="flex min-w-0 flex-1 flex-col p-5">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5">
             <div className="mb-4 flex shrink-0 items-center justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[#f5c542]">
-                  {category === "cars" ? "Garage vault" : "Street kit"}
+                  {category === "cars" ? "Project build" : "Street kit"}
                 </span>
                 <h2 className="text-lg font-black uppercase tracking-tight text-[#f8f3e8]">
-                  {category === "cars" ? "Vehicle catalog" : "Item catalog"}
+                  {category === "cars" ? "Car parts" : "Item catalog"}
                 </h2>
               </div>
 
@@ -483,7 +512,9 @@ export default function PlaytimeShop({
                 >
                   <Package className="h-3.5 w-3.5" />
                   Items
-                  <span className="rounded-md bg-black/20 px-1.5 text-[9px]">{shop.items?.length || 0}</span>
+                  <span className="rounded-md bg-black/20 px-1.5 text-[9px]">
+                    {(itemCatalog || shop.items)?.length || 0}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -499,56 +530,75 @@ export default function PlaytimeShop({
                   )}
                 >
                   <Car className="h-3.5 w-3.5" />
-                  Vehicles
-                  <span className="rounded-md bg-black/20 px-1.5 text-[9px]">{shop.cars?.length || 0}</span>
+                  Cars
+                  <span className="rounded-md bg-black/20 px-1.5 text-[9px]">
+                    {(carCatalog || shop.cars)?.length || 0}
+                  </span>
                 </button>
               </div>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-3 content-start gap-3.5">
+            <div className="grid min-h-0 flex-1 grid-cols-3 content-start gap-3 overflow-y-auto pb-2 pr-1">
               {pageItems.map((p) => {
                 const canAfford = coins >= p.price;
+                const inStock = typeof p.stock !== "number" || p.stock > 0;
+                const canBuy = canAfford && inStock;
                 const isBuying = buying === p.id;
+                const showVehicleArt = Boolean(p.model) && p.kind !== "part";
 
                 return (
                   <div
                     key={p.id}
-                    className="group relative flex flex-col justify-between rounded-2xl border border-white/6 bg-[#141720] p-3.5 transition hover:border-[#f5c542]/35 hover:bg-[#1a1d28]"
+                    className="group relative flex min-h-0 flex-col justify-between rounded-2xl border border-white/6 bg-[#141720] p-3 transition hover:border-[#f5c542]/35 hover:bg-[#1a1d28]"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="truncate text-xs font-black uppercase tracking-wide text-[#f8f3e8]">
                         {p.label}
                       </p>
-                      <span className="rounded-md bg-[#f5c542]/12 px-1.5 py-0.5 text-[10px] font-black text-[#f5c542]">
-                        {category === "cars" ? "1x" : `${p.amount || 1}x`}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="rounded-md bg-[#f5c542]/12 px-1.5 py-0.5 text-[10px] font-black text-[#f5c542]">
+                          {showVehicleArt ? "1x" : `${p.amount || 1}x`}
+                        </span>
+                        {typeof p.stock === "number" && (
+                          <span
+                            className={cn(
+                              "rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase",
+                              p.stock > 0
+                                ? "bg-white/8 text-[#9a9386]"
+                                : "bg-red-500/15 text-red-300",
+                            )}
+                          >
+                            {p.stock > 0 ? `${p.stock} left` : "Sold out"}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="my-2.5 flex h-[115px] w-full items-center justify-center overflow-hidden rounded-xl bg-black/35">
-                      {category === "cars" ? (
+                    <div className="my-2 flex h-[88px] w-full items-center justify-center overflow-hidden rounded-xl bg-black/35">
+                      {showVehicleArt ? (
                         <CarImageDisplay model={p.model} id={p.id} label={p.label} />
                       ) : (
                         <ItemImageDisplay image={p.image} id={p.id} />
                       )}
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/6 pt-2.5">
+                    <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/6 pt-2">
                       <div className="flex items-center gap-1.5">
                         <CoinIcon className="h-5 w-5" />
                         <span className="text-sm font-black text-white">{p.price}</span>
                       </div>
                       <button
                         type="button"
-                        disabled={isBuying || !canAfford}
+                        disabled={isBuying || !canBuy}
                         onClick={() => void buy(p)}
                         className={cn(
                           "rounded-lg px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition",
-                          canAfford
+                          canBuy
                             ? "cursor-pointer bg-[#f5c542] text-[#1a1406] hover:brightness-110 active:scale-95"
                             : "cursor-not-allowed bg-white/5 text-white/35",
                         )}
                       >
-                        {isBuying ? "..." : canAfford ? "Redeem" : "Locked"}
+                        {isBuying ? "..." : !inStock ? "Sold out" : canAfford ? "Redeem" : "Locked"}
                       </button>
                     </div>
                   </div>
@@ -556,7 +606,7 @@ export default function PlaytimeShop({
               })}
             </div>
 
-            <div className="mt-4 flex shrink-0 items-center justify-between">
+            <div className="relative z-10 mt-3 flex shrink-0 items-center justify-between border-t border-white/8 bg-[#0c0e14] pt-3">
               <button
                 type="button"
                 disabled={pageSafe <= 0}

@@ -124,25 +124,19 @@ AddEventHandler('ox_inventory:currentWeapon', function(item)
 end)
 
 -- Keep enforcing while holding a gun (covers edge cases / cache expiry)
-CreateThread(function()
-    while true do
-        if not licenseCfg.enabled then
-            Wait(2000)
-        else
+if licenseCfg.enabled then
+    CreateThread(function()
+        while true do
             local weapon = cache.weapon
             if weapon and isFirearmThatNeedsLicense(weapon) then
                 if not refreshLicenseCache(true) then
                     denyWeaponUse()
-                    Wait(1000)
-                else
-                    Wait(1000)
                 end
-            else
-                Wait(1000)
             end
+            Wait(1000)
         end
-    end
-end)
+    end)
+end
 
 -- Refresh cache when police grants / revokes license
 RegisterNetEvent('cfx-keydi-utils:weapon:licenseUpdated', function(hasLicense)
@@ -331,19 +325,19 @@ end)
 
 
 -- Disable Lean Fire
-CreateThread(function()
-    while true do
-        local sleep = 500
-        if config.LeanFire then
+if config.LeanFire then
+    CreateThread(function()
+        while true do
+            local sleep = 500
             if IsPedInCover(cache.ped) == 1 or IsPedAimingFromCover(cache.ped) == 1 then
                 sleep = 0
                 DisableControlAction(0, 24, true)
                 DisableControlAction(0, 257, true)
             end
+            Wait(sleep)
         end
-        Wait(sleep)
-    end
-end)
+    end)
+end
 
 CreateThread(function()
     while true do
@@ -351,18 +345,17 @@ CreateThread(function()
             DisableControlAction(1, 140, true)
             DisableControlAction(1, 141, true)
             DisableControlAction(1, 142, true)
+            Wait(0)
         else
-            Wait(200)
+            Wait(500)
         end
-        Wait(4)
     end
 end)
 
 CreateThread(function()
-    while true do 
-        for k, v in pairs(config.Weapons) do
-            Wait(50)
-            SetWeaponDamageModifier(v.hash, v.damageMultiplier) 
+    while true do
+        for _, v in pairs(config.Weapons) do
+            SetWeaponDamageModifier(v.hash, v.damageMultiplier)
         end
         Wait(10000)
     end
@@ -374,14 +367,18 @@ local function update_rightleft(value)
     rightleft = value
 end
 
-local theGameTime = 0
+local recoilThreadStarted = false
 
 function startWeapStuff ()
+    if recoilThreadStarted then return end
+    recoilThreadStarted = true
     CreateThread(function()
-        while true do 
-            theGameTime = GetGameTimer()
-            Wait(7)
-                local ply = cache.ped
+        while true do
+            local ply = cache.ped
+            if not cache.weapon then
+                Wait(750)
+            else
+                Wait(50)
                 if IsPedShooting(ply) and not GlobalState.PurgeState then
                     local wep = GetCurrentPedWeapon(ply)
                     local _,cAmmo = GetAmmoInClip(ply, wep)
@@ -513,54 +510,21 @@ function startWeapStuff ()
                             local set = p+recoil
                             SetGameplayCamRelativePitch(set,0.8)
                         end
-                    end 	       	
+                    end
                 end
-
-                if not cache.weapon then
-                    Wait(1500)
-                end  
+            end
         end
     end)
 end
 
 CreateThread(function()
-	startWeapStuff()
-	Wait(5000)
-	while true do 
-		if (GetGameTimer() - theGameTime) >= 2000 then 
-			startWeapStuff()
-			print("Restarting recoil and gun damage since it's not running for this client.")
-		end 
-		Wait(1000)
-	end
+    startWeapStuff()
 end)
 
-
-local isInVehicle = false
-
-function RunDriveByThread()
-    CreateThread(function()
-        while true do
-            Wait(0)
-            if config.CanDriveBy then
-                if cache.vehicle then
-                    SetPlayerCanDoDriveBy(cache.playerId, true)
-                end
-            else
-                if cache.vehicle then
-                    SetPlayerCanDoDriveBy(cache.playerId, false)
-                end
-            end
-            if not isInVehicle then break end
-        end
-    end)
-end
-
-AddEventHandler('esx:enteredVehicle', function(vehicle, plate, seat, displayName, netId)
-    isInVehicle = true
-    RunDriveByThread()
+AddEventHandler('esx:enteredVehicle', function()
+    SetPlayerCanDoDriveBy(cache.playerId, config.CanDriveBy == true)
 end)
 
-AddEventHandler('esx:exitedVehicle', function(vehicle, plate, seat, displayName, netId)
-    isInVehicle = false
+AddEventHandler('esx:exitedVehicle', function()
+    SetPlayerCanDoDriveBy(cache.playerId, true)
 end)

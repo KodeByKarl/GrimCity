@@ -183,11 +183,17 @@ end
 --- Trusted server resources only (never call from a client net event).
 local trustedNeedsResources = {
     ox_inventory = true,
+    ['kodebykarl-ambulance'] = true,
     ['cfx-keydi-ambulance'] = true,
 }
 
 local function trustedNeedsInvoker()
-    return trustedNeedsResources[GetInvokingResource()] == true
+    local inv = GetInvokingResource()
+    -- Same-resource calls (admin commands) + listed EMS/inventory scripts
+    if not inv or inv == GetCurrentResourceName() then
+        return true
+    end
+    return trustedNeedsResources[inv] == true
 end
 
 exports('SecureApplyItemStatus', function(playerId, statusTable)

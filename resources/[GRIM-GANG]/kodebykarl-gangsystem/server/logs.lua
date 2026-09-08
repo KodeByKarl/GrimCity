@@ -125,12 +125,8 @@ local function mapGuildChannels(channels)
             end
         end
     end
-    for key, channelId in pairs(resolvedChannels) do
-        print(("^2%s^0 %s → %s"):format(PREFIX, key:upper(), channelId))
-    end
     if #missing > 0 then
         print(("^1%s^0 Missing channels: %s"):format(PREFIX, table.concat(missing, ", ")))
-        print(("^3%s^0 Create them in Discord or set ChannelIDs in Config.Logs."):format(PREFIX))
     end
 end
 
@@ -150,9 +146,6 @@ local function resolveChannels()
     if allOverride then
         for key, override in pairs(ids) do
             resolvedChannels[key] = tostring(override):gsub("%s+", "")
-        end
-        for key, channelId in pairs(resolvedChannels) do
-            print(("^2%s^0 %s → %s (manual)"):format(PREFIX, key:upper(), channelId))
         end
         return
     end
@@ -353,9 +346,7 @@ end
 
 CreateThread(function()
     Wait(1500)
-    if not isEnabled() then
-        print(("^3%s^0 Disabled or missing BotToken/GuildID."):format(PREFIX))
-        return
+    if isEnabled() then
+        resolveChannels()
     end
-    resolveChannels()
 end)

@@ -19,14 +19,14 @@ return {
 	},
 
 	{
-		coords = vec3(301.3, -600.23, 43.28),
+		coords = vec3(-1036.3583, -1356.8684, 5.9473),
 		target = {
-			loc = vec3(301.82, -600.99, 43.29),
-			length = 0.6,
+			loc = vec3(-1036.3583, -1356.8684, 5.9473),
+			length = 1.0,
 			width = 1.8,
-			heading = 340,
-			minZ = 43.34,
-			maxZ = 44.74,
+			heading = 190.6459,
+			minZ = 4.9,
+			maxZ = 7.5,
 			label = 'Open personal locker'
 		},
 		name = 'emslocker',
@@ -34,7 +34,26 @@ return {
 		owner = true,
 		slots = 70,
 		weight = 70000,
-		groups = {['ambulance'] = 0}
+		groups = {['ambulance'] = 0, ['pambulance'] = 0, ['sambulance'] = 0}
+	},
+
+	{
+		coords = vec3(-1040.5308, -1355.7512, 5.9474),
+		target = {
+			loc = vec3(-1040.5308, -1355.7512, 5.9474),
+			length = 1.0,
+			width = 2.0,
+			heading = 169.9048,
+			minZ = 4.9,
+			maxZ = 7.5,
+			label = 'Open shared locker'
+		},
+		name = 'emsshared',
+		label = 'EMS Shared Locker',
+		owner = false,
+		slots = 150,
+		weight = 300000,
+		groups = {['ambulance'] = 0, ['pambulance'] = 0, ['sambulance'] = 0}
 	},
 
 	{
@@ -130,5 +149,43 @@ return {
 		slots = 100,
 		weight = 200000,
 		groups = { ['sheriff'] = 6 }
+	},
+
+	{
+		coords = vec3(-251.7234, 6320.7090, 32.4327),
+		target = {
+			loc = vec3(-251.7234, 6320.7090, 32.4327),
+			length = 1.0,
+			width = 1.8,
+			heading = 163.8817,
+			minZ = 31.4,
+			maxZ = 34.0,
+			label = 'Open personal locker'
+		},
+		name = 'pambulancelocker',
+		label = 'Personal Locker',
+		owner = true,
+		slots = 70,
+		weight = 70000,
+		groups = { ['pambulance'] = 0, ['sambulance'] = 0 }
+	},
+
+	{
+		coords = vec3(-253.1091, 6322.1353, 32.4327),
+		target = {
+			loc = vec3(-253.1091, 6322.1353, 32.4327),
+			length = 1.0,
+			width = 2.0,
+			heading = 131.6333,
+			minZ = 31.4,
+			maxZ = 34.0,
+			label = 'Open shared locker'
+		},
+		name = 'pambulanceshared',
+		label = 'Paleto EMS Shared Locker',
+		owner = false,
+		slots = 150,
+		weight = 300000,
+		groups = { ['pambulance'] = 0, ['sambulance'] = 0 }
 	},
 }
