@@ -12,6 +12,8 @@ local function typeof(var)
 end
 
 function LoadJobOutfit(oData)
+    BypassStealOutfit(12000)
+    Wait(100)
     local ped = cache.ped
 
     local data = oData.outfitData

@@ -430,4 +430,61 @@ lib.addCommand("clearstuckprops", { help = _L("commands.clearstuckprops.title") 
     TriggerClientEvent("illenium-appearance:client:ClearStuckProps", source)
 end)
 
+local FG_RESOURCE_CANDIDATES = { 'grimbot', 'fiveguard', 'fg', 'FiveGuard' }
+local stealOutfitTokens = {}
+local stealOutfitToken = 0
+
+local function fgResource()
+    local named = GetConvar('fiveguard_resource', '')
+    if named ~= '' and GetResourceState(named) == 'started' then
+        return named
+    end
+    for i = 1, #FG_RESOURCE_CANDIDATES do
+        local name = FG_RESOURCE_CANDIDATES[i]
+        if GetResourceState(name) == 'started' then
+            return name
+        end
+    end
+    return nil
+end
+
+RegisterNetEvent('illenium-appearance:server:bypassStealOutfit', function(holdMs)
+    local src = source
+    if type(src) ~= 'number' or src < 1 then return end
+
+    holdMs = tonumber(holdMs) or 15000
+    if holdMs < 3000 then holdMs = 3000 end
+    if holdMs > 60000 then holdMs = 60000 end
+
+    local resource = fgResource()
+    if not resource then return end
+
+    stealOutfitToken = stealOutfitToken + 1
+    local token = stealOutfitToken
+    stealOutfitTokens[src] = token
+
+    pcall(function()
+        exports[resource]:SetTempPermission(src, 'Client', 'BypassStealOutfit', true, false)
+    end)
+
+    SetTimeout(holdMs, function()
+        if stealOutfitTokens[src] ~= token then return end
+        stealOutfitTokens[src] = nil
+        pcall(function()
+            exports[resource]:SetTempPermission(src, 'Client', 'BypassStealOutfit', false, false)
+        end)
+    end)
+end)
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    if not stealOutfitTokens[src] then return end
+    stealOutfitTokens[src] = nil
+    local resource = fgResource()
+    if not resource then return end
+    pcall(function()
+        exports[resource]:SetTempPermission(src, 'Client', 'BypassStealOutfit', false, false)
+    end)
+end)
+
 lib.versionCheck("iLLeniumStudios/illenium-appearance")

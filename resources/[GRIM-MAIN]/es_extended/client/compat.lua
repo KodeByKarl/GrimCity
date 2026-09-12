@@ -110,7 +110,12 @@ ESX.Game.GetClosestPed = function(coords, modelFilter)
     return lib.getClosestPed(coords or GetEntityCoords(cache.ped), 10.0)
 end
 ESX.Game.GetClosestPlayer = function(coords)
-    return lib.getClosestPlayer(coords or GetEntityCoords(cache.ped), 10.0)
+    coords = coords or GetEntityCoords(cache.ped)
+    local playerId, _, playerCoords = lib.getClosestPlayer(coords, 10.0, false)
+    if not playerId or not playerCoords then
+        return -1, -1
+    end
+    return playerId, #(coords - playerCoords)
 end
 ESX.Game.GetClosestVehicle = function(coords, modelFilter)
     return lib.getClosestVehicle(coords or GetEntityCoords(cache.ped), 10.0)

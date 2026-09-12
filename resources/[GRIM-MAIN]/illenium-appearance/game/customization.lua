@@ -536,6 +536,7 @@ function client.getHeading() return playerHeading end
 local callback
 function client.startPlayerCustomization(cb, conf)
     repeat Wait(0) until IsScreenFadedIn() and not IsPlayerTeleportActive() and not IsPlayerSwitchInProgress()
+    BypassStealOutfit(20000)
 
     playerAppearance = client.getPedAppearance(cache.ped)
     playerCoords = GetEntityCoords(cache.ped, true)
@@ -545,6 +546,14 @@ function client.startPlayerCustomization(cb, conf)
 
     callback = cb
     config = conf
+    CreateThread(function()
+        while callback do
+            Wait(10000)
+            if callback then
+                BypassStealOutfit(20000)
+            end
+        end
+    end)
     reverseCamera = false
     isCameraInterpolating = false
 
@@ -566,6 +575,7 @@ function client.startPlayerCustomization(cb, conf)
 end
 
 function client.exitPlayerCustomization(appearance)
+    BypassStealOutfit(8000)
     RenderScriptCams(false, false, 0, true, true)
     DestroyCam(cameraHandle, false)
     SetNuiFocus(false, false)

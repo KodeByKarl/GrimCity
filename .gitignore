@@ -21,7 +21,8 @@ Thumbs.db
 imgui.ini
 .replxx_history
 
-# Maps and Cars
+# Maps, Cars, and Clothes (keep Changes view limited to scripts)
 resources/\[GRIM-CARS\]/
 resources/\[GRIM-MAPS\]/
+resources/\[GRIM-CLOTHES\]/
 

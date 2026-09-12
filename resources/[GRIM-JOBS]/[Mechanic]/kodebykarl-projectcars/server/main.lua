@@ -83,19 +83,21 @@ local function AllPayloads()
     return list
 end
 
+local IndexedParts = {
+    door = 'doors',
+    tire = 'tires',
+    window = 'windows',
+}
+
 local function DefaultStatus()
     return {
-        doors = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
-        hood = true,
-        trunk = true,
-        wheels = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
-        brakes = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
         engine = true,
-        battery = true,
-        alternator = true,
-        radiator = true,
-        sparkplugs = true,
         transmission = true,
+        suspension = true,
+        bodyframe = true,
+        tires = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
+        doors = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
+        windows = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
     }
 end
 
@@ -104,88 +106,64 @@ local function StatusReady(bucket, index)
     return bucket[tostring(index)] == true
 end
 
-local function SanitizeStatus(incoming)
-    local status = {
-        doors = {},
-        hood = false,
-        trunk = false,
-        wheels = {},
-        brakes = {},
-        engine = true,
-        battery = true,
-        alternator = true,
-        radiator = true,
-        sparkplugs = true,
-        transmission = true,
-    }
-
+local function CopyIndexBucket(incoming, fallback)
+    local out = {}
     if type(incoming) ~= 'table' then
+        return fallback
+    end
+    for i = 0, 3 do
+        if incoming[tostring(i)] or incoming[i] then
+            out[tostring(i)] = true
+        end
+    end
+    return out
+end
+
+local function SanitizeStatus(incoming)
+    if type(incoming) ~= 'table' or incoming.battery ~= nil or incoming.bodyframe == nil then
         return DefaultStatus()
     end
 
-    if incoming.hood == true then status.hood = true end
-    if incoming.trunk == true then status.trunk = true end
-
-    if type(incoming.doors) == 'table' then
-        for i = 0, 3 do
-            if incoming.doors[tostring(i)] or incoming.doors[i] then
-                status.doors[tostring(i)] = true
-            end
-        end
-    else
-        status.doors = DefaultStatus().doors
-    end
-
-    if type(incoming.wheels) == 'table' then
-        for i = 0, 3 do
-            if incoming.wheels[tostring(i)] or incoming.wheels[i] then
-                status.wheels[tostring(i)] = true
-            end
-        end
-    else
-        status.wheels = DefaultStatus().wheels
-    end
-
-    if type(incoming.brakes) == 'table' then
-        for i = 0, 3 do
-            if incoming.brakes[tostring(i)] or incoming.brakes[i] then
-                status.brakes[tostring(i)] = true
-            end
-        end
-    else
-        status.brakes = DefaultStatus().brakes
-    end
-
+    local status = DefaultStatus()
+    status.engine = incoming.engine == true
+    status.transmission = incoming.transmission == true
+    status.suspension = incoming.suspension == true
+    status.bodyframe = incoming.bodyframe == true
+    status.doors = CopyIndexBucket(incoming.doors, status.doors)
+    status.tires = CopyIndexBucket(incoming.tires or incoming.wheels, status.tires)
+    status.windows = CopyIndexBucket(incoming.windows, status.windows)
     return status
 end
 
 local function MergeStatus(status)
+    if type(status) ~= 'table' or status.battery ~= nil or status.bodyframe == nil then
+        return DefaultStatus()
+    end
     local defaults = DefaultStatus()
-    if type(status) ~= 'table' then return defaults end
     for key, value in pairs(defaults) do
         if type(value) ~= 'table' and status[key] == nil then
+            status[key] = value
+        elseif type(value) == 'table' and type(status[key]) ~= 'table' then
             status[key] = value
         end
     end
     return status
 end
 
-local function IsComplete(status)
-    if not status then return false end
-    local required = { 'battery', 'alternator', 'radiator', 'engine', 'sparkplugs', 'transmission', 'hood' }
-    for i = 1, #required do
-        if status[required[i]] then return false end
-    end
-    for _, missing in pairs(status.doors or {}) do
-        if missing then return false end
-    end
-    for _, missing in pairs(status.wheels or {}) do
-        if missing then return false end
-    end
-    for _, missing in pairs(status.brakes or {}) do
+local function BucketComplete(bucket)
+    if type(bucket) ~= 'table' then return false end
+    for _, missing in pairs(bucket) do
         if missing then return false end
     end
     return true
+end
+
+local function IsComplete(status)
+    if not status then return false end
+    if status.engine or status.transmission or status.suspension or status.bodyframe then
+        return false
+    end
+    return BucketComplete(status.doors) and BucketComplete(status.tires) and BucketComplete(status.windows)
 end
 
 local function SaveProject(data)
@@ -297,6 +275,14 @@ local function FinishProject(src, data)
     })
 end
 
+local function StatusBucket(status, partType)
+    local key = IndexedParts[partType]
+    if key then
+        return status[key]
+    end
+    return status[partType]
+end
+
 local function MissingRequires(status, requires, index, requiresIndex)
     if requires then
         for i = 1, #requires do
@@ -308,7 +294,7 @@ local function MissingRequires(status, requires, index, requiresIndex)
         end
     end
     if requiresIndex and index ~= nil then
-        local bucket = status[requiresIndex .. 's'] or status[requiresIndex]
+        local bucket = StatusBucket(status, requiresIndex)
         if type(bucket) == 'table' and bucket[tostring(index)] then
             local cfg = Config.Parts[requiresIndex]
             return ('Install the %s first.'):format(cfg and cfg.label or requiresIndex)
@@ -458,18 +444,11 @@ lib.callback.register('kodebykarl-projectcars:server:installPart', function(src,
 
     local status = data.status
     local index = payload.index
+    local indexedKey = IndexedParts[partType]
 
-    if partType == 'door' then
-        if not StatusReady(status.doors, index) then
-            return { ok = false, reason = 'That door is already installed.' }
-        end
-    elseif partType == 'wheel' then
-        if not StatusReady(status.wheels, index) then
-            return { ok = false, reason = 'That wheel is already installed.' }
-        end
-    elseif partType == 'brake' then
-        if not StatusReady(status.brakes, index) then
-            return { ok = false, reason = 'That brake is already installed.' }
+    if indexedKey then
+        if not StatusReady(status[indexedKey], index) then
+            return { ok = false, reason = ('That %s is already installed.'):format(cfg.label:lower()) }
         end
     else
         if not status[partType] then
@@ -482,32 +461,21 @@ lib.callback.register('kodebykarl-projectcars:server:installPart', function(src,
         return { ok = false, reason = need }
     end
 
-    local partMetaFilter = { model = data.model }
-    local vehicleLabel = GetProjectVehicleLabel(data.model)
-    if not HasItem(src, cfg.item, 1, partMetaFilter) then
+    local itemName = GetPartItemName(data.model, partType)
+    local partLabel = GetPartDisplayLabel(data.model, partType)
+    if not itemName or not HasItem(src, itemName, 1) then
         return {
             ok = false,
-            reason = ('You need a %s for %s.'):format(cfg.label, vehicleLabel),
+            reason = ('You need a %s.'):format(partLabel),
         }
     end
 
-    if not RemoveItem(src, cfg.item, 1, partMetaFilter) then
+    if not RemoveItem(src, itemName, 1) then
         return { ok = false, reason = 'Could not remove the part.' }
     end
 
-    if partType == 'door' then
-        status.doors[tostring(index)] = false
-    elseif partType == 'wheel' then
-        status.wheels[tostring(index)] = false
-    elseif partType == 'brake' then
-        status.brakes[tostring(index)] = false
-    elseif partType == 'hood' then
-        status.hood = false
-        status.trunk = false
-        if status.doors then
-            status.doors['4'] = false
-            status.doors['5'] = false
-        end
+    if indexedKey then
+        status[indexedKey][tostring(index)] = false
     else
         status[partType] = false
     end
@@ -627,5 +595,115 @@ exports('GivePart', function(src, itemName, count, model)
     src = tonumber(src)
     count = math.floor(tonumber(count) or 1)
     if not src or count < 1 or not itemName then return false end
-    return exports.ox_inventory:AddItem(src, itemName, count, PartMeta(itemName, model))
+    model = tostring(model or Config.DefaultModel):lower():gsub('%s+', '')
+    local resolved = ResolveProjectPartItem(itemName, model)
+    return exports.ox_inventory:AddItem(src, resolved, count, PartMeta(resolved, model))
+end)
+
+exports('GetPartItemName', function(model, partType)
+    return GetPartItemName(model, partType)
+end)
+
+exports('GetPartDisplayLabel', function(model, partType)
+    return GetPartDisplayLabel(model, partType)
+end)
+
+exports('IsProjectPartType', function(partType)
+    return IsProjectPartType(partType)
+end)
+
+exports('GetPartTypeFromItem', function(itemName)
+    return GetPartTypeFromItem(itemName)
+end)
+
+exports('ResolvePartItem', function(itemName, model)
+    return ResolveProjectPartItem(itemName, model)
+end)
+
+exports('GetProjectBuildKit', function(model)
+    return GetProjectBuildKit(model)
+end)
+
+exports('GetPartLootTypes', function()
+    return Config.PartLootTypes
+end)
+
+-- ox_inventory usable boxes (install/ox_inventory/items.lua points here)
+local function notifyInv(invId, title, description, nType)
+    invId = tonumber(invId)
+    if not invId then return end
+    TriggerClientEvent('ox_lib:notify', invId, {
+        title = title,
+        description = description,
+        type = nType or 'inform',
+    })
+end
+
+local function canCarryContents(invId, contents)
+    for i = 1, #contents do
+        local entry = contents[i]
+        if not exports.ox_inventory:CanCarryItem(invId, entry.item, entry.count) then
+            return false
+        end
+    end
+    return true
+end
+
+local function giveContents(invId, contents)
+    for i = 1, #contents do
+        local entry = contents[i]
+        exports.ox_inventory:AddItem(invId, entry.item, entry.count, entry.metadata)
+    end
+end
+
+exports('project_parts_box', function(event, item, inventory)
+    local contents = {}
+    for i = 1, #Config.PartLootTypes do
+        local partType = Config.PartLootTypes[i]
+        local part = Config.Parts[partType]
+        local count = (part and part.count) or 1
+        for _ = 1, count do
+            local model = PickRandomProjectModel()
+            local itemName = GetPartItemName(model, partType)
+            if itemName then
+                contents[#contents + 1] = {
+                    item = itemName,
+                    count = 1,
+                    metadata = PartMeta(itemName, model),
+                }
+            end
+        end
+    end
+
+    if event == 'usingItem' then
+        if not canCarryContents(inventory.id, contents) then
+            notifyInv(inventory.id, 'PROJECT PARTS', 'Inventory is too full to unpack this parts box.', 'error')
+            return false
+        end
+        return true
+    elseif event == 'usedItem' then
+        giveContents(inventory.id, contents)
+        notifyInv(inventory.id, 'PROJECT PARTS', 'Unpacked mixed project-car parts. Check each item for which vehicle it fits.', 'success')
+        return true
+    end
+end)
+
+exports('project_ayuda_box', function(event, item, inventory)
+    local model = Config.DefaultModel or 'ody18'
+    if type(item) == 'table' and type(item.metadata) == 'table' and item.metadata.model then
+        model = NormalizeProjectModel(item.metadata.model)
+    end
+    local contents = GetProjectBuildKit(model)
+
+    if event == 'usingItem' then
+        if not canCarryContents(inventory.id, contents) then
+            notifyInv(inventory.id, 'PROJECT AYUDA', 'Inventory is too full to unpack this ayuda box.', 'error')
+            return false
+        end
+        return true
+    elseif event == 'usedItem' then
+        giveContents(inventory.id, contents)
+        notifyInv(inventory.id, 'PROJECT AYUDA', ('Unpacked shell, blueprints, and %s parts.'):format(GetProjectVehicleLabel(model)), 'success')
+        return true
+    end
 end)

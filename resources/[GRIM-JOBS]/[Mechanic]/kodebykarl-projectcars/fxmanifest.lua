@@ -28,3 +28,11 @@ dependencies {
     'ox_inventory',
     'oxmysql',
 }
+
+-- Copy files from install/ onto a fresh server (see install/README.md)
+escrow_ignore {
+    'config.lua',
+    'README.md',
+    'sql/**',
+    'install/**',
+}

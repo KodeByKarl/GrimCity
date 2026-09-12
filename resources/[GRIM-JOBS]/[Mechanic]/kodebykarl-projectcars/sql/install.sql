@@ -1,3 +1,12 @@
+-- =============================================================================
+-- kodebykarl-projectcars  |  Database install
+-- =============================================================================
+-- Import this file in HeidiSQL / phpMyAdmin / mysql CLI, OR skip it —
+-- the resource also creates the table automatically on first start.
+--
+--   mysql -u root -p your_database < sql/install.sql
+-- =============================================================================
+
 CREATE TABLE IF NOT EXISTS `kodebykarl_projectcars` (
     `plate` varchar(12) NOT NULL,
     `owner` varchar(60) NOT NULL,

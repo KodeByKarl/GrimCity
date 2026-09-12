@@ -58,6 +58,7 @@ end
 
 function InitAppearance()
     Framework.UpdatePlayerData()
+    BypassStealOutfit(12000)
     lib.callback("illenium-appearance:server:getAppearance", false, function(appearance)
         -- Skip placeholder / incomplete skins (new chars often have { sex = 0 } only).
         if not appearance or not appearance.model then
@@ -546,6 +547,8 @@ local function RegisterWorkOutfitsListMenu(id, parent, menuData)
 end
 
 function OpenMenu(isPedMenu, menuType, menuData)
+    -- Wardrobe / outfit menus apply saved clothes; keep BypassStealOutfit active while browsing.
+    BypassStealOutfit(45000)
     local mainMenuID = "illenium_appearance_main_menu"
     local mainMenu = {
         id = mainMenuID
@@ -652,6 +655,8 @@ RegisterNetEvent("illenium-appearance:client:OpenTattooShop", OpenTattooShop)
 RegisterNetEvent("illenium-appearance:client:OpenSurgeonShop", OpenSurgeonShop)
 
 RegisterNetEvent("illenium-appearance:client:changeOutfit", function(data)
+    BypassStealOutfit(12000)
+    Wait(100)
     local pedModel = client.getPedModel(cache.ped)
     local appearanceDB
     if pedModel ~= data.model then
@@ -734,6 +739,7 @@ RegisterNetEvent("illenium-appearance:client:reloadSkin", function(bypassChecks)
 
     reloadSkinTimer = GetGameTimer()
     BackupPlayerStats()
+    BypassStealOutfit(12000)
 
     lib.callback("illenium-appearance:server:getAppearance", false, function(appearance)
         if not appearance then

@@ -9,6 +9,7 @@ version "1.14.0"
 lua54 "yes"
 
 client_scripts {
+  "client/fiveguard.lua",
   "game/constants.lua",
   "game/util.lua",
   "game/customization.lua",

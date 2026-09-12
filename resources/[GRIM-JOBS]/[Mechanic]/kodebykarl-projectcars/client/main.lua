@@ -56,11 +56,6 @@ local function DrawText3Ds(pos, text)
     DrawText(x, y)
 end
 
-local function HasBone(entity, boneName)
-    local idx = GetEntityBoneIndexByName(entity, boneName)
-    return idx and idx ~= -1
-end
-
 local function ValidBoneWorld(entity, boneName)
     if not boneName then return nil end
     local idx = GetEntityBoneIndexByName(entity, boneName)
@@ -91,7 +86,6 @@ local function GetPartWorldCoords(vehicle, partType, index)
     local frontWheelY = max.y * 0.60
     local rearWheelY = min.y * 0.62
     local wheelZ = min.z + 0.48
-    local brakeZ = min.z + 0.22
 
     if partType == 'door' then
         local sideX = (index == 0 or index == 2) and leftX or rightX
@@ -110,10 +104,9 @@ local function GetPartWorldCoords(vehicle, partType, index)
         return LocalToWorld(vehicle, sideX, alongY, doorZ)
     end
 
-    if partType == 'wheel' or partType == 'brake' then
+    if partType == 'tire' then
         local sideX = (index == 0 or index == 2) and (min.x * 1.22) or (max.x * 1.22)
         local alongY = (index == 0 or index == 1) and frontWheelY or rearWheelY
-        local z = partType == 'brake' and brakeZ or wheelZ
         local wheelBones = {
             [0] = 'wheel_lf',
             [1] = 'wheel_rf',
@@ -124,37 +117,43 @@ local function GetPartWorldCoords(vehicle, partType, index)
         if wheel then
             local localWheel = GetOffsetFromEntityGivenWorldCoords(vehicle, wheel.x, wheel.y, wheel.z)
             local outX = localWheel.x >= 0.0 and (max.x * 1.22) or (min.x * 1.22)
-            return LocalToWorld(vehicle, outX, localWheel.y, z)
+            return LocalToWorld(vehicle, outX, localWheel.y, wheelZ)
         end
-        return LocalToWorld(vehicle, sideX, alongY, z)
+        return LocalToWorld(vehicle, sideX, alongY, wheelZ)
     end
 
     if partType == 'engine' then
         return LocalToWorld(vehicle, 0.0, max.y * 0.50, math.max(0.35, max.z * 0.26))
     end
 
-    if partType == 'battery' then
-        return LocalToWorld(vehicle, max.x * 0.32, max.y * 0.46, math.max(0.32, max.z * 0.24))
-    end
-
-    if partType == 'alternator' then
-        return LocalToWorld(vehicle, min.x * 0.32, max.y * 0.46, math.max(0.32, max.z * 0.24))
-    end
-
-    if partType == 'radiator' then
-        return LocalToWorld(vehicle, 0.0, max.y * 0.64, math.max(0.28, max.z * 0.16))
-    end
-
-    if partType == 'sparkplugs' then
-        return LocalToWorld(vehicle, -0.14, max.y * 0.50, math.max(0.44, max.z * 0.34))
-    end
-
     if partType == 'transmission' then
         return LocalToWorld(vehicle, 0.0, max.y * 0.16, math.max(0.20, max.z * 0.06))
     end
 
-    if partType == 'hood' then
-        return LocalToWorld(vehicle, 0.0, max.y * 0.42, math.max(0.55, max.z * 0.62))
+    if partType == 'suspension' then
+        return LocalToWorld(vehicle, 0.0, 0.0, min.z + 0.18)
+    end
+
+    if partType == 'bodyframe' then
+        return LocalToWorld(vehicle, 0.0, 0.0, math.max(0.55, max.z * 0.42))
+    end
+
+    if partType == 'window' then
+        local sideX = (index == 0 or index == 2) and leftX or rightX
+        local alongY = (index == 0 or index == 1) and frontDoorY or rearDoorY
+        local windowZ = math.max(0.55, max.z * 0.62)
+        local seatBones = {
+            [0] = 'seat_dside_f',
+            [1] = 'seat_pside_f',
+            [2] = 'seat_dside_r',
+            [3] = 'seat_pside_r',
+        }
+        local seat = ValidBoneWorld(vehicle, seatBones[index])
+        if seat then
+            local localSeat = GetOffsetFromEntityGivenWorldCoords(vehicle, seat.x, seat.y, seat.z)
+            return LocalToWorld(vehicle, sideX, localSeat.y, math.max(localSeat.z + 0.32, windowZ))
+        end
+        return LocalToWorld(vehicle, sideX, alongY, windowZ)
     end
 
     return GetEntityCoords(vehicle) + vector3(0.0, 0.0, 1.0)
@@ -181,26 +180,31 @@ local function ApplyWreckedLook(vehicle, status)
 
     SetVehicleFixed(vehicle)
 
-    for i = 0, 5 do
+    SetVehicleDoorBroken(vehicle, 4, true)
+    SetVehicleDoorBroken(vehicle, 5, true)
+
+    for i = 0, 3 do
         if StatusMissing(status.doors, i) then
             SetVehicleDoorBroken(vehicle, i, true)
         end
     end
 
-    if status.hood then
-        SetVehicleDoorBroken(vehicle, 4, true)
-    end
-
-    if status.trunk then
-        SetVehicleDoorBroken(vehicle, 5, true)
+    for i = 0, 3 do
+        if StatusMissing(status.windows, i) then
+            SmashVehicleWindow(vehicle, i)
+        end
     end
 
     for i = 0, 3 do
-        if StatusMissing(status.wheels, i) then
+        if StatusMissing(status.tires, i) then
             SetVehicleWheelTireColliderSize(vehicle, i, -5.0)
         else
             SetVehicleWheelTireColliderSize(vehicle, i, 0.4)
         end
+    end
+
+    if status.bodyframe then
+        SetVehicleBodyHealth(vehicle, 80.0)
     end
 end
 
@@ -287,7 +291,7 @@ local function RefreshSpawned()
                 local status = data.status or {}
                 if veh and DoesEntityExist(veh) then
                     for i = 0, 3 do
-                        if StatusMissing(status.wheels, i) then
+                        if StatusMissing(status.tires, i) then
                             SetVehicleWheelTireColliderSize(veh, i, -5.0)
                         end
                     end
@@ -332,7 +336,8 @@ local function CollectPoints(data, vehicle)
             end
         end
         if cfg.requiresIndex and index ~= nil then
-            local bucket = status[cfg.requiresIndex .. 's'] or status[cfg.requiresIndex]
+            local bucketKey = ({ door = 'doors', tire = 'tires', window = 'windows' })[cfg.requiresIndex] or (cfg.requiresIndex .. 's')
+            local bucket = status[bucketKey] or status[cfg.requiresIndex]
             if type(bucket) == 'table' and bucket[tostring(index)] then
                 return false
             end
@@ -352,32 +357,20 @@ local function CollectPoints(data, vehicle)
         }
     end
 
-    if status.battery and parts.battery then
-        add('battery', nil, GetPartWorldCoords(vehicle, 'battery'), parts.battery.label)
+    if status.bodyframe and parts.bodyframe then
+        add('bodyframe', nil, GetPartWorldCoords(vehicle, 'bodyframe'), GetPartDisplayLabel(data.model, 'bodyframe'))
     end
 
-    if status.alternator and parts.alternator then
-        add('alternator', nil, GetPartWorldCoords(vehicle, 'alternator'), parts.alternator.label)
-    end
-
-    if status.radiator and parts.radiator then
-        add('radiator', nil, GetPartWorldCoords(vehicle, 'radiator'), parts.radiator.label)
+    if status.suspension and parts.suspension then
+        add('suspension', nil, GetPartWorldCoords(vehicle, 'suspension'), GetPartDisplayLabel(data.model, 'suspension'))
     end
 
     if status.engine and parts.engine then
-        add('engine', nil, GetPartWorldCoords(vehicle, 'engine'), parts.engine.label)
-    end
-
-    if status.sparkplugs and parts.sparkplugs then
-        add('sparkplugs', nil, GetPartWorldCoords(vehicle, 'sparkplugs'), parts.sparkplugs.label)
+        add('engine', nil, GetPartWorldCoords(vehicle, 'engine'), GetPartDisplayLabel(data.model, 'engine'))
     end
 
     if status.transmission and parts.transmission then
-        add('transmission', nil, GetPartWorldCoords(vehicle, 'transmission'), parts.transmission.label)
-    end
-
-    if status.hood and parts.hood then
-        add('hood', nil, GetPartWorldCoords(vehicle, 'hood'), parts.hood.label)
+        add('transmission', nil, GetPartWorldCoords(vehicle, 'transmission'), GetPartDisplayLabel(data.model, 'transmission'))
     end
 
     if parts.door and type(status.doors) == 'table' then
@@ -388,18 +381,18 @@ local function CollectPoints(data, vehicle)
         end
     end
 
-    if parts.brake and type(status.brakes) == 'table' then
-        for idx, info in pairs(parts.brake.bones) do
-            if StatusMissing(status.brakes, idx) then
-                add('brake', idx, GetPartWorldCoords(vehicle, 'brake', idx), info.label)
+    if parts.window and type(status.windows) == 'table' then
+        for idx, info in pairs(parts.window.bones) do
+            if StatusMissing(status.windows, idx) then
+                add('window', idx, GetPartWorldCoords(vehicle, 'window', idx), info.label)
             end
         end
     end
 
-    if parts.wheel and type(status.wheels) == 'table' then
-        for idx, info in pairs(parts.wheel.bones) do
-            if StatusMissing(status.wheels, idx) then
-                add('wheel', idx, GetPartWorldCoords(vehicle, 'wheel', idx), info.label)
+    if parts.tire and type(status.tires) == 'table' then
+        for idx, info in pairs(parts.tire.bones) do
+            if StatusMissing(status.tires, idx) then
+                add('tire', idx, GetPartWorldCoords(vehicle, 'tire', idx), info.label)
             end
         end
     end
@@ -420,31 +413,16 @@ local function BreakPlacementGhost(vehicle)
     FreezeEntityPosition(vehicle, true)
 end
 
-local function BuildStatus(vehicle)
-    local status = {
-        doors = {},
-        hood = HasBone(vehicle, 'bonnet'),
-        trunk = HasBone(vehicle, 'boot'),
-        wheels = {},
-        brakes = {},
+local function BuildStatus()
+    return {
         engine = true,
-        battery = true,
+        transmission = true,
+        suspension = true,
+        bodyframe = true,
+        doors = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
+        tires = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
+        windows = { ['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true },
     }
-
-    for idx, bone in pairs(Config.DoorBones) do
-        if idx <= 3 and HasBone(vehicle, bone) then
-            status.doors[tostring(idx)] = true
-        end
-    end
-
-    for idx, bone in pairs(Config.WheelBones) do
-        if HasBone(vehicle, bone) then
-            status.wheels[tostring(idx)] = true
-            status.brakes[tostring(idx)] = true
-        end
-    end
-
-    return status
 end
 
 local function TooCloseToOtherVehicle(coords, ignore)
@@ -564,7 +542,7 @@ local function StartPlacement(model, slot)
                 elseif TooCloseToOtherVehicle(coords, ghost) then
                     Notify('Too close to another vehicle.', 'error')
                 else
-                    local status = BuildStatus(ghost)
+                    local status = BuildStatus()
                     local result = lib.callback.await('kodebykarl-projectcars:server:placeShell', false, {
                         model = model,
                         slot = slot,

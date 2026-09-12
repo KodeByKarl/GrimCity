@@ -17,63 +17,59 @@ Config.BlueprintLabel = 'Car Blueprint'
 
 -- Display names for project vehicles (metadata "Vehicle: …")
 -- Keys MUST be lowercase spawncodes from kodebykarl-cars vehicles.meta
+-- prefix = unique inventory item prefix (charger_engine, charger_tires, …)
+-- short  = inventory label prefix ("Charger Engine")
 Config.Vehicles = {
     -- Honda / Civic
-    ody18 = { label = 'Odyssey 2018' },
-    ['74civrswb'] = { label = 'Honda Civic RS' },
+    ody18 = { label = 'Odyssey 2018', short = 'Odyssey', prefix = 'odyssey' },
+    ['74civrswb'] = { label = 'Honda Civic RS', short = 'Civic', prefix = 'civic' },
 
     -- Dodge / Chevy / GMC
-    ['16charger'] = { label = 'Dodge Charger 2016' },
-    ['17silvk9rb'] = { label = 'Silverado K9' },
-    ['21sierra'] = { label = 'GMC Sierra 2021' },
-    ['2nddragg'] = { label = 'Drag Car', loot = false }, -- no stream models yet
+    ['16charger'] = { label = 'Dodge Charger 2016', short = 'Charger', prefix = 'charger' },
+    ['17silvk9rb'] = { label = 'Silverado K9', short = 'Silvia', prefix = 'silvia' },
+    ['21sierra'] = { label = 'GMC Sierra 2021', short = 'Sierra', prefix = 'sierra' },
+    ['2nddragg'] = { label = 'Drag Car', short = 'Dragg', prefix = 'dragg', loot = false },
 
     -- Mercedes / Land Rover / Genesis
-    ['16topcargle'] = { label = 'Mercedes GLE TopCar' },
-    ['17mansorypnmr'] = { label = 'Mansory Panamera' },
-    ['18velar'] = { label = 'Range Rover Velar' },
-    ['19gv80'] = { label = 'Genesis GV80' },
-    ['22g63'] = { label = 'Mercedes-AMG G63' },
+    ['16topcargle'] = { label = 'Mercedes GLE TopCar', short = 'Top Car', prefix = 'topcar' },
+    ['17mansorypnmr'] = { label = 'Mansory Panamera', short = 'Mansory', prefix = 'mansory' },
+    ['18velar'] = { label = 'Range Rover Velar', short = 'Velar', prefix = 'velar' },
+    ['19gv80'] = { label = 'Genesis GV80', short = 'GV80', prefix = 'gv80' },
+    ['22g63'] = { label = 'Mercedes-AMG G63', short = 'G63', prefix = 'g63' },
 
     -- Audi
-    ['18rs7'] = { label = 'Audi RS7' },
-    ['21rsq8'] = { label = 'Audi RS Q8' },
+    ['18rs7'] = { label = 'Audi RS7', short = 'RS7', prefix = 'rs7' },
+    ['21rsq8'] = { label = 'Audi RS Q8', short = 'RSQ8', prefix = 'rsq8' },
 
     -- BMW
-    ['17m760i'] = { label = 'BMW 760i' },
-    ['20xb7'] = { label = 'Alpina XB7' },
-    ['22m5'] = { label = 'BMW M5' },
-    ['2ncsx7'] = { label = 'BMW X7', loot = false }, -- no stream models yet
-    ['2ncsbmwm8'] = { label = 'BMW M8', loot = false }, -- no stream models yet
+    ['17m760i'] = { label = 'BMW 760i', short = 'M760i', prefix = 'm760i' },
+    ['20xb7'] = { label = 'Alpina XB7', short = 'XB7', prefix = 'xb7' },
+    ['22m5'] = { label = 'BMW M5', short = 'M5', prefix = 'm5' },
+    ['2ncsx7'] = { label = 'BMW X7', short = 'X7', prefix = 'x7', loot = false },
+    ['2ncsbmwm8'] = { label = 'BMW M8', short = 'BMW M8', prefix = 'bmwm8', loot = false },
 
     -- Exotic
-    ['18performante'] = { label = 'Huracan Performante' },
-    ['22arturac'] = { label = 'McLaren Artura' },
+    ['18performante'] = { label = 'Huracan Performante', short = 'Performante', prefix = 'performante' },
+    ['22arturac'] = { label = 'McLaren Artura', short = 'Artura', prefix = 'artura' },
+
+    -- Police pack
+    ['slick23tahoeb'] = { label = 'Tahoe', short = 'Tahoe', prefix = 'tahoe' },
+    ghispo2 = { label = 'Ghispo', short = 'Ghispo', prefix = 'ghispo' },
 
     -- Fast & Furious pack (data/2f2fgtr34) — metas only, no stream yet
-    ['2f2fgtr34'] = { label = 'Nissan GTR R34', loot = false },
-    ['2f2fgts'] = { label = 'Spyder GTS', loot = false },
-    ['2f2fmk4'] = { label = 'Toyota Supra', loot = false },
-    ['2f2fmle7'] = { label = 'Lancer Evo 7', loot = false },
-    ['ff4wrx'] = { label = 'Subaru WRX', loot = false },
-    ['fnf4r34'] = { label = 'Nissan Skyline R34', loot = false },
-    ['fnfmk4'] = { label = 'Toyota Supra', loot = false },
-    ['fnfrx7'] = { label = 'Mazda RX-7', loot = false },
-    ['fnfmits'] = { label = 'Mitsubishi Eclipse', loot = false },
+    ['2f2fgtr34'] = { label = 'Nissan GTR R34', short = 'GTR R34', prefix = 'gtrr34', loot = false },
+    ['2f2fgts'] = { label = 'Spyder GTS', short = 'GTS', prefix = 'gts', loot = false },
+    ['2f2fmk4'] = { label = 'Toyota Supra MK4', short = 'MK4', prefix = 'mk4', loot = false },
+    ['2f2fmle7'] = { label = 'Lancer Evo 7', short = 'MLE7', prefix = 'mle7', loot = false },
+    ['ff4wrx'] = { label = 'Subaru WRX', short = 'WRX', prefix = 'wrx', loot = false },
+    ['fnf4r34'] = { label = 'Nissan Skyline R34', short = 'R34', prefix = 'r34', loot = false },
+    ['fnfmk4'] = { label = 'Toyota Supra MK4', short = 'MK4', prefix = 'mk4', loot = false },
+    ['fnfrx7'] = { label = 'Mazda RX-7', short = 'RX7', prefix = 'rx7', loot = false },
+    ['fnfmits'] = { label = 'Mitsubishi Eclipse', short = 'Mits', prefix = 'mits', loot = false },
 }
 
--- Inventory tooltip titles (metadata.label) — same item name, different vehicle
+-- Inventory tooltip titles for non-unique items (shell / blueprint / boxes)
 Config.PartItemLabels = {
-    car_battery = 'Project Vehicle Battery',
-    car_alternator = 'Project Vehicle Alternator',
-    car_radiator = 'Project Vehicle Radiator',
-    car_engine_part = 'Project Vehicle Engine',
-    spark_plugs = 'Project Vehicle Spark Plugs',
-    car_transmission = 'Project Vehicle Transmission',
-    car_hood = 'Project Vehicle Hood',
-    car_door = 'Project Vehicle Door',
-    brake_pads = 'Project Vehicle Brakes',
-    car_wheel = 'Project Vehicle Wheel',
     car_blueprint = 'Project Vehicle Blueprint',
     project_parts_box = 'Project Parts Box',
     project_ayuda_box = 'Project Ayuda Box',
@@ -97,44 +93,49 @@ Config.AdminGroups = {
 Config.DeleteCommand = 'destroyprojectcar'
 Config.GiveShellCommand = 'giveshell'
 
+-- Unique items = `{prefix}_{suffix}` e.g. charger_engine, charger_tires
+-- count = how many are required to finish a project (loot/box kit size)
 Config.Parts = {
-    battery = {
-        item = 'car_battery',
-        label = 'Battery',
-    },
-    alternator = {
-        item = 'car_alternator',
-        label = 'Alternator',
-        requires = { 'battery' },
-    },
-    radiator = {
-        item = 'car_radiator',
-        label = 'Radiator',
-    },
     engine = {
-        item = 'car_engine_part',
+        suffix = 'engine',
         label = 'Engine',
-        requires = { 'battery', 'alternator', 'radiator' },
-    },
-    sparkplugs = {
-        item = 'spark_plugs',
-        label = 'Spark Plugs',
-        requires = { 'engine' },
+        count = 1,
+        requires = { 'bodyframe' },
     },
     transmission = {
-        item = 'car_transmission',
+        suffix = 'transmission',
         label = 'Transmission',
+        count = 1,
         requires = { 'engine' },
     },
-    hood = {
-        item = 'car_hood',
-        label = 'Hood',
-        door = 4,
-        requires = { 'engine', 'sparkplugs', 'transmission' },
+    suspension = {
+        suffix = 'suspension',
+        label = 'Suspension',
+        count = 1,
+        requires = { 'bodyframe' },
+    },
+    bodyframe = {
+        suffix = 'body_frame',
+        label = 'Body Frame',
+        count = 1,
+    },
+    tire = {
+        suffix = 'tires',
+        label = 'Tires',
+        count = 4,
+        requires = { 'suspension' },
+        bones = {
+            [0] = { bone = 'wheel_lf', label = 'Front Left Tire' },
+            [1] = { bone = 'wheel_rf', label = 'Front Right Tire' },
+            [2] = { bone = 'wheel_lr', label = 'Rear Left Tire' },
+            [3] = { bone = 'wheel_rr', label = 'Rear Right Tire' },
+        },
     },
     door = {
-        item = 'car_door',
-        label = 'Door',
+        suffix = 'doors',
+        label = 'Doors',
+        count = 4,
+        requires = { 'bodyframe' },
         bones = {
             [0] = { bone = 'door_dside_f', label = 'Front Left Door' },
             [1] = { bone = 'door_pside_f', label = 'Front Right Door' },
@@ -142,28 +143,21 @@ Config.Parts = {
             [3] = { bone = 'door_pside_r', label = 'Rear Right Door' },
         },
     },
-    brake = {
-        item = 'brake_pads',
-        label = 'Brake',
+    window = {
+        suffix = 'windows',
+        label = 'Windows',
+        count = 4,
+        requiresIndex = 'door',
         bones = {
-            [0] = { bone = 'wheel_lf', label = 'Front Left Brake' },
-            [1] = { bone = 'wheel_rf', label = 'Front Right Brake' },
-            [2] = { bone = 'wheel_lr', label = 'Rear Left Brake' },
-            [3] = { bone = 'wheel_rr', label = 'Rear Right Brake' },
+            [0] = { bone = 'door_dside_f', label = 'Front Left Window' },
+            [1] = { bone = 'door_pside_f', label = 'Front Right Window' },
+            [2] = { bone = 'door_dside_r', label = 'Rear Left Window' },
+            [3] = { bone = 'door_pside_r', label = 'Rear Right Window' },
         },
-    },
-    wheel = {
-        item = 'car_wheel',
-        label = 'Wheel',
-        bones = {
-            [0] = { bone = 'wheel_lf', label = 'Front Left Wheel' },
-            [1] = { bone = 'wheel_rf', label = 'Front Right Wheel' },
-            [2] = { bone = 'wheel_lr', label = 'Rear Left Wheel' },
-            [3] = { bone = 'wheel_rr', label = 'Rear Right Wheel' },
-        },
-        requiresIndex = 'brake',
     },
 }
+
+Config.PartLootTypes = { 'engine', 'transmission', 'suspension', 'bodyframe', 'tire', 'door', 'window' }
 
 Config.DoorBones = {
     [0] = 'door_dside_f',
@@ -181,13 +175,98 @@ Config.WheelBones = {
     [3] = 'wheel_rr',
 }
 
+function NormalizeProjectModel(model)
+    return tostring(model or ''):lower():gsub('%s+', '')
+end
+
+function GetProjectVehicleData(model)
+    return Config.Vehicles[NormalizeProjectModel(model)]
+end
+
+function GetProjectVehicleLabel(model)
+    local data = GetProjectVehicleData(model)
+    if data and data.label then
+        return data.label
+    end
+    model = NormalizeProjectModel(model)
+    if model == '' then
+        return 'Unknown'
+    end
+    return model:upper()
+end
+
+function GetProjectVehicleShort(model)
+    local data = GetProjectVehicleData(model)
+    if data and data.short then
+        return data.short
+    end
+    return GetProjectVehicleLabel(model)
+end
+
+function GetProjectVehiclePrefix(model)
+    local data = GetProjectVehicleData(model)
+    return data and data.prefix or nil
+end
+
+function IsProjectPartType(partType)
+    return partType ~= nil and Config.Parts[partType] ~= nil
+end
+
+function GetPartItemName(model, partType)
+    local prefix = GetProjectVehiclePrefix(model)
+    local part = Config.Parts[partType]
+    if not prefix or not part or not part.suffix then
+        return nil
+    end
+    return ('%s_%s'):format(prefix, part.suffix)
+end
+
+function GetPartDisplayLabel(model, partType)
+    local short = GetProjectVehicleShort(model)
+    local part = Config.Parts[partType]
+    if not part then
+        return short
+    end
+    return ('%s %s'):format(short, part.label)
+end
+
+--- Map unique item (charger_engine) or part type (engine) back to a part type
+function GetPartTypeFromItem(itemName)
+    itemName = tostring(itemName or ''):lower()
+    if itemName == '' then return nil end
+    if Config.Parts[itemName] then
+        return itemName
+    end
+    for partType, part in pairs(Config.Parts) do
+        local suffix = part.suffix
+        if suffix and itemName:sub(-(#suffix + 1)) == ('_' .. suffix) then
+            return partType
+        end
+    end
+    return nil
+end
+
+function ResolveProjectPartItem(itemName, model)
+    itemName = tostring(itemName or '')
+    if itemName == '' then
+        return itemName, nil
+    end
+    if Config.Parts[itemName] then
+        local unique = GetPartItemName(model, itemName)
+        return unique or itemName, itemName
+    end
+    local partType = GetPartTypeFromItem(itemName)
+    return itemName, partType
+end
+
 --- Shared helper — used by shop / boxes / chop / install
 ---@param itemName string
 ---@param model string|nil
 ---@return table
 function BuildProjectPartMetadata(itemName, model)
-    model = tostring(model or Config.DefaultModel or 'ody18'):lower():gsub('%s+', '')
-    local vehicleLabel = (Config.Vehicles[model] and Config.Vehicles[model].label) or model:upper()
+    model = NormalizeProjectModel(model or Config.DefaultModel or 'ody18')
+    local vehicleLabel = GetProjectVehicleLabel(model)
+    local short = GetProjectVehicleShort(model)
     local meta = {
         model = model,
         vehicle = vehicleLabel,
@@ -196,27 +275,30 @@ function BuildProjectPartMetadata(itemName, model)
     if itemName == 'vehicle_shell' then
         meta.label = ('%s Shell'):format(vehicleLabel)
         meta.description = ('Wrecked %s chassis — place it and install matching parts.'):format(vehicleLabel)
-    else
-        local partLabel = Config.PartItemLabels and Config.PartItemLabels[itemName]
-        if partLabel then
-            meta.label = partLabel
-        end
+        return meta
+    end
+
+    if itemName == 'car_blueprint' then
+        meta.label = Config.PartItemLabels.car_blueprint or 'Project Vehicle Blueprint'
         meta.description = ('Fits %s project cars only.'):format(vehicleLabel)
+        return meta
     end
 
+    local partType = GetPartTypeFromItem(itemName)
+    if partType then
+        meta.label = GetPartDisplayLabel(model, partType)
+        meta.description = ('Fits %s project cars only.'):format(vehicleLabel)
+        return meta
+    end
+
+    local partLabel = Config.PartItemLabels and Config.PartItemLabels[itemName]
+    if partLabel then
+        meta.label = partLabel
+    else
+        meta.label = ('%s Part'):format(short)
+    end
+    meta.description = ('Fits %s project cars only.'):format(vehicleLabel)
     return meta
-end
-
-function GetProjectVehicleLabel(model)
-    model = tostring(model or Config.DefaultModel or 'ody18'):lower():gsub('%s+', '')
-    if Config.Vehicles[model] and Config.Vehicles[model].label then
-        return Config.Vehicles[model].label
-    end
-    return model:upper()
-end
-
-function NormalizeProjectModel(model)
-    return tostring(model or ''):lower():gsub('%s+', '')
 end
 
 function IsProjectVehicle(model)
@@ -248,4 +330,26 @@ function PickRandomProjectModel()
         return Config.DefaultModel or 'ody18'
     end
     return list[math.random(1, #list)]
+end
+
+function GetProjectBuildKit(model)
+    model = NormalizeProjectModel(model or Config.DefaultModel or 'ody18')
+    local kit = {
+        { item = 'vehicle_shell', count = 1, metadata = BuildProjectPartMetadata('vehicle_shell', model) },
+        { item = Config.BlueprintItem or 'car_blueprint', count = Config.BlueprintAmount or 25, metadata = BuildProjectPartMetadata('car_blueprint', model) },
+    }
+    for i = 1, #Config.PartLootTypes do
+        local partType = Config.PartLootTypes[i]
+        local part = Config.Parts[partType]
+        local itemName = GetPartItemName(model, partType)
+        if part and itemName then
+            kit[#kit + 1] = {
+                item = itemName,
+                count = part.count or 1,
+                metadata = BuildProjectPartMetadata(itemName, model),
+                partType = partType,
+            }
+        end
+    end
+    return kit
 end

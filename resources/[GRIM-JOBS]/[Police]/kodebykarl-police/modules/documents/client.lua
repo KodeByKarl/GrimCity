@@ -56,7 +56,16 @@ end
 local function toggleDocumentFrame(shouldShow, document)
     holdDocument(shouldShow)
     SetNuiFocus(shouldShow, shouldShow)
-    SendReactMessage('setDocument', document)
+    -- NUI setDocument does JSON.parse(payload), so this must be a JSON string.
+    local payload = nil
+    if shouldShow and document then
+        if type(document) == 'table' then
+            payload = json.encode(document)
+        elseif type(document) == 'string' and document ~= '' then
+            payload = document
+        end
+    end
+    SendReactMessage('setDocument', payload)
 end
 
 function OpenDocuments()
@@ -162,10 +171,11 @@ end)
 local function playerSelector(confirmText)
     toggleNuiFrame(false, true)
     selectingPlayer = true
+    local maxDistance = 5.0
 
     while selectingPlayer do
-        local closestPlayer, closestPlayerDistance = ESX.Game.GetClosestPlayer()
-        local closestPlayerCoords = GetEntityCoords(GetPlayerPed(closestPlayer))
+        local coords = GetEntityCoords(cache.ped)
+        local closestId, _, closestCoords = lib.getClosestPlayer(coords, maxDistance, false)
 
         DisableControlAction(2, 200, true)
 
@@ -178,17 +188,17 @@ local function playerSelector(confirmText)
         AddTextEntry('main', ('~INPUT_CONTEXT~ %s  ~INPUT_FRONTEND_PAUSE_ALTERNATE~ %s'):format(confirmText, Config.Documents.locale.cancel))
         EndTextCommandDisplayHelp(0, 0, 1, -1)
 
-        if closestPlayer ~= -1 and closestPlayerDistance < 2.0 then
-            DrawMarker(20, closestPlayerCoords.x, closestPlayerCoords.y, closestPlayerCoords.z + 1.2, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 0.4, 0.4, -0.4, 255, 255, 255, 100, false, true, 2, false, false, false, false)
-            DrawMarker(25, closestPlayerCoords.x, closestPlayerCoords.y, closestPlayerCoords.z - 0.95, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.0, 1.0, 1.0, 255, 255, 255, 100, false, true, 2, false, false, false, false)
+        if closestId and closestCoords then
+            DrawMarker(20, closestCoords.x, closestCoords.y, closestCoords.z + 1.2, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 0.4, 0.4, -0.4, 255, 255, 255, 100, false, true, 2, false, false, false, false)
+            DrawMarker(25, closestCoords.x, closestCoords.y, closestCoords.z - 0.95, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.0, 1.0, 1.0, 255, 255, 255, 100, false, true, 2, false, false, false, false)
             if IsControlJustReleased(0, 38) then
                 selectingPlayer = false
-                return GetPlayerServerId(closestPlayer)
+                return GetPlayerServerId(closestId)
             end
         elseif IsControlJustReleased(0, 38) then
             Notify(Config.Documents.locale.noPlayersAround)
         end
-        Wait(1)
+        Wait(0)
     end
 end
 
