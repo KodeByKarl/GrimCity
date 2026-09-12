@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, MessageSquare, Plus, Search, Send, X } from "lucide-react";
+import { ChevronLeft, MessageSquare, Phone, Plus, Search, Send, X } from "lucide-react";
 import { AppChrome } from "./shared";
 
 interface Conversation {
@@ -27,6 +27,17 @@ interface ContactRow {
 }
 
 type View = "inbox" | "chat" | "compose";
+
+export type MessagePeer = {
+  peerIdentifier?: string | null;
+  contactId?: number;
+  name?: string;
+};
+
+function asText(value: unknown, fallback = "") {
+  if (value == null) return fallback;
+  return String(value);
+}
 
 function isBrowser() {
   return (
@@ -117,7 +128,7 @@ async function nui<T>(event: string, data: Record<string, unknown> = {}): Promis
 }
 
 function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = asText(name).trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
@@ -131,14 +142,36 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-function formatTime(value?: string) {
-  if (!value) return "";
-  const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+function formatTime(value?: string | number | null) {
+  if (value == null || value === "") return "";
+  try {
+    let d: Date;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      d = new Date(value < 1e12 ? value * 1000 : value);
+    } else {
+      const s = asText(value);
+      if (!s) return "";
+      if (/^\d+(\.\d+)?$/.test(s)) {
+        const n = Number(s);
+        d = new Date(n < 1e12 ? n * 1000 : n);
+      } else {
+        d = new Date(s.includes("T") ? s : s.replace(" ", "T"));
+      }
+    }
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  } catch {
+    return "";
+  }
 }
 
-export default function MessagesApp() {
+export default function MessagesApp({
+  startPeer,
+  onStartCall,
+}: {
+  startPeer?: MessagePeer | null;
+  onStartCall?: (opts: { peerIdentifier?: string | null; contactId?: number; name: string }) => void;
+}) {
   const [view, setView] = useState<View>("inbox");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,18 +247,22 @@ export default function MessagesApp() {
   const filteredInbox = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return conversations;
-    return conversations.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.number || "").toLowerCase().includes(q) ||
-        c.lastBody.toLowerCase().includes(q),
-    );
+    return conversations.filter((c) => {
+      const name = asText(c.name).toLowerCase();
+      const number = asText(c.number).toLowerCase();
+      const body = asText(c.lastBody).toLowerCase();
+      return name.includes(q) || number.includes(q) || body.includes(q);
+    });
   }, [conversations, filter]);
 
-  const openThread = async (peer: string, fallbackName?: string) => {
+  const openThread = async (
+    peer?: string | null,
+    fallbackName?: string,
+    extra?: { contactId?: number },
+  ) => {
     setError(null);
     setBusy(true);
-    setPeerId(peer);
+    setPeerId(peer || null);
     setPeerName(fallbackName || "Chat");
     setView("chat");
     const res = await nui<{
@@ -235,7 +272,10 @@ export default function MessagesApp() {
       number?: string;
       peerIdentifier?: string;
       messages?: ChatMessage[];
-    }>("cfx-keydi-phone:messages:thread", { peerIdentifier: peer });
+    }>("cfx-keydi-phone:messages:thread", {
+      peerIdentifier: peer || undefined,
+      contactId: extra?.contactId,
+    });
     setBusy(false);
     if (!res?.ok) {
       setError(res?.error || "Could not open chat");
@@ -253,8 +293,19 @@ export default function MessagesApp() {
     setComposeFilter("");
     setView("compose");
     const res = await nui<{ ok?: boolean; contacts?: ContactRow[] }>("cfx-keydi-phone:contacts:list");
-    setContacts((res?.contacts || []).filter((c) => !!c.contactIdentifier));
+    setContacts((res?.contacts || []).filter((c) => !!c.contactIdentifier || !!c.id));
   };
+
+  useEffect(() => {
+    if (!startPeer) return;
+    if (startPeer.peerIdentifier) {
+      void openThread(startPeer.peerIdentifier, startPeer.name, { contactId: startPeer.contactId });
+    } else if (startPeer.contactId) {
+      void openThread(null, startPeer.name, { contactId: startPeer.contactId });
+    }
+    // openThread is recreated each render; only react to the incoming peer payload
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startPeer]);
 
   const send = async () => {
     if (!peerId || !draft.trim() || busy) return;
@@ -282,9 +333,11 @@ export default function MessagesApp() {
   const composeFiltered = useMemo(() => {
     const q = composeFilter.trim().toLowerCase();
     if (!q) return contacts;
-    return contacts.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.number.toLowerCase().includes(q),
-    );
+    return contacts.filter((c) => {
+      const name = asText(c.name).toLowerCase();
+      const number = asText(c.number).toLowerCase();
+      return name.includes(q) || number.includes(q);
+    });
   }, [contacts, composeFilter]);
 
   if (view === "compose") {
@@ -325,7 +378,7 @@ export default function MessagesApp() {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => void openThread(c.contactIdentifier!, c.name)}
+                  onClick={() => void openThread(c.contactIdentifier, c.name, { contactId: c.id })}
                   className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-[#141720] px-3 py-2.5 text-left active:scale-[0.98]"
                 >
                   <Avatar name={c.name} />
@@ -342,23 +395,35 @@ export default function MessagesApp() {
     );
   }
 
-  if (view === "chat" && peerId) {
+  if (view === "chat") {
     return (
       <AppChrome
         title={peerName}
         dark
         right={
-          <button
-            type="button"
-            onClick={() => {
-              setView("inbox");
-              setPeerId(null);
-              void loadInbox();
-            }}
-            className="rounded-full p-1.5 text-[#9a9386] active:bg-white/10"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-0.5">
+            {onStartCall && peerId ? (
+              <button
+                type="button"
+                onClick={() => onStartCall({ peerIdentifier: peerId, name: peerName })}
+                className="rounded-full p-1.5 text-[#30d158] active:bg-white/10"
+                aria-label="Call"
+              >
+                <Phone className="h-4 w-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setView("inbox");
+                setPeerId(null);
+                void loadInbox();
+              }}
+              className="rounded-full p-1.5 text-[#9a9386] active:bg-white/10"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
         }
       >
         <div className="flex h-full min-h-0 flex-col bg-[#0c0e14]">
@@ -387,7 +452,7 @@ export default function MessagesApp() {
                         : "rounded-bl-md border border-white/8 bg-[#1a2030] text-[#f8f3e8]"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                    <p className="whitespace-pre-wrap break-words">{asText(m.body)}</p>
                     <p
                       className={`mt-1 text-[9px] ${
                         m.fromMe ? "text-[#1a1408]/55" : "text-[#9a9386]"
@@ -487,8 +552,8 @@ export default function MessagesApp() {
                   </div>
                   <div className="mt-0.5 flex items-center gap-2">
                     <p className="min-w-0 flex-1 truncate text-[12px] text-[#9a9386]">
-                      {c.lastFromMe ? "You: " : ""}
-                      {c.lastBody}
+                      {asText(c.lastFromMe ? "You: " : "")}
+                      {asText(c.lastBody)}
                     </p>
                     {(c.unread || 0) > 0 ? (
                       <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#f5c542] px-1.5 text-[10px] font-black text-[#1a1408]">

@@ -77,7 +77,7 @@ return {
 
 		['WEAPON_BATTLEAXE'] = {
 			label = 'Battle Axe',
-			weight = 6500,
+			weight = 100,
 			durability = 0.1,
 		},
 
@@ -353,7 +353,7 @@ return {
 
 		['WEAPON_KNIFE'] = {
 			label = 'Knife',
-			weight = 300,
+			weight = 100,
 			durability = 0.1,
 		},
 
@@ -478,6 +478,13 @@ return {
 
 		['WEAPON_PISTOL'] = {
 			label = 'Pistol',
+			weight = 1130,
+			durability = 0.1,
+			ammoname = 'ammo-9',
+		},
+
+		['WEAPON_GLOCK22'] = {
+			label = 'Glock 22',
 			weight = 1130,
 			durability = 0.1,
 			ammoname = 'ammo-9',
@@ -848,6 +855,8 @@ return {
 			client = {
                 image = 'at_clip_extended2.png',
 				component = {
+					-- GTA only supports extended mags on these two shotguns.
+					-- Pump / Pump MK2 / Sweeper / Bullpup / Combat / DB / Sawnoff have no CLIP_02.
 					`COMPONENT_ASSAULTSHOTGUN_CLIP_02`,
 					`COMPONENT_HEAVYSHOTGUN_CLIP_02`,
 				},
@@ -1800,6 +1809,9 @@ return {
 		['ammo-45'] = {
 			label = '.45 ACP',
 			weight = 15,
+			client = {
+				image = 'ammo-45.png',
+			},
 		},
 
 		['ammo-50'] = {

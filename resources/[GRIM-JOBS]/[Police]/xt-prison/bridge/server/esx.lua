@@ -32,6 +32,9 @@ function setJailTime(src, time)
     if not playerState or not player then return end
 
     playerState.jailTime = time
+    if time > 0 then
+        playerState.inJail = true
+    end
     playerState.xtprison_identifier = getCharID(src)
 
     while playerState and (playerState.jailTime ~= time) do

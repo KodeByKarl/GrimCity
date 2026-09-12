@@ -40,7 +40,6 @@ Config.TrapZones = {
 
 -- Kill Reward Loot Pool (Calculated 100% Server-Side)
 Config.RewardPool = {
-    { item = 'black_money', label = 'Dirty Money', min = 1500, max = 5000, chance = 50 },
     { item = 'oxy', label = 'Oxy', min = 1, max = 3, chance = 30 },
     { item = 'weeds_pills', label = 'Weed Pills', min = 1, max = 2, chance = 40 },
     { item = 'ammo-9', label = '9mm Ammo', min = 20, max = 60, chance = 35 },

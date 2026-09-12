@@ -22,7 +22,10 @@
         "completed_hack":"You completed the hack!",
         "failed_hack":"You failed the hack!",
         "escaped":"You escaped prison!",
-        "checkout":"Your time is up! Go checkout!"
+        "checkout":"Your time is up! Use Leave Prison at the yard checkout.",
+        "leave_prison":"Leave Prison",
+        "work_cooldown":"Next job available in %s.",
+        "work_reduced":"Sentence reduced by %s month(s). You received food and a drink."
     },
 
     "commands":{

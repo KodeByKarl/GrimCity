@@ -59,11 +59,16 @@ end
 function InitAppearance()
     Framework.UpdatePlayerData()
     lib.callback("illenium-appearance:server:getAppearance", false, function(appearance)
-        if not appearance then
+        -- Skip placeholder / incomplete skins (new chars often have { sex = 0 } only).
+        if not appearance or not appearance.model then
             return
         end
 
         client.setPlayerAppearance(appearance)
+        local ped = PlayerPedId()
+        SetEntityVisible(ped, true, false)
+        SetLocalPlayerInvisibleLocally(false)
+        ResetEntityAlpha(ped)
         if Config.PersistUniforms then
             LoadPlayerUniform()
         end
@@ -114,9 +119,11 @@ function InitializeCharacter(gender, onSubmit, onCancel)
     TriggerServerEvent("illenium-appearance:server:ChangeRoutingBucket")
     client.startPlayerCustomization(function(appearance)
         if (appearance) then
+            -- Re-apply full appearance so the local ped re-renders after creator exit.
+            client.setPlayerAppearance(appearance)
             TriggerServerEvent("illenium-appearance:server:saveAppearance", appearance)
             if onSubmit then
-                onSubmit()
+                onSubmit(appearance)
             end
         elseif onCancel then
             onCancel()
@@ -260,6 +267,7 @@ RegisterNetEvent("illenium-appearance:client:saveOutfit", function()
     if outfitName then
         Wait(500)
         lib.callback("illenium-appearance:server:getOutfits", false, function(outfits)
+            outfits = outfits or {}
             local outfitExists = false
             for i = 1, #outfits, 1 do
                 if outfits[i].name:lower() == outfitName:lower() then
@@ -291,6 +299,7 @@ RegisterNetEvent('illenium-appearance:client:updateOutfit', function(outfitID)
     if not outfitID then return end
 
     lib.callback("illenium-appearance:server:getOutfits", false, function(outfits)
+        outfits = outfits or {}
         local outfitExists = false
         for i = 1, #outfits, 1 do
             if outfits[i].id == outfitID then
@@ -349,6 +358,7 @@ local function RegisterChangeOutfitMenu(id, parent, outfits, mType)
 end
 
 local function RegisterUpdateOutfitMenu(id, parent, outfits)
+    outfits = outfits or {}
     local updateOutfitMenu = {
         id = id,
         title = _L("outfits.update.title"),
@@ -372,6 +382,7 @@ local function RegisterUpdateOutfitMenu(id, parent, outfits)
 end
 
 local function RegisterGenerateOutfitCodeMenu(id, parent, outfits)
+    outfits = outfits or {}
     local generateOutfitCodeMenu = {
         id = id,
         title = _L("outfits.generate.title"),
@@ -391,6 +402,7 @@ local function RegisterGenerateOutfitCodeMenu(id, parent, outfits)
 end
 
 local function RegisterDeleteOutfitMenu(id, parent, outfits, deleteEvent)
+    outfits = outfits or {}
     local deleteOutfitMenu = {
         id = id,
         title = _L("outfits.delete.title"),
@@ -540,7 +552,7 @@ function OpenMenu(isPedMenu, menuType, menuData)
     }
     local menuItems = {}
 
-    local outfits = lib.callback.await("illenium-appearance:server:getOutfits", false)
+    local outfits = lib.callback.await("illenium-appearance:server:getOutfits", false) or {}
     local changeOutfitMenuID = "illenium_appearance_change_outfit_menu"
     local updateOutfitMenuID = "illenium_appearance_update_outfit_menu"
     local deleteOutfitMenuID = "illenium_appearance_delete_outfit_menu"

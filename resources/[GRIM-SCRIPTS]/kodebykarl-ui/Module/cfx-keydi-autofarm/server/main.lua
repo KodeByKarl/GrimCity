@@ -15,6 +15,27 @@ local function DebugLog(message)
     end
 end
 
+local function PlayerHasFarmJob(src, farm)
+    if not farm or not farm.job then return true end
+
+    local xPlayer = ESX.GetPlayerFromId(src)
+    local playerJob = xPlayer and xPlayer.job and xPlayer.job.name
+    if not playerJob then return false end
+
+    if type(farm.job) == 'table' then
+        for key, value in pairs(farm.job) do
+            if type(key) == 'number' then
+                if playerJob == value then return true end
+            elseif playerJob == key and value then
+                return true
+            end
+        end
+        return false
+    end
+
+    return playerJob == farm.job
+end
+
 local function GetFarm(farmIndex)
     farmIndex = tonumber(farmIndex)
     if not farmIndex then return nil end
@@ -222,6 +243,11 @@ local function GrantReward(src, session)
         return
     end
 
+    if not PlayerHasFarmJob(src, farm) then
+        StopSession(src, "job_required", farmIndex)
+        return
+    end
+
     local coords = ResolveSessionCoords(session, farm)
     if not coords then
         StopSession(src, "invalid", session.farmIndex)
@@ -382,21 +408,9 @@ RegisterNetEvent("cfx-keydi-autofarm:start", function(farmIndex, locationIndex, 
         return
     end
 
-    if farm.job then
-        local xPlayer = ESX.GetPlayerFromId(src)
-        local playerJob = xPlayer and xPlayer.job and xPlayer.job.name
-        local allowed = false
-        if type(farm.job) == 'table' then
-            for _, j in ipairs(farm.job) do
-                if playerJob == j then allowed = true; break end
-            end
-        elseif playerJob == farm.job then
-            allowed = true
-        end
-        if not allowed then
-            TriggerClientEvent("cfx-keydi-autofarm:startDenied", src, "job_required", tostring(farm.job))
-            return
-        end
+    if not PlayerHasFarmJob(src, farm) then
+        TriggerClientEvent("cfx-keydi-autofarm:startDenied", src, "job_required", type(farm.job) == "table" and "EMS" or tostring(farm.job))
+        return
     end
 
     local sessionCoords = nil

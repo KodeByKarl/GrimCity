@@ -48,9 +48,9 @@ local BONE_ZONE = {
     [25657] = HEAD, -- FB_L_Ear_000 0x6439
     [23312] = HEAD, -- SPR_L_Ear 0x5B10
 
-    -- NECK
-    [39317] = NECK, -- SKEL_Neck_1 0x9995
-    [24532] = NECK, -- SKEL_Neck_2 0x5FD4
+    -- NECK — GTA reports SKEL_Neck_1 / index 97 on most headshots, so treat as HEAD
+    [39317] = HEAD, -- SKEL_Neck_1 0x9995 (game headshot bone)
+    [24532] = HEAD, -- SKEL_Neck_2 / skull base
     [35731] = NECK, -- RB_Neck_1 0x8B93
 
     -- TORSO / spine / pelvis / bags / skirts torso
@@ -278,10 +278,10 @@ function DeathScreenBones.ZoneFromBone(bone)
     local zone = BONE_ZONE[id]
     if zone then return zone end
     -- Fallback: treat unknown facial-ish high indices as head, else torso
-    if id >= 98 and id <= 123 then
+    if id == 97 or (id >= 98 and id <= 123) then
         return HEAD
     end
-    if id == 97 or id == 124 then
+    if id == 124 then
         return NECK
     end
     return TORSO

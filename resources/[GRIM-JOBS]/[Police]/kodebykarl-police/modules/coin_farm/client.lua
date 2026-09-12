@@ -13,21 +13,29 @@ local function getPlayerJob()
     return nil
 end
 
+local FARM_TEXT = {
+    start = '[E] - Start Auto-Farming Police Coins',
+    stop = '[E] or [X] - Stop Auto-Farming Police Coins',
+}
+
 local function updateTextUI(state)
     if textState == state then return end
     textState = state
     if state == 'start' then
-        lib.showTextUI('[E] - Start Auto-Farming Police Coins', {
+        lib.showTextUI(FARM_TEXT.start, {
             icon = 'coins',
             position = 'right-center'
         })
     elseif state == 'stop' then
-        lib.showTextUI('[E] or [X] - Stop Auto-Farming Police Coins', {
+        lib.showTextUI(FARM_TEXT.stop, {
             icon = 'hand',
             position = 'right-center'
         })
     else
-        lib.hideTextUI()
+        local open, text = lib.isTextUIOpen()
+        if open and (text == FARM_TEXT.start or text == FARM_TEXT.stop) then
+            lib.hideTextUI()
+        end
     end
 end
 

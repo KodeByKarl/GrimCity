@@ -3,11 +3,18 @@ return {
     Freedom = vec4(1848.762, 2585.830, 45.672, 270.535), -- Freedom spawn coords
     RemoveJob = false,          -- Remove player jobs when send to jail
 
-    -- Create Target Zone to Check Time (if XTPrisonJobs is false) --
+    -- Front reception checkout (outside the yard)
     CheckOut = {
         coords = vec3(1836.5, 2592.05, 46.35),
         size = vec3(0.9, 7.8, 1.45),
         rotation = 0.5,
+    },
+
+    -- Yard release point so inmates can leave when time is up
+    YardCheckOut = {
+        coords = vec3(1756.80, 2513.40, 45.57),
+        size = vec3(1.8, 1.8, 2.2),
+        rotation = 30.0,
     },
 
     -- Alert When Entering Prison --

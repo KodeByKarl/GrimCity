@@ -261,6 +261,9 @@ function Framework.Client.GetPlate(vehicle)
 end
 
 function Framework.Client.RepairVehicle(vehicle)
+  pcall(function()
+    lib.callback.await('jg-mechanic:server:fg-repair', false)
+  end)
   SetVehicleUndriveable(vehicle, false)
   WashDecalsFromVehicle(vehicle, 1.0)
   SetVehicleEngineHealth(vehicle, 1000.0)

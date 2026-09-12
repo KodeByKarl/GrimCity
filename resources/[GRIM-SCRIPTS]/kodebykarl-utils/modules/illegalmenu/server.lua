@@ -2,6 +2,7 @@ local config = require 'configs.illegalmenu'
 if not config.enable then return end
 
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local cuffed = {}
 local dragging = {} -- [dragger] = target
@@ -38,6 +39,9 @@ RegisterNetEvent('cfx-keydi-utils:illegal:cuff', function(targetId)
     local src = source
     local xPlayer, xTarget, target = getPlayers(src, targetId)
     if not xPlayer then return end
+    if not Region.Allowed('illegal', src) then
+        return notify(src, Region.Message('illegal'))
+    end
     if blockedJob(xPlayer) then return end
     if tooFar(xPlayer, xTarget, config.cuffDistance) then
         return notify(src, 'Not close enough to cuff.')
@@ -58,6 +62,9 @@ RegisterNetEvent('cfx-keydi-utils:illegal:uncuff', function(targetId)
     local src = source
     local xPlayer, xTarget, target = getPlayers(src, targetId)
     if not xPlayer then return end
+    if not Region.Allowed('illegal', src) then
+        return notify(src, Region.Message('illegal'))
+    end
     if blockedJob(xPlayer) then return end
     if tooFar(xPlayer, xTarget, config.cuffDistance) then
         return notify(src, 'Not close enough to uncuff.')
@@ -83,6 +90,9 @@ RegisterNetEvent('cfx-keydi-utils:illegal:drag', function(targetId)
     local src = source
     local xPlayer, xTarget, target = getPlayers(src, targetId)
     if not xPlayer then return end
+    if not Region.Allowed('illegal', src) then
+        return notify(src, Region.Message('illegal'))
+    end
     if blockedJob(xPlayer) then return end
     if tooFar(xPlayer, xTarget, config.distance) then
         return notify(src, 'No players nearby.')
@@ -112,6 +122,9 @@ RegisterNetEvent('cfx-keydi-utils:illegal:removeClothes', function(targetId, clo
     local src = source
     local xPlayer, xTarget, target = getPlayers(src, targetId)
     if not xPlayer then return end
+    if not Region.Allowed('illegal', src) then
+        return notify(src, Region.Message('illegal'))
+    end
     if blockedJob(xPlayer) then return end
     if type(clothingType) ~= 'string' then return end
     if tooFar(xPlayer, xTarget, config.distance) then

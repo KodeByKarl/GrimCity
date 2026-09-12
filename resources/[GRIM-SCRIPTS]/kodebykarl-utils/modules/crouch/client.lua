@@ -209,8 +209,11 @@ CreateThread(function()
                 if crouched then setCrouched(false) end
                 Wait(150)
             elseif isAiming() then
+                -- Auto Crouch: while Flee is equipped, aiming/shooting forces crouch
                 if not crouched then
                     setCrouched(true)
+                elseif not GetPedMovementClipset(ped) or GetPedMovementClipset(ped) ~= joaat('move_ped_crouched') then
+                    applyCrouchClipsets(ped)
                 end
                 aimCrouch = true
                 Wait(0)

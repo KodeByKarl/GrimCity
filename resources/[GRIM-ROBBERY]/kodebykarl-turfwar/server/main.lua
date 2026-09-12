@@ -217,21 +217,24 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
 
+    local data = Config.TurfWars[turfId]
+    if not data then return end
+
     if GetResourceState('kodebykarl-ui') == 'started' then
+        local fn = data.requireFunction or 'turfwar'
         local ok, allowed = pcall(function()
-            return exports['kodebykarl-ui']:PlayerHasFunction(src, 'turfwar')
+            return exports['kodebykarl-ui']:PlayerHasFunction(src, fn)
         end)
         if not ok or not allowed then
             return TriggerClientEvent('ox_lib:notify', src, {
                 title = 'TURF WAR',
-                description = 'Turf War is only available on Region 3 or Region 4. Open Control Center (F5) → Regions.',
+                description = (fn == 'schoolwar')
+                    and 'School War is only available on Region 2. Open Control Center (F5) → Regions.'
+                    or 'Turf / gang war is only available on Region 1, 3, or 4. Open Control Center (F5) → Regions.',
                 type = 'error',
             })
         end
     end
-
-    local data = Config.TurfWars[turfId]
-    if not data then return end
 
     -- Distance Anti-Exploit Check
     local ped = GetPlayerPed(src)
@@ -252,13 +255,23 @@ RegisterNetEvent('kodebykarl-turfwar:server:startTurf', function(turfId)
     end
 
     if not Config.AllowMultipleTurfwars and next(ActiveTurfs) then
-        return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Another Turf War is currently in progress.', type = 'error' })
+        local myFn = data.requireFunction or 'turfwar'
+        for activeId in pairs(ActiveTurfs) do
+            local other = Config.TurfWars[activeId]
+            local otherFn = (other and other.requireFunction) or 'turfwar'
+            if otherFn == myFn then
+                return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Another Turf War is currently in progress.', type = 'error' })
+            end
+        end
     end
 
     -- Gang Validation
     local gangName, gangLabel = getPlayerGang(xPlayer)
     local jobName = (xPlayer.job and xPlayer.job.name) or (xPlayer.getJob and xPlayer.getJob().name) or 'unemployed'
     local isAllowedTestPlayer = Config.AllowAllJobsForTesting or (Config.AllowTestJobs and Config.AllowTestJobs[jobName])
+    if type(data.allowJobs) == 'table' and data.allowJobs[jobName] then
+        isAllowedTestPlayer = true
+    end
 
     if not isAllowedTestPlayer and (Config.IgnoreGangs[gangName] or gangName == 'none' or gangName == 'unemployed') then
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'You must belong to an active Gang to initiate a Turf War.', type = 'error' })
@@ -300,21 +313,24 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
 
+    local data = Config.TurfWars[turfId]
+    if not data then return end
+
     if GetResourceState('kodebykarl-ui') == 'started' then
+        local fn = data.requireFunction or 'turfwar'
         local ok, allowed = pcall(function()
-            return exports['kodebykarl-ui']:PlayerHasFunction(src, 'turfwar')
+            return exports['kodebykarl-ui']:PlayerHasFunction(src, fn)
         end)
         if not ok or not allowed then
             return TriggerClientEvent('ox_lib:notify', src, {
                 title = 'TURF WAR',
-                description = 'Turf War is only available on Region 3 or Region 4. Open Control Center (F5) → Regions.',
+                description = (fn == 'schoolwar')
+                    and 'School War is only available on Region 2. Open Control Center (F5) → Regions.'
+                    or 'Turf / gang war is only available on Region 1, 3, or 4. Open Control Center (F5) → Regions.',
                 type = 'error',
             })
         end
     end
-
-    local data = Config.TurfWars[turfId]
-    if not data then return end
 
     -- Verify Turf is Claimable
     if not ClaimableTurfs[turfId] or GlobalState[('turf_claimable_%s'):format(turfId)] ~= true then
@@ -332,6 +348,9 @@ RegisterNetEvent('kodebykarl-turfwar:server:claimTurf', function(turfId)
     local gangName, gangLabel = getPlayerGang(xPlayer)
     local jobName = (xPlayer.job and xPlayer.job.name) or (xPlayer.getJob and xPlayer.getJob().name) or 'unemployed'
     local isAllowedTestPlayer = Config.AllowAllJobsForTesting or (Config.AllowTestJobs and Config.AllowTestJobs[jobName])
+    if type(data.allowJobs) == 'table' and data.allowJobs[jobName] then
+        isAllowedTestPlayer = true
+    end
 
     if not isAllowedTestPlayer and (Config.IgnoreGangs[gangName] or gangName == 'none' or gangName == 'unemployed') then
         return TriggerClientEvent('ox_lib:notify', src, { title = 'TURF WAR', description = 'Only active gang members can claim Turf War rewards.', type = 'error' })

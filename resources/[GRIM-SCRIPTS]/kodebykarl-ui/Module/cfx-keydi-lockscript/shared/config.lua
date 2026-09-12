@@ -27,7 +27,7 @@ ConfigLockScript.Commands = {
     open = "viplock",
 }
 
-ConfigLockScript.Brand = "PANDORA CITY"
+ConfigLockScript.Brand = "GRIM CITY"
 ConfigLockScript.OfflineSearchLimit = 30
 ConfigLockScript.AppearanceResource = "illenium-appearance"
 

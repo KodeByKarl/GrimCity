@@ -72,9 +72,16 @@ return {
 		label = 'Recycling Materials',
 		weight = 50,
 		stack = true,
-		description = 'Sorted scrap ready for recycling.',
+		close = true,
+		consume = 1,
+		description = 'Open to sort into iron, copper, aluminum, plastic, glass, rubber, steel, gunpowder, blueprints, project parts, and dirty money.',
 		client = {
 			image = 'recmats.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.recmats'
 		},
 	},
 
@@ -192,6 +199,18 @@ return {
 		}
 	},
 
+	['illegal_phone'] = {
+		label = 'Illegal Phone',
+		weight = 190,
+		stack = false,
+		consume = 0,
+		description = 'An unregistered burner phone.',
+		client = {
+			image = 'phone.png',
+			export = 'kodebykarl-ui.OpenPhone',
+		}
+	},
+
 	['money'] = {
 		label = 'Money',
 	},
@@ -225,7 +244,16 @@ return {
 		label = 'Radio',
 		weight = 1000,
 		stack = false,
-		allowArmed = true
+		allowArmed = true,
+		consume = 0,
+		client = {
+			export = 'cfx-keydi-radio.openRadio',
+			remove = function(total)
+				if total < 1 and GetResourceState('cfx-keydi-radio') == 'started' then
+					exports['cfx-keydi-radio']:leaveRadio()
+				end
+			end
+		}
 	},
 
 	['armour'] = {
@@ -271,7 +299,7 @@ return {
 	-- Autofarm & Tools
 	['orange'] = {
 		label = 'Orange',
-		weight = 100,
+		weight = 20,
 		client = {
 			status = { hunger = 100000, thirst = 50000 },
 			anim = 'eating',
@@ -283,13 +311,13 @@ return {
 
 	['trowel'] = {
 		label = 'Garden Trowel',
-		weight = 500,
+		weight = 100,
 		stack = false,
 	},
 
 	['wood'] = {
 		label = 'Wood',
-		weight = 500,
+		weight = 20,
 	},
 
 	['gauze'] = {
@@ -360,6 +388,102 @@ return {
 		weight = 80,
 	},
 
+	['sugar'] = {
+		label = 'Sugar',
+		weight = 100,
+		stack = true,
+		description = 'Baking ingredient.',
+		client = { image = 'sugar.png' },
+	},
+
+	['dough'] = {
+		label = 'Dough',
+		weight = 150,
+		stack = true,
+		description = 'Uncooked dough.',
+		client = { image = 'dough.png' },
+	},
+
+	['butter'] = {
+		label = 'Butter',
+		weight = 100,
+		stack = true,
+		description = 'Cooking ingredient.',
+		client = { image = 'butter.png' },
+	},
+
+	['flour'] = {
+		label = 'Flour',
+		weight = 150,
+		stack = true,
+		description = 'Baking ingredient.',
+		client = { image = 'flour.png' },
+	},
+
+	['cream'] = {
+		label = 'Cream',
+		weight = 100,
+		stack = true,
+		description = 'Cooking ingredient.',
+		client = { image = 'cream.png' },
+	},
+
+	['milk'] = {
+		label = 'Milk',
+		weight = 250,
+		stack = true,
+		description = 'Fresh milk.',
+		client = { image = 'milk.png' },
+	},
+
+	['bottle_milk'] = {
+		label = 'Milk',
+		weight = 250,
+		stack = true,
+		description = 'A bottle of milk.',
+		client = { image = 'bottle_milk.png' },
+	},
+
+	['bun'] = {
+		label = 'Bun',
+		weight = 80,
+		stack = true,
+		description = 'Burger bun.',
+		client = { image = 'bun.png' },
+	},
+
+	['burger_patty'] = {
+		label = 'Burger Patty',
+		weight = 180,
+		stack = true,
+		description = 'Uncooked burger patty.',
+		client = { image = 'burger_patty.png' },
+	},
+
+	['soy_sauce'] = {
+		label = 'Soy Sauce',
+		weight = 150,
+		stack = true,
+		description = 'Cooking sauce.',
+		client = { image = 'soy_sauce.png' },
+	},
+
+	['cheese'] = {
+		label = 'Cheese',
+		weight = 80,
+		stack = true,
+		description = 'Cooking ingredient.',
+		client = { image = 'cheese.png' },
+	},
+
+	['rice'] = {
+		label = 'Rice',
+		weight = 200,
+		stack = true,
+		description = 'Uncooked rice.',
+		client = { image = 'rice.png' },
+	},
+
 	['potato'] = {
 		label = 'Potato',
 		weight = 120,
@@ -407,7 +531,7 @@ return {
 
 	['raw_meat'] = {
 		label = 'Raw Meat',
-		weight = 500,
+		weight = 20,
 	},
 
 	-- Mining & Materials
@@ -439,6 +563,46 @@ return {
 	['steel'] = {
 		label = 'Steel Ingot',
 		weight = 900,
+	},
+
+	['plastic'] = {
+		label = 'Plastic',
+		weight = 80,
+		stack = true,
+		description = 'Sorted plastic scrap.',
+		client = {
+			image = 'plastic.png',
+		},
+	},
+
+	['glass'] = {
+		label = 'Glass',
+		weight = 120,
+		stack = true,
+		description = 'Broken glass ready for recycling.',
+		client = {
+			image = 'glass.png',
+		},
+	},
+
+	['rubber'] = {
+		label = 'Rubber',
+		weight = 100,
+		stack = true,
+		description = 'Scrap rubber from tires and seals.',
+		client = {
+			image = 'rubber.png',
+		},
+	},
+
+	['gunpowder'] = {
+		label = 'Gunpowder',
+		weight = 50,
+		stack = true,
+		description = 'Unstable powder recovered from scrap.',
+		client = {
+			image = 'gunpowder.png',
+		},
 	},
 
 	['titanium'] = {
@@ -490,10 +654,18 @@ return {
 	['joint'] = {
 		label = 'Joint',
 		weight = 20,
+		stack = true,
+		close = true,
+		consume = 1,
+		description = 'A rolled joint. Restores 50 armor.',
 		client = {
+			image = 'joint.png',
 			anim = { dict = 'amb@world_human_smoking@male@male_a@base', clip = 'base' },
 			usetime = 3000,
-			notification = 'You smoked a joint'
+			notification = 'You smoked a joint',
+		},
+		server = {
+			export = 'ox_inventory.joint'
 		}
 	},
 
@@ -566,7 +738,7 @@ return {
 		stack = true,
 		close = true,
 		consume = 1,
-		description = 'Unpack a full set of project-car parts.',
+		description = 'Unpack mixed unique project-car parts (engine, transmission, suspension, body frame, tires, doors, windows).',
 		client = {
 			image = 'project_parts_box.png',
 			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
@@ -583,7 +755,7 @@ return {
 		stack = true,
 		close = true,
 		consume = 1,
-		description = 'Full project-car starter kit: shell, blueprints, and all parts.',
+		description = 'Full project-car starter kit: shell, blueprints, and all unique parts for one vehicle.',
 		client = {
 			image = 'project_ayuda_box.png',
 			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
@@ -694,6 +866,40 @@ return {
 		}
 	},
 
+	['item_sunrise'] = {
+		label = 'Sunrise',
+		weight = 10,
+		stack = false,
+		close = true,
+		consume = 1,
+		description = 'Use to add a Sunrise (sunrise1) to your garage.',
+		client = {
+			image = 'item_sunrise.png',
+			anim = { dict = 'mp_common', clip = 'givetake1_a' },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.item_sunrise'
+		}
+	},
+
+	['item_16topcargle'] = {
+		label = 'TopCar GLE',
+		weight = 10,
+		stack = false,
+		close = true,
+		consume = 1,
+		description = 'Use to add a Mercedes GLE TopCar (16topcargle) to your garage.',
+		client = {
+			image = 'item_16topcargle.png',
+			anim = { dict = 'mp_common', clip = 'givetake1_a' },
+			usetime = 2500,
+		},
+		server = {
+			export = 'ox_inventory.item_16topcargle'
+		}
+	},
+
 	-- University & Starter
 	['student_id'] = {
 		label = 'Student ID Card',
@@ -710,6 +916,9 @@ return {
 	['police_vest'] = {
 		label = 'Police Vest',
 		weight = 3000,
+		stack = true,
+		consume = 1,
+		description = 'On-duty LSPD ballistic vest. Restores 100% armor and equips a police vest. Police only.',
 		allowArmed = true,
 		client = {
 			image = 'police_vest.png',
@@ -741,7 +950,7 @@ return {
 	['police_drink'] = {
 		label = 'Police Speed Drink',
 		weight = 250,
-		description = 'Tactical energy drink: Grants 2x sprint speed for 10 seconds.',
+		description = 'Tactical energy drink: Grants 2x sprint speed for 3 seconds.',
 		stack = true,
 		consume = 1,
 		allowArmed = true,
@@ -789,10 +998,105 @@ return {
 		}
 	},
 
+	['grimemscoin'] = {
+		label = 'EMS Coin',
+		weight = 0,
+		description = 'Pink Grim City EMS coin. Earned on hospital duty, spent at the EMS supply shop.',
+		stack = true,
+		close = true,
+		client = {
+			image = 'grimemscoin.png',
+		}
+	},
+
+	['ems_medikit'] = {
+		label = 'EMS Medikit',
+		weight = 500,
+		stack = true,
+		close = true,
+		description = 'Professional EMS trauma kit. Use on a downed patient to revive or heal.',
+		client = {
+			image = 'medikit.png',
+		},
+		server = {
+			export = 'ox_inventory.ems_medikit'
+		}
+	},
+	['backpack'] = {
+		label = 'Student Backpack',
+		weight = 220,
+		stack = false,
+		consume = 0,
+		description = 'A spacious backpack used to store university materials.',
+		client = {
+			export = 'nl-university.openBackpack'
+		}
+	},
+	
+	['student_id'] = {
+		label = 'Student ID Card',
+		weight = 50,
+		stack = false,
+		close = true,
+		description = 'Official university-issued identification card with photo and student info.'
+	},
+	
+	['print_document'] = {
+		label = 'Printed Assignment',
+		weight = 25,
+		stack = true,
+		close = true,
+		description = 'A printed assignment or form. Don’t lose it!',
+		client = {
+			export = 'nl-university.useDocument'
+		}
+	},
+	
+	['printer_paper'] = {
+		label = 'Blank Printer Paper',
+		weight = 5,
+		stack = true,
+		close = true,
+		description = 'Standard blank A4 paper used in printers.'
+	},
+	
+	['whiteboard2'] = {
+		label = 'Wall Whiteboard',
+		weight = 5000,
+		stack = false,
+		description = 'A classic wall-mounted whiteboard used in classrooms.',
+		client = {
+			event = 'whiteboards:client:startPlacement'
+		}
+	},
+	
+	-- optional
+	
+	['acetone'] = {
+		label = 'Acetone',
+		weight = 1,
+		stack = true,
+		close = true,
+		description = 'A flammable solvent.'
+	},
+	['hydrochloricacid'] = {
+		label = 'Hydrochloric Acid',
+		weight = 1,
+		stack = true,
+		close = true,
+		description = 'A dangerous chemical.'
+	},
+	['acid'] = {
+		label = 'Acid',
+		weight = 1,
+		stack = true,
+		close = true,
+		description = 'A dangerous chemical.'
+	},
 	['pd_ammo_box_9'] = {
 		label = 'PD 9mm Ammo Box',
 		weight = 350,
-		description = 'Tactical ammo box containing 50 rounds of 9mm ammunition for police sidearms and SMGs.',
+		description = 'Tactical ammo box containing 250 rounds of 9mm ammunition for police sidearms and SMGs.',
 		stack = true,
 		consume = 1,
 		allowArmed = true,
@@ -809,7 +1113,7 @@ return {
 	['pd_ammo_box_rifle'] = {
 		label = 'PD 5.56 Rifle Ammo Box',
 		weight = 400,
-		description = 'Tactical ammo box containing 60 rounds of 5.56x45mm ammunition for police patrol rifles.',
+		description = 'Tactical ammo box containing 250 rounds of 5.56x45mm ammunition for police patrol rifles.',
 		stack = true,
 		consume = 1,
 		allowArmed = true,
@@ -826,7 +1130,7 @@ return {
 	['pd_ammo_box_rifle2'] = {
 		label = 'PD 7.62 Rifle Ammo Box',
 		weight = 500,
-		description = 'Heavy tactical ammo box containing 60 rounds of 7.62x39mm ammunition for heavy police rifles.',
+		description = 'Heavy tactical ammo box containing 250 rounds of 7.62x39mm ammunition for heavy police rifles.',
 		stack = true,
 		consume = 1,
 		allowArmed = true,
@@ -843,7 +1147,7 @@ return {
 	['pd_ammo_box_shotgun'] = {
 		label = 'PD 12G Shotgun Ammo Box',
 		weight = 450,
-		description = 'Tactical ammo box containing 30 rounds of 12-gauge shotgun shells for police shotguns.',
+		description = 'Tactical ammo box containing 250 rounds of 12-gauge shotgun shells for police shotguns.',
 		stack = true,
 		consume = 1,
 		allowArmed = true,
@@ -854,6 +1158,38 @@ return {
 		},
 		server = {
 			export = 'ox_inventory.pd_ammo_box_shotgun'
+		}
+	},
+
+	['pd_ammo_box_45'] = {
+		label = 'PD .45 ACP Ammo Box',
+		weight = 400,
+		description = 'Tactical ammo box containing 250 rounds of .45 ACP ammunition.',
+		stack = true,
+		consume = 1,
+		allowArmed = true,
+		client = {
+			image = 'pd_ammo_box_9.png',
+			anim = { dict = 'anim@heists@ornate_bank@grab_cash', clip = 'grab_cash' },
+			usetime = 1500,
+		},
+		server = {
+			export = 'ox_inventory.pd_ammo_box_45'
+		}
+	},
+
+	['riot_shield'] = {
+		label = 'Riot Shield',
+		weight = 4000,
+		description = 'Ballistic riot shield. On-duty police only. Use to equip / unequip.',
+		stack = false,
+		consume = 0,
+		allowArmed = true,
+		client = {
+			image = 'riot_shield.png',
+		},
+		server = {
+			export = 'ox_inventory.riot_shield'
 		}
 	},
 

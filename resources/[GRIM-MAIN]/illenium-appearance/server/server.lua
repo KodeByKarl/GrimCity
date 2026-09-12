@@ -19,7 +19,10 @@ end
 local function getOutfitsForPlayer(citizenid)
     if not citizenid then return {} end
     outfitCache[citizenid] = {}
-    local result = Database.PlayerOutfits.GetAllByCitizenID(citizenid)
+    local ok, result = pcall(Database.PlayerOutfits.GetAllByCitizenID, citizenid)
+    if not ok or type(result) ~= "table" then
+        return outfitCache[citizenid]
+    end
     for i = 1, #result, 1 do
         outfitCache[citizenid][#outfitCache[citizenid] + 1] = {
             id = result[i].id,
@@ -29,6 +32,7 @@ local function getOutfitsForPlayer(citizenid)
             props = json.decode(result[i].props)
         }
     end
+    return outfitCache[citizenid]
 end
 
 local function GenerateUniqueCode()
@@ -128,10 +132,13 @@ end)
 
 lib.callback.register("illenium-appearance:server:getOutfits", function(source)
     local citizenID = Framework.GetPlayerID(source)
+    if not citizenID then
+        return {}
+    end
     if outfitCache[citizenID] == nil then
         getOutfitsForPlayer(citizenID)
     end
-    return outfitCache[citizenID]
+    return outfitCache[citizenID] or {}
 end)
 
 lib.callback.register("illenium-appearance:server:getManagementOutfits", function(source, mType, gender)
@@ -198,8 +205,14 @@ RegisterNetEvent("illenium-appearance:server:saveOutfit", function(name, model, 
         getOutfitsForPlayer(citizenID)
     end
     if model and components and props then
-        local id = Database.PlayerOutfits.Add(citizenID, name, model, json.encode(components), json.encode(props))
-        if not id then
+        local ok, id = pcall(Database.PlayerOutfits.Add, citizenID, name, model, json.encode(components), json.encode(props))
+        if not ok or not id then
+            lib.notify(src, {
+                title = "Save Failed",
+                description = "Could not save this outfit. Try again.",
+                type = "error",
+                position = Config.NotifyOptions.position
+            })
             return
         end
         outfitCache[citizenID][#outfitCache[citizenID] + 1] = {
@@ -299,23 +312,60 @@ end)
 
 RegisterNetEvent("illenium-appearance:server:ResetRoutingBucket", function()
     local src = source
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local restored = false
+        pcall(function()
+            restored = exports['kodebykarl-ui']:RestorePlayerBucket(src) == true
+        end)
+        if restored then return end
+    end
     SetPlayerRoutingBucket(src, 0)
 end)
 
 if Config.EnablePedMenu then
+    local PED_MENU_GROUPS = {
+        developer = true,
+        owner = true,
+        superadmin = true,
+        admin = true,
+    }
+
+    local function hasPedMenuStaffAccess(src)
+        -- ESX /setgroup is source of truth (ACE "group.owner" is NOT auto-granted by principals)
+        local okEsx, ESX = pcall(function()
+            return exports["es_extended"]:getSharedObject()
+        end)
+        if okEsx and ESX and ESX.GetPlayerFromId then
+            local xPlayer = ESX.GetPlayerFromId(src)
+            if xPlayer and xPlayer.getGroup then
+                local group = tostring(xPlayer.getGroup() or ""):lower():gsub("%s+", "")
+                if PED_MENU_GROUPS[group] then
+                    return true
+                end
+            end
+        end
+
+        -- Legacy ACE identity checks (require add_ace group.X group.X allow in admin.cfg)
+        return IsPlayerAceAllowed(src, Config.PedMenuGroup or "group.admin")
+            or IsPlayerAceAllowed(src, "group.developer")
+            or IsPlayerAceAllowed(src, "group.owner")
+            or IsPlayerAceAllowed(src, "group.superadmin")
+            or IsPlayerAceAllowed(src, "command")
+    end
+
     lib.addCommand("pedmenu", {
         help = _L("commands.pedmenu.title"),
         params = {
             {
                 name = "playerID",
-                type = "number",
-                help = "Target player's server id",
+                type = "playerId",
+                help = "Target player's server id (use me for yourself)",
                 optional = true
             },
         },
-        -- Staff ACE still preferred; VIP 2+ also allowed via kodebykarl-ui export (checked below).
+        -- Staff via ESX group; VIP 2+ via kodebykarl-ui export.
     }, function(source, args)
-        local isStaff = IsPlayerAceAllowed(source, Config.PedMenuGroup or "group.admin")
+        local isStaff = hasPedMenuStaffAccess(source)
         local isVip = false
         if GetResourceState("kodebykarl-ui") == "started" then
             local ok, allowed = pcall(function()
@@ -327,7 +377,7 @@ if Config.EnablePedMenu then
         if not isStaff and not isVip then
             lib.notify(source, {
                 title = _L("commands.pedmenu.failure.title"),
-                description = "VIP 2+ or staff required for Ped Menu.",
+                description = "VIP 2+, developer, owner, superadmin, or staff required for Ped Menu.",
                 type = "error",
                 position = Config.NotifyOptions.position
             })
@@ -335,8 +385,9 @@ if Config.EnablePedMenu then
         end
 
         local target = source
-        -- Only staff may open ped menu on another player
-        if args.playerID then
+        local requested = tonumber(args.playerID)
+        -- Only staff may open ped menu on another player. /pedmenu and /pedmenu me stay self.
+        if requested and requested ~= source then
             if not isStaff then
                 lib.notify(source, {
                     title = _L("commands.pedmenu.failure.title"),
@@ -346,9 +397,9 @@ if Config.EnablePedMenu then
                 })
                 return
             end
-            local citizenID = Framework.GetPlayerID(args.playerID)
+            local citizenID = Framework.GetPlayerID(requested)
             if citizenID then
-                target = args.playerID
+                target = requested
             else
                 lib.notify(source, {
                     title = _L("commands.pedmenu.failure.title"),
@@ -373,9 +424,7 @@ if Config.EnableJobOutfitsCommand then
     end)
 end
 
-lib.addCommand("reloadskin", { help = _L("commands.reloadskin.title") }, function(source)
-    TriggerClientEvent("illenium-appearance:client:reloadSkin", source)
-end)
+-- /reloadskin removed: players used it to restore helmets after headshots.
 
 lib.addCommand("clearstuckprops", { help = _L("commands.clearstuckprops.title") }, function(source)
     TriggerClientEvent("illenium-appearance:client:ClearStuckProps", source)

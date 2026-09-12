@@ -14,14 +14,11 @@ import {
   Glasses,
   Sparkles,
   PenLine,
-  ChevronRight,
   Share2,
   Download,
   Upload,
   Hand,
   AlertTriangle,
-  Briefcase,
-  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -101,38 +98,6 @@ async function fetchNui<T = unknown>(event: string, payload?: unknown): Promise<
   }
 }
 
-function formatDate(raw?: string) {
-  if (!raw) return "—";
-  try {
-    return new Date(raw).toLocaleString();
-  } catch {
-    return String(raw);
-  }
-}
-
-function formatExpires(raw?: string) {
-  if (!raw) return "Never";
-  try {
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) return String(raw);
-    if (d.getTime() < Date.now()) return `Expired · ${d.toLocaleString()}`;
-    return d.toLocaleString();
-  } catch {
-    return String(raw);
-  }
-}
-
-function parseJobsInput(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function jobsToInput(jobs?: string[]): string {
-  return (jobs || []).join(", ");
-}
-
 function lockMatchesSearch(lock: AppearanceLock, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -141,7 +106,6 @@ function lockMatchesSearch(lock: AppearanceLock, query: string): boolean {
     lock.ownerIdentifier,
     String(lock.drawable),
     lock.componentId,
-    String(lock.texture),
     lock.gender,
   ]
     .join(" ")
@@ -156,13 +120,14 @@ const GROUP_META: Record<string, { label: string; icon: typeof Shirt }> = {
   tattoos: { label: "Tattoos", icon: PenLine },
 };
 
+const GENDER_PILLS = [
+  { id: "any", label: "Any" },
+  { id: "male", label: "Male" },
+  { id: "female", label: "Female" },
+];
+
 export default function LockMenu({ data, onClose }: LockMenuProps) {
   const categories = data?.categories || [];
-  const genders = data?.genders || [
-    { id: "male", label: "Male" },
-    { id: "female", label: "Female" },
-    { id: "any", label: "Any" },
-  ];
 
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -176,14 +141,9 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [showShared, setShowShared] = useState<AppearanceLock | null>(null);
 
-  // Add-lock form
   const [drawable, setDrawable] = useState(0);
-  const [texture, setTexture] = useState(0);
-  const [anyTexture, setAnyTexture] = useState(false);
-  const [gender, setGender] = useState("male");
+  const [gender, setGender] = useState("any");
   const [componentOverride, setComponentOverride] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [addSharedJobs, setAddSharedJobs] = useState("");
   const [ownerMode, setOwnerMode] = useState<"online" | "offline">("online");
   const [ownerSearch, setOwnerSearch] = useState("");
   const [owner, setOwner] = useState<LockPlayer | null>(null);
@@ -193,13 +153,11 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [grabbing, setGrabbing] = useState(false);
 
-  // Shared manage
   const [sharedSearch, setSharedSearch] = useState("");
   const [sharedOffline, setSharedOffline] = useState<LockPlayer[]>([]);
   const [sharedDraft, setSharedDraft] = useState<string[]>([]);
-  const [sharedJobsDraft, setSharedJobsDraft] = useState("");
 
-  const brand = data?.brand || "PANDORA CITY";
+  const brand = data?.brand || "GRIM CITY";
   const staffIdentifier = data?.staffIdentifier;
   const staffSelf = useMemo(() => {
     if (staffIdentifier) {
@@ -249,7 +207,6 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // Offline search for owner
   useEffect(() => {
     if (!showAdd || ownerMode !== "offline") return;
     const q = ownerSearch.trim();
@@ -266,7 +223,6 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     return () => clearTimeout(timer);
   }, [ownerSearch, ownerMode, showAdd]);
 
-  // Offline search for shared manage
   useEffect(() => {
     if (!showShared) return;
     const q = sharedSearch.trim();
@@ -281,10 +237,9 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     return () => clearTimeout(timer);
   }, [sharedSearch, showShared]);
 
-  // Clear duplicate warning when form fields change
   useEffect(() => {
     if (duplicateWarning) setDuplicateWarning(false);
-  }, [drawable, texture, anyTexture, gender, componentOverride, selectedCategory, owner?.identifier]);
+  }, [drawable, gender, componentOverride, selectedCategory, owner?.identifier]);
 
   const grouped = useMemo(() => {
     const map: Record<string, LockCategory[]> = {};
@@ -353,12 +308,8 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
 
   const openAdd = () => {
     setDrawable(0);
-    setTexture(0);
-    setAnyTexture(false);
-    setGender("male");
+    setGender("any");
     setComponentOverride("");
-    setExpiresAt("");
-    setAddSharedJobs("");
     setOwner(staffSelf);
     setSharedPick([]);
     setOwnerSearch("");
@@ -367,18 +318,18 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     setShowAdd(true);
   };
 
+  /** Whole drawable is locked (all textures). */
   const buildAddPayload = () => ({
     category: selectedCategory,
     componentId: componentOverride.trim() || activeCat?.componentId,
     drawable: Math.floor(Number(drawable) || 0),
-    texture: anyTexture ? 0 : Math.floor(Number(texture) || 0),
-    anyTexture,
+    texture: 0,
+    anyTexture: true,
     gender,
     ownerIdentifier: owner?.identifier,
     ownerName: owner?.name,
     sharedIdentifiers: sharedPick,
-    sharedJobs: parseJobsInput(addSharedJobs),
-    expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+    sharedJobs: [] as string[],
   });
 
   const grabFromPed = async () => {
@@ -388,7 +339,6 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     });
     if (res) {
       if (res.drawable != null) setDrawable(res.drawable);
-      if (res.texture != null) setTexture(res.texture);
       if (res.gender) setGender(res.gender);
       if (res.componentId) setComponentOverride(res.componentId);
     }
@@ -426,7 +376,6 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
   const openShared = (lock: AppearanceLock) => {
     setShowShared(lock);
     setSharedDraft([...(lock.sharedIdentifiers || [])]);
-    setSharedJobsDraft(jobsToInput(lock.sharedJobs));
     setSharedSearch("");
   };
 
@@ -436,7 +385,7 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     await fetchNui("cfx-keydi-lockscript:setShared", {
       lockId: showShared.id,
       sharedIdentifiers: sharedDraft,
-      sharedJobs: parseJobsInput(sharedJobsDraft),
+      sharedJobs: [],
     });
     setShowShared(null);
     setTimeout(refresh, 350);
@@ -490,23 +439,6 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
     return found ? `${found.name} (#${found.source})` : identifier;
   };
 
-  const renderSharedCell = (lock: AppearanceLock) => {
-    const jobCount = lock.sharedJobs?.length ?? 0;
-    const idCount = lock.sharedCount ?? lock.sharedIdentifiers?.length ?? 0;
-    if (idCount === 0 && jobCount === 0) return <span className="text-white/40">0</span>;
-    return (
-      <span className="text-white/70">
-        {idCount}
-        {jobCount > 0 && (
-          <span className="ml-1 text-[9px] text-[#8fe4ff]/80">
-            +{jobCount} job{jobCount === 1 ? "" : "s"}
-          </span>
-        )}
-      </span>
-    );
-  };
-
-  const GroupIcon = GROUP_META[selectedGroup]?.icon || Lock;
   const preferredGroupOrder = ["clothes", "props", "head"];
   const orderedGroups = [
     ...preferredGroupOrder.filter((g) => grouped[g]),
@@ -516,59 +448,51 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
   const categoryLockCount = locks.filter((l) => l.category === selectedCategory).length;
 
   return (
-    <div className="pandora fixed inset-0 z-[99995] flex items-center justify-center bg-black/55 backdrop-blur-[2px]">
+    <div className="pandora fixed inset-0 z-[99995] flex items-center justify-center bg-black/80 p-3 font-sans backdrop-blur-[6px]">
       <div
-        className="relative flex h-[72vh] w-[700px] max-w-[94vw] flex-col overflow-hidden rounded-2xl border shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]"
-        style={{
-          background: "linear-gradient(180deg, rgba(10, 40, 70, 0.97) 0%, rgba(5, 25, 47, 0.98) 100%)",
-          borderColor: "rgba(143, 228, 255, 0.22)",
-        }}
+        className="relative flex h-[78vh] w-[980px] max-h-[820px] max-w-[96vw] flex-col overflow-hidden rounded-2xl border-2 border-[#ff3a3a] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]"
+        style={{ background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)" }}
       >
         <div className="panel-grid pointer-events-none absolute inset-0 opacity-25" />
 
-        {/* Header */}
         <div
-          className="relative flex items-center justify-between gap-3 border-b px-4 py-3"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(53,199,242,0.35) 0%, rgba(28,111,168,0.55) 55%, rgba(11,44,78,0.6) 100%)",
-            borderBottomColor: "rgba(255, 210, 76, 0.35)",
-          }}
+          className="relative flex items-center justify-between gap-2 border-b px-4 py-2.5"
+          style={{ borderBottomColor: "rgba(255, 58, 58, 0.25)" }}
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/12">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#ff3a3a] bg-[#ff3a3a]/15">
               <Lock className="h-4 w-4 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/90">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff4d4d]">
                 VIP Appearance Locks
               </p>
-              <p className="truncate text-[11px] font-bold uppercase tracking-wider text-[#ffd24c]/85">
+              <p className="truncate text-[11px] font-bold uppercase tracking-wider text-[#a08890]">
                 {brand} · {data?.staffName || "Staff"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={exportLocks}
               disabled={busy}
-              className="flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-black/25 px-2 text-[9px] font-bold uppercase tracking-wide text-white/80 transition hover:border-white/30 hover:text-white disabled:opacity-40"
+              className="flex h-8 items-center gap-1 rounded-md border border-[#ff3a3a]/30 bg-[#181216] px-2.5 text-[9px] font-bold uppercase tracking-wide text-white/80 transition hover:border-[#ff3a3a] hover:text-white disabled:opacity-40"
               title="Export locks"
             >
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Export</span>
+              <Download className="h-3.5 w-3.5 text-[#ff4d4d]" />
+              Export
             </button>
             <button
               type="button"
               onClick={() => importRef.current?.click()}
               disabled={busy}
-              className="flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-black/25 px-2 text-[9px] font-bold uppercase tracking-wide text-white/80 transition hover:border-white/30 hover:text-white disabled:opacity-40"
+              className="flex h-8 items-center gap-1 rounded-md border border-[#ff3a3a]/30 bg-[#181216] px-2.5 text-[9px] font-bold uppercase tracking-wide text-white/80 transition hover:border-[#ff3a3a] hover:text-white disabled:opacity-40"
               title="Import locks"
             >
-              <Upload className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Import</span>
+              <Upload className="h-3.5 w-3.5 text-[#ff4d4d]" />
+              Import
             </button>
             <input
               ref={importRef}
@@ -584,26 +508,24 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
               type="button"
               onClick={refresh}
               disabled={busy}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/25 text-white/80 transition hover:border-white/30 hover:text-white disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-[#ff3a3a]/30 bg-[#181216] text-white/80 transition hover:border-[#ff3a3a] hover:text-white disabled:opacity-40"
               title="Refresh"
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5 text-[#ff4d4d]", busy && "animate-spin")} />
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/25 px-2.5 py-1.5 text-[10px] font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+              className="flex items-center gap-1 rounded-md border border-[#ff3a3a]/30 bg-[#181216] px-2.5 py-1.5 text-[10px] font-semibold text-white/80 transition hover:border-[#ff3a3a] hover:text-white"
             >
               <span>Esc</span>
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5 text-[#ff4d4d]" />
             </button>
           </div>
         </div>
 
-        {/* Body: compact group sidebar + category dropdown */}
-        <div className="relative grid min-h-0 flex-1 grid-cols-[148px_1fr]">
-          {/* Group sidebar (Clothes / Props / Head / Tattoos only) */}
-          <div className="flex min-h-0 flex-col gap-1.5 border-r border-white/10 p-2.5">
+        <div className="relative grid min-h-0 flex-1 grid-cols-[150px_1fr]">
+          <div className="flex min-h-0 flex-col gap-1 border-r border-[#ff3a3a]/20 p-2.5">
             {orderedGroups.map((g) => {
               const meta = GROUP_META[g] || { label: g, icon: Lock };
               const Icon = meta.icon;
@@ -618,10 +540,10 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                   type="button"
                   onClick={() => onGroupChange(g)}
                   className={cn(
-                    "flex items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left transition",
+                    "flex items-center gap-2 rounded-lg border px-2.5 py-2.5 text-left transition",
                     active
-                      ? "border-[#35c7f2]/45 bg-[#35c7f2]/20 text-[#8fe4ff]"
-                      : "border-transparent bg-black/15 text-white/55 hover:border-white/10 hover:bg-white/5 hover:text-white/85"
+                      ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-[#ff4d4d]"
+                      : "border-transparent bg-[#181216] text-[#a08890] hover:border-[#ff3a3a]/40 hover:text-white"
                   )}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -631,8 +553,8 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                   {groupLockCount > 0 && (
                     <span
                       className={cn(
-                        "rounded-md px-1.5 py-0.5 text-[9px] font-bold",
-                        active ? "bg-black/25 text-[#8fe4ff]" : "bg-black/30 text-white/40"
+                        "rounded px-1.5 py-0.5 text-[9px] font-bold",
+                        active ? "bg-black/30 text-[#ff4d4d]" : "bg-black/30 text-white/40"
                       )}
                     >
                       {groupLockCount}
@@ -643,47 +565,46 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
             })}
           </div>
 
-          {/* Main: dropdown category + list */}
           <div className="flex min-h-0 flex-col">
-            <div className="flex items-end gap-2 border-b border-white/10 px-3 py-2.5">
-              <label className="min-w-0 flex-1">
-                <span className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/40">
-                  <GroupIcon className="h-3 w-3" /> Category
-                </span>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/35 px-2.5 py-2 text-[12px] font-semibold text-white outline-none focus:border-[#35c7f2]/40"
-                >
-                  {categoriesInGroup.map((cat) => {
-                    const count = locks.filter((l) => l.category === cat.id).length;
-                    return (
-                      <option key={cat.id} value={cat.id} className="bg-[#0a2846]">
-                        {cat.label}
-                        {count > 0 ? ` (${count})` : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-
+            <div className="flex items-center gap-2 border-b border-[#ff3a3a]/20 px-3 py-2">
+              <div className="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+                {categoriesInGroup.map((cat) => {
+                  const count = locks.filter((l) => l.category === cat.id).length;
+                  const active = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={cn(
+                        "shrink-0 rounded-md border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition",
+                        active
+                          ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-[#ff4d4d]"
+                          : "border-[#ff3a3a]/20 bg-[#181216] text-[#a08890] hover:border-[#ff3a3a]/50 hover:text-white"
+                      )}
+                    >
+                      {cat.label}
+                      {count > 0 ? ` · ${count}` : ""}
+                    </button>
+                  );
+                })}
+              </div>
               <button
                 type="button"
                 onClick={openAdd}
-                className="inline-flex h-[38px] shrink-0 items-center gap-1.5 rounded-lg border border-[#35c7f2]/40 bg-[#35c7f2]/20 px-3 text-[11px] font-bold uppercase tracking-wide text-[#8fe4ff] transition hover:bg-[#35c7f2]/30"
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-[#ff3a3a] bg-[#ff3a3a]/20 px-3 text-[10px] font-bold uppercase tracking-wide text-[#ff4d4d] transition hover:bg-[#ff3a3a]/30"
               >
                 <Plus className="h-3.5 w-3.5" /> Add
               </button>
             </div>
 
-            <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
-              <p className="text-[10px] text-white/40">
-                <span className="font-semibold text-white/70">{activeCat?.label || "—"}</span>
-                {" · "}comp {activeCat?.componentId || "—"}
+            <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
+              <p className="shrink-0 text-[10px] text-[#a08890]">
+                <span className="font-semibold text-white/80">{activeCat?.label || "—"}</span>
                 {" · "}
                 {searchActive ? (
                   <>
-                    {displayedLocks.length} match{displayedLocks.length === 1 ? "" : "es"} (all categories)
+                    {displayedLocks.length} match{displayedLocks.length === 1 ? "" : "es"}
                   </>
                 ) : (
                   <>
@@ -691,23 +612,19 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                   </>
                 )}
               </p>
-            </div>
-
-            {/* Search locks */}
-            <div className="px-3 pb-2">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/35" />
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#a08890]" />
                 <input
                   value={lockSearch}
                   onChange={(e) => setLockSearch(e.target.value)}
-                  placeholder="Search owner, identifier, drawable, component..."
-                  className="w-full rounded-lg border border-white/10 bg-black/30 py-2 pl-8 pr-3 text-[11px] text-white outline-none placeholder:text-white/30 focus:border-[#35c7f2]/40"
+                  placeholder="Search owner, identifier, drawable..."
+                  className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] py-1.5 pl-8 pr-8 text-[11px] text-white outline-none placeholder:text-[#a08890]/60 focus:border-[#ff3a3a]"
                 />
                 {lockSearch && (
                   <button
                     type="button"
                     onClick={() => setLockSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#a08890] hover:text-white"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -715,47 +632,40 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
               </div>
             </div>
 
-            <div className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-1">
+            <div className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto px-3 pb-3">
               {displayedLocks.length === 0 ? (
-                <div className="flex h-full min-h-[180px] items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/15">
-                  <p className="text-[11px] text-white/40">
+                <div className="flex h-full min-h-[220px] items-center justify-center rounded-lg border border-dashed border-[#ff3a3a]/25 bg-[#181216]/60">
+                  <p className="text-[11px] text-[#a08890]">
                     {searchActive ? "No locks match your search." : "No locks in this category yet."}
                   </p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-white/10">
+                <div className="overflow-hidden rounded-lg border border-[#ff3a3a]/25">
                   <table className="w-full text-left text-[11px]">
                     <thead className="sticky top-0 z-[1]">
-                      <tr className="border-b border-white/10 bg-[#082038] text-[9px] font-black uppercase tracking-wider text-white/40">
-                        <th className="px-2.5 py-2">Draw / Tex</th>
-                        <th className="px-2.5 py-2">Gender</th>
-                        <th className="px-2.5 py-2">Owner</th>
-                        <th className="px-2.5 py-2">Shared</th>
-                        <th className="px-2.5 py-2">Expires</th>
-                        <th className="px-2.5 py-2">Date</th>
-                        <th className="px-2.5 py-2 text-right"> </th>
+                      <tr className="border-b border-[#ff3a3a]/20 bg-[#140d11] text-[9px] font-black uppercase tracking-wider text-[#a08890]">
+                        <th className="px-3 py-2">Drawable</th>
+                        <th className="px-3 py-2">Gender</th>
+                        <th className="px-3 py-2">Owner</th>
+                        <th className="px-3 py-2">Shared</th>
+                        <th className="px-3 py-2 text-right"> </th>
                       </tr>
                     </thead>
                     <tbody>
                       {displayedLocks.map((lock) => {
                         const lockCat = categories.find((c) => c.id === lock.category);
-                        const isExpired =
-                          lock.expiresAt && new Date(lock.expiresAt).getTime() < Date.now();
                         return (
                           <tr
                             key={lock.id}
                             className="border-b border-white/5 transition hover:bg-white/[0.03]"
                           >
-                            <td className="px-2.5 py-2 font-mono text-white/90">
-                              <span className="font-bold">{lock.drawable}</span>
-                              <span className="text-white/35"> / </span>
-                              {lock.anyTexture ? (
-                                <span className="text-[#8fe4ff]/90">any</span>
-                              ) : (
-                                lock.texture
-                              )}
+                            <td className="px-3 py-2.5 font-mono text-white">
+                              <span className="text-[13px] font-black text-[#ff4d4d]">{lock.drawable}</span>
+                              <span className="ml-1.5 text-[9px] font-bold uppercase text-[#a08890]">
+                                all textures
+                              </span>
                               {(lockCat?.type === "tattoo" || searchActive) && (
-                                <p className="mt-0.5 max-w-[90px] truncate text-[9px] text-white/40">
+                                <p className="mt-0.5 max-w-[140px] truncate text-[9px] text-white/40">
                                   {lock.componentId}
                                   {searchActive && lockCat && (
                                     <span className="text-white/25"> · {lockCat.label}</span>
@@ -763,39 +673,30 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                                 </p>
                               )}
                             </td>
-                            <td className="px-2.5 py-2 capitalize text-white/70">{lock.gender}</td>
-                            <td className="px-2.5 py-2">
-                              <p className="max-w-[110px] truncate font-semibold text-white">{lock.ownerName}</p>
-                              <p className="max-w-[110px] truncate font-mono text-[9px] text-white/35">
+                            <td className="px-3 py-2.5 capitalize text-white/70">{lock.gender}</td>
+                            <td className="px-3 py-2.5">
+                              <p className="max-w-[180px] truncate font-semibold text-white">{lock.ownerName}</p>
+                              <p className="max-w-[180px] truncate font-mono text-[9px] text-[#a08890]">
                                 {lock.ownerIdentifier}
                               </p>
                             </td>
-                            <td className="px-2.5 py-2">{renderSharedCell(lock)}</td>
-                            <td
-                              className={cn(
-                                "px-2.5 py-2 text-[10px]",
-                                isExpired ? "text-red-300/80" : "text-white/45"
-                              )}
-                            >
-                              {formatExpires(lock.expiresAt)}
+                            <td className="px-3 py-2.5 text-white/70">
+                              {lock.sharedCount ?? lock.sharedIdentifiers?.length ?? 0}
                             </td>
-                            <td className="px-2.5 py-2 text-[10px] text-white/45">
-                              {formatDate(lock.createdAt)}
-                            </td>
-                            <td className="px-2.5 py-2">
+                            <td className="px-3 py-2.5">
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
                                   onClick={() => openShared(lock)}
-                                  className="rounded-md border border-white/10 bg-black/20 p-1.5 text-white/55 transition hover:border-[#35c7f2]/40 hover:text-[#8fe4ff]"
-                                  title="Manage shared access"
+                                  className="rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-1.5 text-[#a08890] transition hover:border-[#ff3a3a] hover:text-[#ff4d4d]"
+                                  title="Share with players"
                                 >
                                   <Share2 className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => removeLock(lock)}
-                                  className="rounded-md border border-white/10 bg-black/20 p-1.5 text-white/55 transition hover:border-red-400/40 hover:text-red-300"
+                                  className="rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-1.5 text-[#a08890] transition hover:border-red-400/40 hover:text-red-300"
                                   title="Remove lock"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -813,137 +714,111 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
           </div>
         </div>
 
-        {/* Add Lock modal */}
         {showAdd && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/65 p-4">
             <div
-              className="flex max-h-[90%] w-full max-w-[520px] flex-col overflow-hidden rounded-2xl border"
-              style={{
-                background: "linear-gradient(180deg, rgba(12, 48, 82, 0.98) 0%, rgba(6, 28, 52, 0.99) 100%)",
-                borderColor: "rgba(143, 228, 255, 0.25)",
-              }}
+              className="flex h-[520px] w-full max-w-[860px] flex-col overflow-hidden rounded-xl border-2 border-[#ff3a3a]"
+              style={{ background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)" }}
             >
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                <p className="text-[12px] font-black uppercase tracking-wider text-white">
-                  Add Lock · {activeCat?.label}
-                </p>
-                <button type="button" onClick={() => setShowAdd(false)} className="text-white/50 hover:text-white">
+              <div className="flex shrink-0 items-center justify-between border-b border-[#ff3a3a]/25 px-4 py-2.5">
+                <div>
+                  <p className="text-[12px] font-black uppercase tracking-wider text-white">
+                    Add Lock · {activeCat?.label}
+                  </p>
+                  <p className="text-[9px] text-[#a08890]">Locks the whole drawable (all textures)</p>
+                </div>
+                <button type="button" onClick={() => setShowAdd(false)} className="text-[#a08890] hover:text-white">
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               {duplicateWarning && (
-                <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-400/40 bg-red-500/15 px-3 py-2">
+                <div className="mx-4 mt-2 flex shrink-0 items-center gap-2 rounded-lg border border-red-400/40 bg-red-500/15 px-3 py-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-red-300" />
                   <p className="text-[11px] font-semibold text-red-200">Already locked — duplicate entry exists.</p>
                 </div>
               )}
 
-              <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] font-bold uppercase text-white/40">Appearance values</span>
-                  <button
-                    type="button"
-                    onClick={grabFromPed}
-                    disabled={grabbing || busy}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#ffd24c]/35 bg-[#ffd24c]/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#ffd24c]/90 transition hover:bg-[#ffd24c]/20 disabled:opacity-40"
-                  >
-                    <Hand className={cn("h-3 w-3", grabbing && "animate-pulse")} />
-                    Grab from me
-                  </button>
-                </div>
+              <div className="grid min-h-0 flex-1 grid-cols-2">
+                {/* Left panel — lock values */}
+                <div className="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-[#ff3a3a]/25 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#ff4d4d]">Lock Values</p>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <label className="block">
-                    <span className="text-[9px] font-bold uppercase text-white/40">Drawable</span>
-                    <input
-                      type="number"
-                      value={drawable}
-                      onChange={(e) => setDrawable(Number(e.target.value))}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[12px] text-white outline-none focus:border-[#35c7f2]/40"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-[9px] font-bold uppercase text-white/40">Texture</span>
-                    <input
-                      type="number"
-                      value={texture}
-                      disabled={anyTexture}
-                      onChange={(e) => setTexture(Number(e.target.value))}
-                      className={cn(
-                        "mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[12px] text-white outline-none focus:border-[#35c7f2]/40",
-                        anyTexture && "cursor-not-allowed opacity-40"
-                      )}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-[9px] font-bold uppercase text-white/40">Gender</span>
-                    <select
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[12px] text-white outline-none focus:border-[#35c7f2]/40"
+                  <div className="flex items-end gap-2">
+                    <label className="min-w-0 flex-1">
+                      <span className="text-[9px] font-bold uppercase text-[#a08890]">Drawable</span>
+                      <input
+                        type="number"
+                        value={drawable}
+                        onChange={(e) => setDrawable(Number(e.target.value))}
+                        className="mt-1 w-full rounded-lg border border-[#ff3a3a]/30 bg-[#181216] px-3 py-2.5 text-[18px] font-black text-[#ff4d4d] outline-none focus:border-[#ff3a3a]"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={grabFromPed}
+                      disabled={grabbing || busy}
+                      className="inline-flex h-[46px] shrink-0 items-center gap-1.5 rounded-lg border border-[#ff3a3a] bg-[#ff3a3a]/15 px-3 text-[10px] font-bold uppercase tracking-wide text-[#ff4d4d] transition hover:bg-[#ff3a3a]/25 disabled:opacity-40"
                     >
-                      {genders.map((g) => (
-                        <option key={g.id} value={g.id} className="bg-[#0a2846]">
+                      <Hand className={cn("h-3.5 w-3.5", grabbing && "animate-pulse")} />
+                      Grab
+                    </button>
+                  </div>
+
+                  <div>
+                    <span className="mb-1.5 block text-[9px] font-bold uppercase text-[#a08890]">Gender</span>
+                    <div className="flex gap-1.5">
+                      {GENDER_PILLS.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setGender(g.id)}
+                          className={cn(
+                            "flex-1 rounded-md border px-2 py-2 text-[10px] font-bold uppercase transition",
+                            gender === g.id
+                              ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-[#ff4d4d]"
+                              : "border-[#ff3a3a]/20 bg-[#181216] text-[#a08890] hover:text-white"
+                          )}
+                        >
                           {g.label}
-                        </option>
+                        </button>
                       ))}
-                    </select>
-                  </label>
+                    </div>
+                  </div>
+
+                  {(activeCat?.type === "tattoo" || activeCat?.type === "headOverlay") && (
+                    <label className="block">
+                      <span className="text-[9px] font-bold uppercase text-[#a08890]">
+                        {activeCat?.type === "tattoo" ? "Tattoo name" : "Component key"}
+                      </span>
+                      <input
+                        value={componentOverride}
+                        onChange={(e) => setComponentOverride(e.target.value)}
+                        placeholder={activeCat?.componentId}
+                        className="mt-1 w-full rounded-lg border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-2 text-[12px] text-white outline-none placeholder:text-[#a08890]/50 focus:border-[#ff3a3a]"
+                      />
+                    </label>
+                  )}
+
+                  <div className="mt-auto rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-3">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-[#a08890]">Summary</p>
+                    <p className="mt-1.5 text-[12px] font-semibold text-white">
+                      {activeCat?.label || "—"} · Drawable{" "}
+                      <span className="font-black text-[#ff4d4d]">{drawable}</span>
+                    </p>
+                    <p className="mt-0.5 text-[10px] capitalize text-[#a08890]">
+                      Gender · {gender} · All textures
+                    </p>
+                    <p className="mt-0.5 truncate text-[10px] text-[#a08890]">
+                      Owner · {owner?.name || "Select on right →"}
+                    </p>
+                  </div>
                 </div>
 
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={anyTexture}
-                    onChange={(e) => setAnyTexture(e.target.checked)}
-                    className="h-3.5 w-3.5 rounded border-white/20 bg-black/30 accent-[#35c7f2]"
-                  />
-                  <span className="text-[11px] font-semibold text-white/75">Any texture</span>
-                </label>
-
-                {(activeCat?.type === "tattoo" || activeCat?.type === "headOverlay") && (
-                  <label className="block">
-                    <span className="text-[9px] font-bold uppercase text-white/40">
-                      {activeCat?.type === "tattoo" ? "Tattoo name (e.g. TAT_AR_000)" : "Component key override"}
-                    </span>
-                    <input
-                      value={componentOverride}
-                      onChange={(e) => setComponentOverride(e.target.value)}
-                      placeholder={activeCat?.componentId}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[12px] text-white outline-none placeholder:text-white/25 focus:border-[#35c7f2]/40"
-                    />
-                  </label>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase text-white/40">
-                      <Clock className="h-3 w-3" /> Expires (optional)
-                    </span>
-                    <input
-                      type="datetime-local"
-                      value={expiresAt}
-                      onChange={(e) => setExpiresAt(e.target.value)}
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[11px] text-white outline-none focus:border-[#35c7f2]/40 [color-scheme:dark]"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase text-white/40">
-                      <Briefcase className="h-3 w-3" /> Shared jobs
-                    </span>
-                    <input
-                      value={addSharedJobs}
-                      onChange={(e) => setAddSharedJobs(e.target.value)}
-                      placeholder="police, ambulance"
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[11px] text-white outline-none placeholder:text-white/25 focus:border-[#35c7f2]/40"
-                    />
-                  </label>
-                </div>
-
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-[9px] font-bold uppercase text-white/40">Owner</span>
+                {/* Right panel — owner + shared */}
+                <div className="flex min-h-0 flex-col gap-2.5 overflow-hidden p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#ff4d4d]">Owner</p>
                     <div className="flex items-center gap-1.5">
                       {staffSelf && (
                         <button
@@ -956,51 +831,53 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                           className={cn(
                             "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide transition",
                             owner?.identifier === staffSelf.identifier
-                              ? "border-[#ffd24c]/50 bg-[#ffd24c]/20 text-[#ffd24c]"
-                              : "border-white/10 bg-black/20 text-white/55 hover:border-[#ffd24c]/35 hover:text-[#ffd24c]/90"
+                              ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-[#ff4d4d]"
+                              : "border-[#ff3a3a]/20 bg-[#181216] text-[#a08890] hover:text-[#ff4d4d]"
                           )}
                         >
                           <User className="h-3 w-3" /> Me
                         </button>
                       )}
-                      <div className="flex rounded-lg border border-white/10 bg-black/20 p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setOwnerMode("online")}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase",
-                          ownerMode === "online" ? "bg-[#35c7f2]/25 text-[#8fe4ff]" : "text-white/45"
-                        )}
-                      >
-                        <Wifi className="h-3 w-3" /> Online
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setOwnerMode("offline")}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase",
-                          ownerMode === "offline" ? "bg-[#35c7f2]/25 text-[#8fe4ff]" : "text-white/45"
-                        )}
-                      >
-                        <WifiOff className="h-3 w-3" /> Offline
-                      </button>
+                      <div className="flex rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setOwnerMode("online")}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-bold uppercase",
+                            ownerMode === "online" ? "bg-[#ff3a3a]/25 text-[#ff4d4d]" : "text-[#a08890]"
+                          )}
+                        >
+                          <Wifi className="h-3 w-3" /> Online
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOwnerMode("offline")}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-bold uppercase",
+                            ownerMode === "offline" ? "bg-[#ff3a3a]/25 text-[#ff4d4d]" : "text-[#a08890]"
+                          )}
+                        >
+                          <WifiOff className="h-3 w-3" /> Offline
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <div className="relative mb-2">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/35" />
+
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#a08890]" />
                     <input
                       value={ownerSearch}
                       onChange={(e) => setOwnerSearch(e.target.value)}
                       placeholder={ownerMode === "online" ? "Search online..." : "Search by name / identifier..."}
-                      className="w-full rounded-lg border border-white/10 bg-black/30 py-2 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-white/30 focus:border-[#35c7f2]/40"
+                      className="w-full rounded-lg border border-[#ff3a3a]/25 bg-[#181216] py-2 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-[#a08890]/60 focus:border-[#ff3a3a]"
                     />
                   </div>
-                  <div className="max-h-[120px] space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-1.5">
+
+                  <div className="no-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-1.5">
                     {ownerMode === "offline" && ownerSearch.trim().length < 2 && (
-                      <p className="py-4 text-center text-[10px] text-white/35">Type at least 2 characters.</p>
+                      <p className="py-4 text-center text-[10px] text-[#a08890]">Type at least 2 characters.</p>
                     )}
-                    {searching && <p className="py-3 text-center text-[10px] text-white/35">Searching...</p>}
+                    {searching && <p className="py-3 text-center text-[10px] text-[#a08890]">Searching...</p>}
                     {ownerList.map((p) => {
                       const sel = owner?.identifier === p.identifier;
                       return (
@@ -1010,60 +887,61 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                           onClick={() => setOwner(p)}
                           className={cn(
                             "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition",
-                            sel ? "bg-[#35c7f2]/20 text-[#8fe4ff]" : "text-white/70 hover:bg-white/5"
+                            sel ? "bg-[#ff3a3a]/20 text-[#ff4d4d]" : "text-white/70 hover:bg-white/5"
                           )}
                         >
                           <User className="h-3.5 w-3.5 shrink-0 opacity-50" />
                           <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">{p.name}</span>
                           {(p.identifier === staffIdentifier || p.source === data?.staffId) && (
-                            <span className="rounded bg-[#ffd24c]/20 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-[#ffd24c]">
+                            <span className="rounded bg-[#ff3a3a]/20 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-[#ff4d4d]">
                               You
                             </span>
                           )}
                           {p.source != null && (
-                            <span className="text-[9px] text-white/40">#{p.source}</span>
+                            <span className="text-[9px] text-[#a08890]">#{p.source}</span>
                           )}
                         </button>
                       );
                     })}
                   </div>
-                </div>
 
-                <div>
-                  <span className="text-[9px] font-bold uppercase text-white/40">Also allow (shared)</span>
-                  <div className="mt-1.5 max-h-[90px] space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-1.5">
-                    {online
-                      .filter((p) => p.identifier !== owner?.identifier)
-                      .map((p) => {
-                        const on = sharedPick.includes(p.identifier);
-                        return (
-                          <button
-                            key={p.identifier}
-                            type="button"
-                            onClick={() => toggleSharedId(p.identifier, sharedPick, setSharedPick)}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] transition",
-                              on ? "bg-emerald-500/15 text-emerald-300" : "text-white/60 hover:bg-white/5"
-                            )}
-                          >
-                            <Users className="h-3 w-3 shrink-0 opacity-50" />
-                            <span className="truncate font-semibold">{p.name}</span>
-                            <ChevronRight className="ml-auto h-3 w-3 opacity-30" />
-                          </button>
-                        );
-                      })}
-                    {online.length === 0 && (
-                      <p className="py-3 text-center text-[10px] text-white/35">No online players.</p>
-                    )}
+                  <div className="shrink-0">
+                    <span className="text-[9px] font-bold uppercase text-[#a08890]">
+                      Also allow ({sharedPick.length})
+                    </span>
+                    <div className="mt-1 max-h-[110px] space-y-1 overflow-y-auto rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-1.5">
+                      {online
+                        .filter((p) => p.identifier !== owner?.identifier)
+                        .map((p) => {
+                          const on = sharedPick.includes(p.identifier);
+                          return (
+                            <button
+                              key={p.identifier}
+                              type="button"
+                              onClick={() => toggleSharedId(p.identifier, sharedPick, setSharedPick)}
+                              className={cn(
+                                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] transition",
+                                on ? "bg-emerald-500/15 text-emerald-300" : "text-white/60 hover:bg-white/5"
+                              )}
+                            >
+                              <Users className="h-3 w-3 shrink-0 opacity-50" />
+                              <span className="truncate font-semibold">{p.name}</span>
+                            </button>
+                          );
+                        })}
+                      {online.filter((p) => p.identifier !== owner?.identifier).length === 0 && (
+                        <p className="py-2 text-center text-[10px] text-[#a08890]">No other online players.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-white/10 px-4 py-3">
+              <div className="flex shrink-0 justify-end gap-2 border-t border-[#ff3a3a]/25 px-4 py-2.5">
                 <button
                   type="button"
                   onClick={() => setShowAdd(false)}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white"
+                  className="rounded-lg border border-[#ff3a3a]/25 px-3 py-1.5 text-[11px] font-semibold text-[#a08890] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -1071,7 +949,7 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                   type="button"
                   disabled={!owner || busy || duplicateWarning}
                   onClick={submitAdd}
-                  className="rounded-lg border border-[#35c7f2]/40 bg-[#35c7f2]/25 px-4 py-1.5 text-[11px] font-bold uppercase text-[#8fe4ff] disabled:opacity-40"
+                  className="rounded-lg border border-[#ff3a3a] bg-[#ff3a3a]/25 px-4 py-1.5 text-[11px] font-bold uppercase text-[#ff4d4d] disabled:opacity-40"
                 >
                   Create Lock
                 </button>
@@ -1080,52 +958,35 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
           </div>
         )}
 
-        {/* Manage shared modal */}
         {showShared && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/65 p-5">
             <div
-              className="flex max-h-[90%] w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border"
-              style={{
-                background: "linear-gradient(180deg, rgba(12, 48, 82, 0.98) 0%, rgba(6, 28, 52, 0.99) 100%)",
-                borderColor: "rgba(143, 228, 255, 0.25)",
-              }}
+              className="flex max-h-[92%] w-full max-w-[460px] flex-col overflow-hidden rounded-xl border-2 border-[#ff3a3a]"
+              style={{ background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)" }}
             >
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div className="flex items-center justify-between border-b border-[#ff3a3a]/25 px-4 py-2.5">
                 <div>
                   <p className="text-[12px] font-black uppercase tracking-wider text-white">Shared Access</p>
-                  <p className="text-[10px] text-white/45">
+                  <p className="text-[9px] text-[#a08890]">
                     Owner · {showShared.ownerName} · drawable {showShared.drawable}
-                    {showShared.anyTexture ? " / any tex" : ` / ${showShared.texture}`}
                   </p>
                 </div>
-                <button type="button" onClick={() => setShowShared(null)} className="text-white/50 hover:text-white">
+                <button type="button" onClick={() => setShowShared(null)} className="text-[#a08890] hover:text-white">
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                <label className="block">
-                  <span className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase text-white/40">
-                    <Briefcase className="h-3 w-3" /> Shared jobs (comma-separated)
-                  </span>
-                  <input
-                    value={sharedJobsDraft}
-                    onChange={(e) => setSharedJobsDraft(e.target.value)}
-                    placeholder="police, ambulance"
-                    className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[11px] text-white outline-none placeholder:text-white/25 focus:border-[#35c7f2]/40"
-                  />
-                </label>
-
                 <div>
-                  <span className="text-[9px] font-bold uppercase text-white/40">Currently shared</span>
+                  <span className="text-[9px] font-bold uppercase text-[#a08890]">Currently shared</span>
                   <div className="mt-1.5 space-y-1">
                     {sharedDraft.length === 0 && (
-                      <p className="py-2 text-[10px] text-white/35">Nobody else has access.</p>
+                      <p className="py-2 text-[10px] text-[#a08890]">Nobody else has access.</p>
                     )}
                     {sharedDraft.map((id) => (
                       <div
                         key={id}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5"
                       >
                         <span className="truncate text-[11px] text-white/80">{playerLabel(id)}</span>
                         <button
@@ -1141,17 +1002,17 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                 </div>
 
                 <div>
-                  <span className="text-[9px] font-bold uppercase text-white/40">Add players</span>
+                  <span className="text-[9px] font-bold uppercase text-[#a08890]">Add players</span>
                   <div className="relative mt-1.5 mb-2">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/35" />
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#a08890]" />
                     <input
                       value={sharedSearch}
                       onChange={(e) => setSharedSearch(e.target.value)}
                       placeholder="Search offline to add..."
-                      className="w-full rounded-lg border border-white/10 bg-black/30 py-2 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-white/30 focus:border-[#35c7f2]/40"
+                      className="w-full rounded-lg border border-[#ff3a3a]/25 bg-[#181216] py-2 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-[#a08890]/60 focus:border-[#ff3a3a]"
                     />
                   </div>
-                  <div className="max-h-[140px] space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-1.5">
+                  <div className="max-h-[180px] space-y-1 overflow-y-auto rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-1.5">
                     {[...online, ...sharedOffline]
                       .filter(
                         (p, i, arr) =>
@@ -1172,7 +1033,7 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                           >
                             <span className="truncate font-semibold">{p.name}</span>
                             {p.online !== false && p.source != null && (
-                              <span className="text-[9px] text-white/40">#{p.source}</span>
+                              <span className="text-[9px] text-[#a08890]">#{p.source}</span>
                             )}
                           </button>
                         );
@@ -1181,11 +1042,11 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-white/10 px-4 py-3">
+              <div className="flex justify-end gap-2 border-t border-[#ff3a3a]/25 px-4 py-3">
                 <button
                   type="button"
                   onClick={() => setShowShared(null)}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white"
+                  className="rounded-lg border border-[#ff3a3a]/25 px-3 py-1.5 text-[11px] font-semibold text-[#a08890] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -1193,7 +1054,7 @@ export default function LockMenu({ data, onClose }: LockMenuProps) {
                   type="button"
                   disabled={busy}
                   onClick={saveShared}
-                  className="rounded-lg border border-[#35c7f2]/40 bg-[#35c7f2]/25 px-4 py-1.5 text-[11px] font-bold uppercase text-[#8fe4ff] disabled:opacity-40"
+                  className="rounded-lg border border-[#ff3a3a] bg-[#ff3a3a]/25 px-4 py-1.5 text-[11px] font-bold uppercase text-[#ff4d4d] disabled:opacity-40"
                 >
                   Save Access
                 </button>

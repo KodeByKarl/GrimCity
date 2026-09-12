@@ -119,12 +119,46 @@ local function ResolveShopProjectModel()
     return ConfigPlaytimeShop.ProjectModel or 'ody18'
 end
 
+local function ResolveShopPartItem(itemName, model)
+    if itemName == 'vehicle_shell' or itemName == 'car_blueprint' or itemName == 'project_parts_box' then
+        return itemName
+    end
+    if GetResourceState('kodebykarl-projectcars') == 'started' then
+        local ok, uniqueName = pcall(function()
+            return exports['kodebykarl-projectcars']:ResolvePartItem(itemName, model)
+        end)
+        if ok and type(uniqueName) == 'string' and uniqueName ~= '' then
+            return uniqueName
+        end
+    end
+    return itemName
+end
+
+local function IsShopProjectItem(itemName)
+    if not itemName then return false end
+    local projectItems = ConfigPlaytimeShop.ProjectPartItems
+    if projectItems and projectItems[itemName] then
+        return true
+    end
+    if itemName == 'vehicle_shell' or itemName == 'car_blueprint' or itemName == 'project_parts_box' then
+        return true
+    end
+    if GetResourceState('kodebykarl-projectcars') == 'started' then
+        local ok, partType = pcall(function()
+            return exports['kodebykarl-projectcars']:GetPartTypeFromItem(itemName)
+        end)
+        if ok and partType then
+            return true
+        end
+    end
+    return false
+end
+
 local function BuildProjectMetadata(itemName, product, model)
     if product and product.metadata then
         return product.metadata
     end
-    local projectItems = ConfigPlaytimeShop.ProjectPartItems
-    if not projectItems or not projectItems[itemName] then
+    if not IsShopProjectItem(itemName) and not (product and IsShopProjectItem(product.item)) then
         return nil
     end
     if itemName == 'project_parts_box' then
@@ -403,13 +437,15 @@ lib.callback.register('cfx-keydi-playtimeshop:buy', function(source, data)
         if isProjectPart then
             local given = 0
             for _ = 1, amount do
-                local meta = BuildProjectMetadata(product.item, product)
-                local gOk = GiveItem(source, product.item, 1, meta)
+                local model = ResolveShopProjectModel()
+                local giveName = ResolveShopPartItem(product.item, model)
+                local meta = BuildProjectMetadata(giveName, product, model)
+                local gOk = GiveItem(source, giveName, 1, meta)
                 if not gOk then
                     break
                 end
                 given = given + 1
-                shopVehicleLabel = meta and meta.vehicle or shopVehicleLabel
+                shopVehicleLabel = meta and meta.label or meta and meta.vehicle or shopVehicleLabel
             end
             ok = given > 0
             if given == 0 then

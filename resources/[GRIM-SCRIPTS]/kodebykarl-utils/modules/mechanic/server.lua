@@ -44,6 +44,12 @@ local function consumeKit(src, action)
         return false, 'Could not use the kit.'
     end
 
+    if action == 'repair' then
+        pcall(function()
+            exports['kodebykarl-utils']:FgVehicleSession(src, 'repair', true, 8000)
+        end)
+    end
+
     return true
 end
 

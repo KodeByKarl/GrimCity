@@ -84,13 +84,15 @@ local ZONE_LABELS = {
 local function resolveBoneZone(boneId)
     boneId = tonumber(boneId) or -1
     if boneId < 0 then return "torso", false end
+    if DeathScreenBones and DeathScreenBones.ZoneFromBone then
+        local zone = DeathScreenBones.ZoneFromBone(boneId)
+        if zone == "arms" then zone = "arm" end
+        if zone == "legs" then zone = "leg" end
+        return zone, zone == "head"
+    end
     local zones = ConfigDeathScreen.BoneZones or {}
     local heads = ConfigDeathScreen.HeadBones or {}
     local zone = zones[boneId]
-    -- Neck bone 35731 was listed under head in some maps; force neck if configured
-    if boneId == 39317 or boneId == 35731 or boneId == 97 or boneId == 124 then
-        zone = "neck"
-    end
     local isHead = heads[boneId] == true or zone == "head"
     if isHead then
         return "head", true
@@ -98,7 +100,6 @@ local function resolveBoneZone(boneId)
     if zone then
         return zone, false
     end
-    -- Unknown bone: do not assume torso (that hid real headshots). Recheck as head if mapped.
     return "torso", false
 end
 

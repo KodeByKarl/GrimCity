@@ -207,7 +207,7 @@ local function postEmbed(channelKey, embed)
     local c = cfg()
     if c.LogTypes and c.LogTypes[channelKey] == false then return end
 
-    embed.footer = { text = "Pandora City • Community Service" }
+    embed.footer = { text = "Grim City • Community Service" }
     embed.timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
     enqueuePost(channelKey, {

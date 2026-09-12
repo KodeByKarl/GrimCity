@@ -80,8 +80,15 @@ RegisterNUICallback('hideFrame', function(_, cb)
 end)
 
 RegisterNUICallback('getPlayerJob', function(_, cb)
-    local job = PlayerData.job
-    if not job then
+    local job = PlayerData and PlayerData.job
+    if (not job or not job.name) and ESX.GetPlayerData then
+        local live = ESX.GetPlayerData()
+        job = live and live.job
+        if job then
+            PlayerData.job = job
+        end
+    end
+    if not job or not job.name then
         cb({})
         return
     end
@@ -93,6 +100,8 @@ RegisterNUICallback('getPlayerJob', function(_, cb)
         label = job.label,
         name = job.name,
         isBoss = job.grade_name == 'boss',
+        -- Position is intentionally omitted from templates
+        position = nil,
     })
 end)
 
@@ -220,7 +229,23 @@ RegisterNetEvent('cfx-cs-police:documents:copyReceived', function(data)
 end)
 
 RegisterNetEvent('cfx-cs-police:documents:viewDocument', function(data)
-    toggleDocumentFrame(true, data.data)
+    local document = data
+    if type(data) == 'table' and data.data ~= nil then
+        document = data.data
+    end
+    if type(document) == 'string' then
+        local ok, decoded = pcall(json.decode, document)
+        if ok and type(decoded) == 'table' then
+            document = decoded
+        else
+            document = nil
+        end
+    end
+    if type(document) ~= 'table' then
+        Notify('Could not open that document.')
+        return
+    end
+    toggleDocumentFrame(true, document)
 end)
 
 local function canUseDocuments(loc)

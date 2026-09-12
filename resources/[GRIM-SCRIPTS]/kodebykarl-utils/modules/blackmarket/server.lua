@@ -4,6 +4,7 @@
 ]]
 
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local CURRENCY = 'black_money'
 
@@ -187,6 +188,10 @@ lib.callback.register('cfx-keydi-utils:blackmarket:buy', function(source, locati
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then
         return false, 'Player not found.'
+    end
+
+    if not Region.Allowed('illegal', src) then
+        return false, Region.Message('illegal')
     end
 
     locationId = tonumber(locationId)

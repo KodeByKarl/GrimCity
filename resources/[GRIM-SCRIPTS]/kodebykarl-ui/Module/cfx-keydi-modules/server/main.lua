@@ -100,7 +100,7 @@ local function applyNameChange(xTarget, firstName, lastName)
     if firstName == '' or lastName == '' then
         return false
     end
-    if #firstName > 24 or #lastName > 24 then
+    if #firstName > 50 or #lastName > 50 then
         return false
     end
 

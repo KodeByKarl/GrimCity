@@ -208,6 +208,28 @@ local function OpenPoliceQuickMenu()
             event = 'cfx-cs-police:JailPlayer',
         },
         {
+            title = 'Unjail Suspect',
+            description = 'Release a nearby jailed player (Officers & Directors)',
+            icon = 'fa-solid fa-unlock',
+            event = 'cfx-cs-police:UnjailPlayer',
+        },
+        {
+            title = 'Issue Bill',
+            description = 'Bill for impound and other charges',
+            icon = 'fa-solid fa-file-invoice-dollar',
+            onSelect = function()
+                if GetResourceState('kodebykarl-ui') == 'started' then
+                    exports['kodebykarl-ui']:OpenInvoice()
+                    return
+                end
+                if GetResourceState('cfx-keydi-ui') == 'started' then
+                    exports['cfx-keydi-ui']:OpenInvoice()
+                    return
+                end
+                ExecuteCommand('billing')
+            end,
+        },
+        {
             title = 'GSR Test',
             description = 'Test nearby player for gunshot residue',
             icon = 'fa-solid fa-gun',
@@ -224,12 +246,6 @@ local function OpenPoliceQuickMenu()
             description = 'Place objects on the floor',
             icon = 'fa-solid fa-box',
             event = 'cfx-cs-police:OpenObjectMenu',
-        },
-        {
-            title = 'Riot Shield',
-            description = 'Equip Riot Shield',
-            icon = 'fa-solid fa-shield',
-            event = 'cfx-cs-police:EquipShield'
         },
     }
 

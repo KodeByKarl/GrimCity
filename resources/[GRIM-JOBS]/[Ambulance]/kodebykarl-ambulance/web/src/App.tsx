@@ -55,7 +55,8 @@ function App() {
             setTotalTime(typeof data?.totalTime === 'number' ? data.totalTime : t);
             const locs = Array.isArray(data?.locations) ? (data.locations as RespawnPoint[]) : [];
             setLocations(locs);
-            setSelectedId(locs[0]?.id ?? null);
+            const preferred = typeof data?.selectedId === 'string' ? data.selectedId : null;
+            setSelectedId(preferred && locs.some((l) => l.id === preferred) ? preferred : (locs[0]?.id ?? null));
             setBpm(32 + Math.floor(Math.random() * 12));
             // Client owns NUI focus — don't re-request focus from React (focus races can crash CEF).
         });
@@ -116,7 +117,6 @@ function App() {
     };
 
     const selectLocation = (id: string) => {
-        if (!canRespawn) return;
         setSelectedId(id);
         void sendNuiEvent('ems:selectRespawn', { id });
     };
@@ -173,7 +173,7 @@ function App() {
                                     <div className="grim-ems-clock">{formatTime(timer)}</div>
                                 </div>
                                 <p className="grim-ems-hint">
-                                    {canRespawn ? 'Pick a point & confirm' : 'EMS can still revive you'}
+                                    {canRespawn ? 'Pick a hospital & confirm' : 'Choose a hospital — EMS can still revive you'}
                                 </p>
                             </div>
 
@@ -184,13 +184,12 @@ function App() {
                             <p className="grim-ems-label grim-ems-loc-label">Respawn Point</p>
                             <div className="grim-ems-grid">
                                 {locations.map((loc) => {
-                                    const active = canRespawn && loc.id === selectedId;
+                                    const active = loc.id === selectedId;
                                     return (
                                         <button
                                             key={loc.id}
                                             type="button"
-                                            className={`grim-ems-card${active ? ' is-on' : ''}${canRespawn ? '' : ' is-off'}`}
-                                            disabled={!canRespawn}
+                                            className={`grim-ems-card${active ? ' is-on' : ''}`}
                                             onClick={() => selectLocation(loc.id)}
                                         >
                                             <span className={`grim-ems-radio${active ? ' is-on' : ''}`} />

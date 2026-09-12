@@ -63,19 +63,14 @@ ConfigSheriff.Station = {
     Helipad = {
         access = vector3(1883.4827, 3659.4534, 40.8335),
         heading = 297.0320,
-        spawn = vector4(1892.9338, 3664.7878, 40.8335, 119.3511),
+        spawn = vector4(1893.0033, 3666.2625, 40.8335, 190.9078),
         label = 'Sheriff Helipad',
         garageId = 'Sheriff Helipad',
     },
     Garage = {
-        access = vector3(1905.4390, 3653.8381, 33.5470),
-        heading = 27.1404,
-        spawn = {
-            vector4(1909.2976, 3662.1689, 33.5957, 220.0816),
-            vector4(1912.3215, 3663.3765, 33.5945, 275.5710),
-            vector4(1914.9451, 3664.5029, 33.5897, 235.3427),
-            vector4(1917.3188, 3666.3179, 33.5876, 236.6252),
-        },
+        access = vector3(1909.2863, 3662.5608, 33.5966),
+        heading = 219.0533,
+        spawn = vector4(1912.4501, 3663.4399, 33.5944, 204.4072),
         label = 'Sheriff Garage',
         garageId = 'Sheriff Garage',
     },
@@ -84,13 +79,17 @@ ConfigSheriff.Station = {
 -- Minimum grade for /givescs (boss = 6)
 ConfigSheriff.CallsignBossGradeName = 'boss'
 
--- Sheriff Coin Harvesting / Auto-Farm --
+-- Sheriff Coin Harvesting / Auto-Farm (same as PD) --
 ConfigSheriff.CoinHarvest = {
     enabled = true,
     job = 'sheriff',
-    prop = 'prop_cs_cardbox_01', -- cartoon / cardboard box prop
-    location = vector4(1894.1588, 3635.4587, 34.1129, 215.6584),
-    interactDistance = 1.8,
+    locations = {
+        vector4(1890.1949, 3662.1943, 37.3998, 332.5623),
+        vector4(1887.0532, 3660.3557, 37.3998, 341.7905),
+        vector4(1887.0150, 3665.8650, 37.3998, 331.6042),
+        vector4(1883.6233, 3663.9050, 37.3998, 358.9586),
+    },
+    interactDistance = 1.5,
     drawDistance = 6.0,
     duration = 10000, -- 10 seconds progress bar
     reward = {

@@ -390,31 +390,52 @@ end)
 
 -- Helper function to check if local player is in Safezone
 local function IsPlayerInSafezone()
-    if LocalPlayer and LocalPlayer.state and LocalPlayer.state.inSafeZone then
-        return true
+    if LocalPlayer and LocalPlayer.state then
+        if LocalPlayer.state.inSafeZone == true or LocalPlayer.state.inSafezone == true then
+            return true
+        end
     end
-    if GetResourceState('esx_safezone') == 'started' then
-        local ok, inZone = pcall(function() return exports['esx_safezone']:isInSafezone() end)
-        if ok and inZone then return true end
+    local utilsNames = { 'kodebykarl-utils', 'cfx-keydi-utils' }
+    for i = 1, #utilsNames do
+        local res = utilsNames[i]
+        if GetResourceState(res) == 'started' then
+            local ok, inZone = pcall(function()
+                return exports[res]:IsInSafezone()
+            end)
+            if ok and inZone == true then
+                return true
+            end
+        end
     end
-    if GetResourceState('qb-safezone') == 'started' then
-        local ok, inZone = pcall(function() return exports['qb-safezone']:isInSafeZone() end)
-        if ok and inZone then return true end
-    end
-    -- Fallback for standalone test / debug
-    return true
+    return false
 end
 
--- Helper function to check if player is locked (Jail, Arena, Job Instance)
+-- Helper function to check if player is locked (Jail, Arena, Combat, Instance)
 local function IsPlayerLocked()
     if LocalPlayer and LocalPlayer.state then
-        if LocalPlayer.state.isJailed or LocalPlayer.state.inJail then
+        local state = LocalPlayer.state
+        if ConfigModules.LockInJail ~= false and (state.isJailed or state.inJail or (tonumber(state.jailTime) or 0) > 0) then
             return true, "In Jail / Community Service"
         end
-        if LocalPlayer.state.inArena then
+        if state.inArena then
             return true, "Inside Arena Instance"
         end
-        if ConfigModules.LockInJobInstance and LocalPlayer.state.inJobInstance then
+        if state.inPvp or state.isInPvp then
+            return true, "Inside Deathmatch Arena"
+        end
+        if state.dead or state.isDead then
+            return true, "Downed"
+        end
+        if state.cuffed or state.isHandcuffed then
+            return true, "Restrained"
+        end
+        if state.inCombat then
+            return true, "In combat"
+        end
+        if state.inHouseRobbery then
+            return true, "Inside a house robbery"
+        end
+        if ConfigModules.LockInJobInstance and state.inJobInstance then
             return true, "Inside Side Job Instance"
         end
     end
@@ -428,9 +449,23 @@ RegisterNUICallback("cfx-keydi-modules:getServers", function(data, cb)
         local isLocked, lockReason = IsPlayerLocked()
 
         if serversData then
+            if type(serversData.inSafezone) == 'boolean' then
+                inSafezone = serversData.inSafezone == true and inSafezone
+            end
+            if serversData.isLocked then
+                isLocked = true
+                lockReason = serversData.lockReason or lockReason
+            end
+            local requireSafezone = serversData.requireSafezone
+            if requireSafezone == nil then
+                requireSafezone = ConfigServerLocations and ConfigServerLocations.RequiresSafezoneToSwitch
+                    and ConfigServerLocations.RequiresSafezoneToSwitch()
+                    or ConfigModules.RequireSafezone
+            end
             serversData.inSafezone = inSafezone
+            serversData.requireSafezone = requireSafezone == true
             serversData.isLocked = isLocked
-            serversData.lockReason = lockReason or (not inSafezone and "Outside Safezone" or nil)
+            serversData.lockReason = lockReason or (serversData.requireSafezone and not inSafezone and "Outside Safezone" or nil)
         end
 
         cb(serversData or {})
@@ -441,8 +476,13 @@ end)
 RegisterNUICallback("cfx-keydi-modules:connectServer", function(data, cb)
     local inSafezone = IsPlayerInSafezone()
     local isLocked, lockReason = IsPlayerLocked()
-    local requireSafezone = (ConfigServerLocations and ConfigServerLocations.RequireSafezone)
-        or ConfigModules.RequireSafezone
+    local requireSafezone
+    if ConfigServerLocations and ConfigServerLocations.RequiresSafezoneToSwitch then
+        requireSafezone = ConfigServerLocations.RequiresSafezoneToSwitch()
+    else
+        requireSafezone = (ConfigServerLocations and ConfigServerLocations.RequireSafezone)
+            or ConfigModules.RequireSafezone
+    end
 
     if requireSafezone and not inSafezone then
         if ESX and ESX.ShowNotification then

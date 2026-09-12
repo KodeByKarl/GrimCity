@@ -269,6 +269,11 @@ RegisterNetEvent('cfx-cs-robbery:StartTimer', function(key)
     TriggerClientEvent('cfx-cs-robbery:SyncTimer', xPlayer.source, key)
 
     BigHeist.Player[xPlayer.source] = ESX.SetTimeout(config.timer * 1000, function()
+        -- Left the zone / cancelled: do not pay after the countdown
+        if not BigHeist.onGoing[key] or BigHeist.activeKey ~= key or not BigHeist.Player[src] then
+            return
+        end
+
         BigHeist.Player[src] = nil
         BigHeist.onGoing[key] = nil
         clearHeistState(key, config)
@@ -318,6 +323,23 @@ lib.callback.register('cfx-cs-robbery:check', function(source, key)
     local config = Config.Heist[key]
     if not config then
         return false
+    end
+
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, allowed = pcall(function()
+            return exports['kodebykarl-ui']:PlayerHasFunction(src, 'illegal')
+        end)
+        if not ok or not allowed then
+            local msg = 'Store robberies are only available on Region 1. Open Control Center (F5) → Regions.'
+            local mok, text = pcall(function()
+                return exports['kodebykarl-ui']:WrongServerMessage('illegal')
+            end)
+            if mok and type(text) == 'string' and text ~= '' then
+                msg = text
+            end
+            TriggerClientEvent('esx:Notify', src, 'ROBBERY', msg, 'error', 5000)
+            return false
+        end
     end
 
     -- 1 robbery at a time (any heist)

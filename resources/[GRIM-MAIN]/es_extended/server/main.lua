@@ -3,7 +3,7 @@ SetGameType("ESX Legacy")
 
 local oneSyncState = GetConvar("onesync", "off")
 local isEnhanced = false
-local newPlayer = "INSERT INTO `users` SET `accounts` = ?, `identifier` = ?, `ssn` = ?, `group` = ?"
+local newPlayer = "INSERT INTO `users` SET `accounts` = ?, `identifier` = ?, `ssn` = ?, `group` = ?, `job` = ?, `job_grade` = ?"
 local loadPlayer = "SELECT `accounts`, `ssn`, `job`, `job_grade`, `group`, `position`, `inventory`, `skin`, `loadout`, `metadata`, `gang`, `gang_grade`"
 
 if Config.Multichar then
@@ -33,8 +33,8 @@ local function createESXPlayer(identifier, playerId, data)
         defaultGroup = "admin"
     end
     local parameters = Config.Multichar and
-        { json.encode(accounts), identifier, Core.generateSSN(), defaultGroup, data.firstname, data.lastname, data.dateofbirth, data.sex, data.height }
-        or { json.encode(accounts), identifier, Core.generateSSN(), defaultGroup }
+        { json.encode(accounts), identifier, Core.generateSSN(), defaultGroup, "student", 0, data.firstname, data.lastname, data.dateofbirth, data.sex, data.height }
+        or { json.encode(accounts), identifier, Core.generateSSN(), defaultGroup, "student", 0 }
 
     if Config.StartingInventoryItems then
         table.insert(parameters, json.encode(Config.StartingInventoryItems))
@@ -47,7 +47,7 @@ end
 
 
 local function onPlayerJoined(playerId)
-    local identifier = ESX.GetIdentifier(playerId)
+    local identifier = Core.ResolveUserIdentifier(playerId)
     if not identifier then
         return DropPlayer(playerId, "there was an error loading your character!\nError code: identifier-missing-ingame\n\nThe cause of this error is not known, your identifier could not be found. Please come back later or report this problem to the server administration team.")
     end
@@ -87,6 +87,8 @@ local function onPlayerDropped(playerId, reason, cb)
         return resolve()
     end
 
+    Core.ClearPlayerSessionAce(playerId, xPlayer.getGroup())
+
     TriggerEvent("esx:playerDropped", playerId, reason)
     local job = xPlayer.getJob().name
     local currentJob = Core.JobsPlayerCount[job]
@@ -110,7 +112,7 @@ AddEventHandler("esx:onPlayerDropped", onPlayerDropped)
 
 
 if Config.Multichar then
-    AddEventHandler("esx:onPlayerJoined", function(src, char, data)
+    AddEventHandler("esx:onPlayerJoined", function(src, char, data, isNew)
         while not next(ESX.Jobs) do
             Wait(50)
         end
@@ -120,7 +122,7 @@ if Config.Multichar then
             if data then
                 createESXPlayer(identifier, src, data)
             else
-                loadESXPlayer(identifier, src, false)
+                loadESXPlayer(identifier, src, isNew == true)
             end
         end
     end)
@@ -161,10 +163,10 @@ if not Config.Multichar then
         end
 
         if not identifier or not correctLicense then
-            if GetResourceState("esx_identity") ~= "started" then
-                return deferrals.done("[ESX] There was an error loading your character!\nError code: identifier-missing\n\nThe cause of this error is not known, your identifier could not be found. Please come back later or report this problem to the server administration team.")
-            end
+            return deferrals.done("[ESX] There was an error loading your character!\nError code: identifier-missing\n\nThe cause of this error is not known, your identifier could not be found. Please come back later or report this problem to the server administration team.")
         end
+
+        identifier = Core.ResolveUserIdentifier(playerId) or identifier
 
         local xPlayer = ESX.GetPlayerFromIdentifier(identifier)
 
@@ -277,14 +279,10 @@ function loadESXPlayer(identifier, playerId, isNew)
     end
 
     -- Group (account-level user_groups wins so /setgroup survives relog / character switch)
-    if result.group then
-        userData.group = result.group
-    else
-        userData.group = "user"
-    end
+    userData.group = Core.NormalizeGroup(result.group) or "user"
 
     local storedGroup = Core.GetStoredPlayerGroup(Core.GetAceLicense(identifier, playerId))
-    if storedGroup and storedGroup ~= "" then
+    if storedGroup then
         userData.group = storedGroup
         if result.group ~= storedGroup then
             MySQL.update("UPDATE `users` SET `group` = ? WHERE `identifier` = ?", { storedGroup, identifier })

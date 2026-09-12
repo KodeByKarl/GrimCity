@@ -1,5 +1,35 @@
 local menu = require 'shared.menu'
 local helpers = require 'helpers.game'
+local config = require 'shared.config'
+
+local function sendBodybagBill(src, targetId)
+    local bag = config.Bodybag or {}
+    local amount = math.floor(tonumber(bag.bill) or 0)
+    if amount <= 0 or not src or not targetId or src == targetId then
+        return
+    end
+
+    local payload = {
+        title = bag.title or 'BODYBAG',
+        price = amount,
+        description = bag.description or 'EMS body bag / remains transport',
+        kind = 'job',
+        autoAccept = bag.autoAccept ~= false,
+    }
+
+    local sent = false
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, result = pcall(function()
+            return exports['kodebykarl-ui']:CreateInvoice(src, targetId, payload)
+        end)
+        sent = ok and result and result.ok == true
+    end
+    if not sent and GetResourceState('cfx-keydi-ui') == 'started' then
+        pcall(function()
+            exports['cfx-keydi-ui']:CreateInvoice(src, targetId, payload)
+        end)
+    end
+end
 
 local function FormatSentry(xPlayer, xTarget, targetId)
     local playerCoords = xPlayer.getCoords(true)
@@ -82,6 +112,7 @@ RegisterNetEvent('cfx-keydi-ambulance:bodybagTarget', function(playerId)
     end
     lib.logger(xTarget.source, 'cfx-keydi-ambulance-bodybag', BodybagLogs(xPlayer, xTarget))
     TriggerClientEvent('cfx-keydi-ambulance:syncBodyBag', xTarget.source)
+    sendBodybagBill(src, targetId)
     exports['cfx-keydi-ui']:JobTemplateWithoutID(xPlayer.job.name, ('%s is declared dead. Rest in Peace.'):format(xTarget.name))
 
     if AmbulanceLogs and AmbulanceLogs.Bodybag then

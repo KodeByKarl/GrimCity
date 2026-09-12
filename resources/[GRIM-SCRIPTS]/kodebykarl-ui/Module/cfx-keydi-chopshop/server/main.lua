@@ -40,6 +40,55 @@ local function SessionElapsed(session)
     return (GetGameTimer() - startAt) >= math.max(0, durationMs - 400)
 end
 
+local function NormalizeModelName(modelName)
+    return tostring(modelName or ""):lower():gsub("%s+", "")
+end
+
+local function LookupVehicleListPrice(modelName)
+    modelName = NormalizeModelName(modelName)
+    if modelName == "" then return nil end
+
+    local queries = {
+        "SELECT price FROM dealership_stock WHERE LOWER(vehicle) = ? ORDER BY price DESC LIMIT 1",
+        "SELECT price FROM dealership_vehicles WHERE LOWER(spawn_code) = ? LIMIT 1",
+        "SELECT price FROM vehicles WHERE LOWER(model) = ? LIMIT 1",
+    }
+
+    for i = 1, #queries do
+        local ok, row = pcall(function()
+            return MySQL.single.await(queries[i], { modelName })
+        end)
+        local price = ok and row and tonumber(row.price)
+        if price and price > 0 then
+            return price
+        end
+    end
+
+    return nil
+end
+
+local function GetChopPayout(modelName, vehicleClass)
+    local cfg = Config.ChopShop.MoneyReward or {}
+    local minAmt = tonumber(cfg.min) or 25000
+    local maxAmt = tonumber(cfg.max) or 500000
+    local percent = (tonumber(cfg.pricePercent) or 200) / 100.0
+
+    local listPrice = LookupVehicleListPrice(modelName)
+    local amount
+
+    if listPrice then
+        amount = listPrice * percent
+    else
+        local classAmounts = cfg.classAmounts or {}
+        amount = classAmounts[tonumber(vehicleClass)] or cfg.amount or minAmt
+    end
+
+    amount = math.floor((tonumber(amount) or minAmt) / 1000) * 1000
+    if amount < minAmt then amount = minAmt end
+    if amount > maxAmt then amount = maxAmt end
+    return amount
+end
+
 local function RollRewards()
     local rewards = {}
     local list = Config.ChopShop.Rewards or {}
@@ -144,18 +193,21 @@ local function ResolveLocationLabel(coords)
     return bestLabel
 end
 
-local ProjectPartItems = {
-    car_door = true,
-    car_hood = true,
-    car_wheel = true,
-    car_battery = true,
-    car_alternator = true,
-    car_radiator = true,
-    car_engine_part = true,
-    brake_pads = true,
-    spark_plugs = true,
-    car_transmission = true,
-}
+local function IsProjectPartReward(item)
+    item = tostring(item or "")
+    if item == "" then return false end
+    if GetResourceState("kodebykarl-projectcars") == "started" then
+        local ok, isType = pcall(function()
+            return exports["kodebykarl-projectcars"]:IsProjectPartType(item)
+        end)
+        if ok and isType then return true end
+        local okType, partType = pcall(function()
+            return exports["kodebykarl-projectcars"]:GetPartTypeFromItem(item)
+        end)
+        if okType and partType then return true end
+    end
+    return false
+end
 
 local function ResolveChopPartModel(choppedModel)
     choppedModel = tostring(choppedModel or ""):lower():gsub("%s+", "")
@@ -181,8 +233,20 @@ local function ResolveChopPartModel(choppedModel)
     return nil
 end
 
+local function ResolveChopPartItem(item, modelName)
+    if GetResourceState("kodebykarl-projectcars") == "started" then
+        local ok, uniqueName = pcall(function()
+            return exports["kodebykarl-projectcars"]:ResolvePartItem(item, modelName)
+        end)
+        if ok and type(uniqueName) == "string" and uniqueName ~= "" then
+            return uniqueName
+        end
+    end
+    return item
+end
+
 local function BuildChopPartMetadata(item, modelName)
-    if not ProjectPartItems[item] then return nil end
+    if not IsProjectPartReward(item) then return nil end
     modelName = tostring(modelName or ""):lower():gsub("%s+", "")
     if modelName == "" then return nil end
 
@@ -375,6 +439,17 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return { ok = false, reason = "denied" } end
 
+    if ConfigServerLocations and ConfigServerLocations.CanUseFunction then
+        if not ConfigServerLocations.CanUseFunction("illegal", src) then
+            TriggerClientEvent("ox_lib:notify", src, {
+                title = (Config.ChopShop and Config.ChopShop.Label) or "Illegal Chop",
+                description = ConfigServerLocations.WrongServerMessage("illegal"),
+                type = "error",
+            })
+            return { ok = false, reason = "region" }
+        end
+    end
+
     if activeChops[src] then
         return { ok = false, reason = "busy" }
     end
@@ -416,8 +491,9 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
 
     local duration = Config.ChopShop.ProgressDuration or 45000
     local rewards = RollRewards()
-    modelName = tostring(modelName or ""):lower():gsub("%s+", "")
+    modelName = NormalizeModelName(modelName)
     local locationLabel = ResolveLocationLabel(veh.coords)
+    local moneyAmount = GetChopPayout(modelName, vehicleClass)
 
     plateLocks[veh.plate] = src
     activeChops[src] = {
@@ -427,6 +503,7 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
         netId = veh.netId,
         vehicleClass = tonumber(vehicleClass),
         modelName = modelName,
+        moneyAmount = moneyAmount,
         startAt = GetGameTimer(),
         durationMs = duration,
         rewards = rewards,
@@ -490,11 +567,12 @@ RegisterNetEvent("cfx-keydi-chopshop:server:complete", function()
 
     local given = {}
 
-    -- Fixed illegal payout (500k dirty by default)
+    -- Dirty cash scales with the chopped vehicle (dealership / class)
     local moneyCfg = Config.ChopShop.MoneyReward
-    if moneyCfg and moneyCfg.item and (moneyCfg.amount or 0) > 0 then
-        if AddItem(src, moneyCfg.item, moneyCfg.amount) then
-            given[#given + 1] = ("$%s %s"):format(moneyCfg.amount, moneyCfg.item)
+    local moneyAmount = tonumber(session.moneyAmount) or GetChopPayout(session.modelName, session.vehicleClass)
+    if moneyCfg and moneyCfg.item and moneyAmount > 0 then
+        if AddItem(src, moneyCfg.item, moneyAmount) then
+            given[#given + 1] = ("$%s %s"):format(moneyAmount, moneyCfg.item)
         end
     end
 
@@ -512,23 +590,29 @@ RegisterNetEvent("cfx-keydi-chopshop:server:complete", function()
     for i = 1, #rewards do
         local reward = rewards[i]
         if reward.item and reward.count and reward.count > 0 then
-            if ProjectPartItems[reward.item] then
-                -- Project car chop = matching parts. Anything else = each part rolls a random pack car.
+            if IsProjectPartReward(reward.item) then
+                -- Project car chop = matching unique parts. Anything else = each part rolls a random pack car.
                 if choppedIsProject then
-                    local meta = BuildChopPartMetadata(reward.item, session.modelName)
-                    if AddItem(src, reward.item, reward.count, meta) then
-                        given[#given + 1] = ("%sx %s"):format(reward.count, reward.item)
+                    local modelName = tostring(session.modelName or ""):lower():gsub("%s+", "")
+                    local uniqueItem = ResolveChopPartItem(reward.item, modelName)
+                    local meta = BuildChopPartMetadata(uniqueItem, modelName)
+                    if AddItem(src, uniqueItem, reward.count, meta) then
+                        given[#given + 1] = ("%sx %s"):format(reward.count, uniqueItem)
                     end
                 else
                     local added = 0
+                    local lastItem
                     for _ = 1, reward.count do
-                        local meta = BuildChopPartMetadata(reward.item, ResolveChopPartModel(session.modelName))
-                        if AddItem(src, reward.item, 1, meta) then
+                        local modelName = ResolveChopPartModel(session.modelName)
+                        local uniqueItem = ResolveChopPartItem(reward.item, modelName)
+                        local meta = BuildChopPartMetadata(uniqueItem, modelName)
+                        if AddItem(src, uniqueItem, 1, meta) then
                             added = added + 1
+                            lastItem = uniqueItem
                         end
                     end
                     if added > 0 then
-                        given[#given + 1] = ("%sx %s"):format(added, reward.item)
+                        given[#given + 1] = ("%sx %s"):format(added, lastItem or reward.item)
                     end
                 end
             else

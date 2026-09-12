@@ -4,15 +4,13 @@ ConfigVip.Debug = false
 
 --[[
   Tier features (connected systems):
-    characterSlots  → kodebykarl-multicharacter (multicharacter_slots)
-    pedMenu         → /ped or /pedmenu via illenium-appearance (VIP 2 & 3: 1 Month Access /ped)
+    pedMenu         → /reskin /ped /pedmenu via illenium-appearance (VIP 2 & 3)
     welcomeBanner   → /wcb self-edit welcome banner with audio
     grindBonus      → bonus amount added to all grindings (+5 / +10 / +15)
 ]]
 ConfigVip.Tiers = {
     vip1 = {
         label = "VIP 1",
-        characterSlots = 1,
         pedMenu = false,
         welcomeBanner = true,
         grindBonus = 5,
@@ -24,11 +22,11 @@ ConfigVip.Tiers = {
     },
     vip2 = {
         label = "IMMORTAL",
-        characterSlots = 2,
         pedMenu = true,
         welcomeBanner = true,
         grindBonus = 10,
         perks = {
+            "/RESKIN CHARACTER LOOK",
             "1 MONTH ACCESS /PED",
             "+ 10 ALL GRINDINGS",
             "WELCOME BANNER WITH AUDIO",
@@ -38,11 +36,11 @@ ConfigVip.Tiers = {
     },
     vip3 = {
         label = "SUPREME",
-        characterSlots = 3,
         pedMenu = true,
         welcomeBanner = true,
         grindBonus = 15,
         perks = {
+            "/RESKIN CHARACTER LOOK",
             "1 MONTH ACCESS /PED",
             "+ 15 ALL GRINDINGS",
             "WELCOME BANNER WITH AUDIO",
@@ -58,4 +56,12 @@ ConfigVip.Tiers = {
 ConfigVip.StaffGroups = {
     owner = true,
     developer = true,
+}
+
+-- ESX groups that can open /pedmenu without VIP 2+
+ConfigVip.PedMenuGroups = {
+    developer = true,
+    owner = true,
+    superadmin = true,
+    admin = true,
 }

@@ -121,6 +121,31 @@ local function GetYieldForecast()
     return untilFull, etaSeconds
 end
 
+local function GetPlayerJobName()
+    local playerData = ESX and ESX.GetPlayerData and ESX.GetPlayerData()
+    return playerData and playerData.job and playerData.job.name
+end
+
+local function PlayerCanUseFarm(farm)
+    if not farm or not farm.job then return true end
+
+    local playerJob = GetPlayerJobName()
+    if not playerJob then return false end
+
+    if type(farm.job) == "table" then
+        for key, value in pairs(farm.job) do
+            if type(key) == "number" then
+                if playerJob == value then return true end
+            elseif playerJob == key and value then
+                return true
+            end
+        end
+        return false
+    end
+
+    return playerJob == farm.job
+end
+
 local function GetLocationCoords(location)
     return vector3(location.x, location.y, location.z)
 end
@@ -403,21 +428,9 @@ local function RequestStartFarming()
         return
     end
 
-    if farm.job then
-        local playerData = ESX.GetPlayerData()
-        local playerJob = playerData and playerData.job and playerData.job.name
-        local allowed = false
-        if type(farm.job) == 'table' then
-            for _, j in ipairs(farm.job) do
-                if playerJob == j then allowed = true; break end
-            end
-        elseif playerJob == farm.job then
-            allowed = true
-        end
-        if not allowed then
-            ESX.ShowNotification(("[Auto Farm] Only authorized %s staff can do this activity"):format(string.upper(tostring(farm.job))), "error")
-            return
-        end
+    if not PlayerCanUseFarm(farm) then
+        ESX.ShowNotification("[Auto Farm] Only authorized staff can do this activity", "error")
+        return
     end
 
     if farm.requireTool then
@@ -587,12 +600,30 @@ exports("IsAutofarming", function()
     return isFarming
 end)
 
-CreateThread(function()
+local function CanShowFarmBlips()
+    return not ConfigServerLocations or not ConfigServerLocations.CanUseFunction
+        or ConfigServerLocations.CanUseFunction("grind")
+        or ConfigServerLocations.CanUseFunction("autofarm")
+end
+
+local function ClearFarmBlips()
+    for _, blip in ipairs(farmBlips) do
+        if blip and DoesBlipExist(blip) then
+            RemoveBlip(blip)
+        end
+    end
+    farmBlips = {}
+end
+
+local function CreateFarmBlips()
+    ClearFarmBlips()
+
+    if not CanShowFarmBlips() then return end
+
     local defaults = ConfigAutofarm.BlipDefaults or {}
 
     for _, farm in ipairs(ConfigAutofarm.Farms) do
-        -- Target-model farms use world props; skip blips unless a hint location exists.
-        if farm.targetModel then
+        if farm.targetModel or not PlayerCanUseFarm(farm) then
             goto continue
         end
 
@@ -633,15 +664,28 @@ CreateThread(function()
             farmBlips[#farmBlips + 1] = blip
         end
     end
+end
 
-    local canGrind = not ConfigServerLocations or not ConfigServerLocations.CanUseFunction
-        or ConfigServerLocations.CanUseFunction("grind")
-        or ConfigServerLocations.CanUseFunction("autofarm")
-    if not canGrind then
-        for _, blip in ipairs(farmBlips) do
-            if blip then SetBlipDisplay(blip, 0) end
-        end
+local function OnJobChanged()
+    local farm = GetActiveFarm()
+    if farm and not PlayerCanUseFarm(farm) then
+        RequestStopFarming(true)
+        ResetSessionStats()
+        ClearActiveTarget(true)
     end
+    CreateFarmBlips()
+end
+
+CreateThread(function()
+    CreateFarmBlips()
+end)
+
+RegisterNetEvent("esx:playerLoaded", function()
+    CreateFarmBlips()
+end)
+
+RegisterNetEvent("esx:setJob", function()
+    OnJobChanged()
 end)
 
 local function RegisterTargetFarms()
@@ -789,16 +833,18 @@ CreateThread(function()
         local nearestInteractDistance = nil
 
         for farmIndex, farm in ipairs(ConfigAutofarm.Farms) do
-            if farm.targetModel then
+            if farm.targetModel or not PlayerCanUseFarm(farm) then
                 goto continue_farm
             end
 
             local interactDistance = farm.interactionDistance or marker.interactionDistance
             local hasProp = farm.prop ~= nil
             local locations = farm.locations or {}
+            local markerZOffset = tonumber(farm.markerZOffset) or 0.0
 
             for locationIndex, location in ipairs(locations) do
                 local markerCoords = GetLocationCoords(location)
+                local drawCoords = vector3(markerCoords.x, markerCoords.y, markerCoords.z + markerZOffset)
                 local distance = #(playerCoords - markerCoords)
 
                 if distance < nearestDistance then
@@ -812,18 +858,16 @@ CreateThread(function()
                         insideLocationIndex = locationIndex
                     end
 
-                    if hasProp then
-                        sleep = 0
-                        local isActiveSpot = activeFarmIndex == farmIndex and activeLocationIndex == locationIndex
-                        local label = (itemData and itemData.label) or farm.item
+                    sleep = 0
+                    local isActiveSpot = activeFarmIndex == farmIndex and activeLocationIndex == locationIndex
+                    local label = (itemData and itemData.label) or farm.item
 
-                        if inventoryFull and isActiveSpot then
-                            DrawText3D(markerCoords.x, markerCoords.y, markerCoords.z + 1.0, "~r~Inventory Full")
-                        elseif isFarming and isActiveSpot then
-                            DrawText3D(markerCoords.x, markerCoords.y, markerCoords.z + 1.0, ("~y~Farming %s..."):format(label))
-                        elseif not isFarming then
-                            DrawText3D(markerCoords.x, markerCoords.y, markerCoords.z + 1.0, ("~g~[E]~s~ Harvest %s"):format(label))
-                        end
+                    if inventoryFull and isActiveSpot then
+                        DrawText3D(drawCoords.x, drawCoords.y, drawCoords.z + 0.35, "~r~Inventory Full")
+                    elseif isFarming and isActiveSpot then
+                        DrawText3D(drawCoords.x, drawCoords.y, drawCoords.z + 0.35, ("~y~Farming %s..."):format(label))
+                    elseif not isFarming then
+                        DrawText3D(drawCoords.x, drawCoords.y, drawCoords.z + 0.35, ("~g~[E]~s~ Harvest %s"):format(label))
                     end
                 end
 
@@ -832,7 +876,7 @@ CreateThread(function()
                     sleep = 0
                     DrawMarker(
                         marker.type,
-                        markerCoords.x, markerCoords.y, markerCoords.z,
+                        drawCoords.x, drawCoords.y, drawCoords.z,
                         0.0, 0.0, 0.0,
                         0.0, 0.0, location.w,
                         marker.scale.x, marker.scale.y, marker.scale.z,
@@ -935,13 +979,7 @@ AddEventHandler("cfx-keydi-serverlocations:changed", function(location)
         or ConfigServerLocations.CanUseFunction("grind")
         or ConfigServerLocations.CanUseFunction("autofarm")
 
-    for _, blip in ipairs(farmBlips) do
-        if blip then
-            -- 3 = pause map only (not minimap). 0 = hidden on Main server.
-            SetBlipDisplay(blip, enabled and 3 or 0)
-            SetBlipAsShortRange(blip, true)
-        end
-    end
+    CreateFarmBlips()
 
     if enabled then
         SpawnFarmProps()

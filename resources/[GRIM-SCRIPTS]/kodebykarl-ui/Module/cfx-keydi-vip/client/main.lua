@@ -10,7 +10,7 @@ end
 local function OpenPedMenu()
     lib.callback("cfx-keydi-vip:canPedMenu", false, function(ok)
         if not ok then
-            Notify("Ped Menu", "VIP 2+ required for ped menu access.", "error")
+            Notify("Reskin", "VIP 2+ or staff (admin+) required for ped menu.", "error")
             return
         end
         -- Same event staff /pedmenu uses (full ped customization)
@@ -122,9 +122,20 @@ RegisterCommand("vipmenu", function()
 end, false)
 
 -- VIP players can also type /pedmenu; illenium admin ACE still works separately.
+-- Note: do not RegisterCommand("pedmenu") here — illenium owns /pedmenu (staff + VIP).
 RegisterCommand("vipped", function()
     OpenPedMenu()
 end, false)
+
+RegisterCommand("reskin", function()
+    OpenPedMenu()
+end, false)
+
+CreateThread(function()
+    TriggerEvent("chat:addSuggestion", "/pedmenu", "VIP 2/3 or staff: change character look. Use /pedmenu or /pedmenu me")
+    TriggerEvent("chat:addSuggestion", "/reskin", "VIP 2/3: change your character look (not money, bank, or items)")
+    TriggerEvent("chat:addSuggestion", "/vipped", "VIP 2/3: open ped menu")
+end)
 
 RegisterCommand("mybanner", function()
     OpenWelcomeBannerSelf()

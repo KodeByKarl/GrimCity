@@ -469,3 +469,9 @@ end)
 lib.addCommand(Config.ImpoundCommand, false, function(playerId)
     TriggerClientEvent("jg-advancedgarages:client:show-impound-form", playerId)
 end)
+
+if Config.ImpoundCommand ~= "impound" then
+    lib.addCommand("impound", false, function(playerId)
+        TriggerClientEvent("jg-advancedgarages:client:show-impound-form", playerId)
+    end)
+end

@@ -5,12 +5,13 @@ local InsideZones = {}
 local DamageThreads = {}
 local blipsVisible = false
 
-local function CanUseTurfWar()
+local function CanUseTurf(data)
+    local fn = (data and data.requireFunction) or 'turfwar'
     if GetResourceState('kodebykarl-ui') ~= 'started' then
         return false
     end
     local ok, allowed = pcall(function()
-        return exports['kodebykarl-ui']:HasFunction('turfwar')
+        return exports['kodebykarl-ui']:HasFunction(fn)
     end)
     return ok and allowed == true
 end
@@ -34,12 +35,9 @@ end
 -- Create & Update Map Blips for Turf Locations (Region 3 / 4 only)
 function ZoneManager.InitBlips()
     ClearBlips()
-    if not CanUseTurfWar() then
-        return
-    end
 
     for id, data in pairs(Config.TurfWars) do
-        if data.blip and data.blip.turf and data.blip.turf.enable then
+        if CanUseTurf(data) and data.blip and data.blip.turf and data.blip.turf.enable then
             local b = AddBlipForCoord(data.coords.x, data.coords.y, data.coords.z)
             SetBlipSprite(b, data.blip.turf.id or 310)
             SetBlipDisplay(b, 4)
@@ -69,14 +67,23 @@ function ZoneManager.InitBlips()
     blipsVisible = true
 end
 
+local lastBlipKey = ''
+
 function ZoneManager.RefreshBlips()
-    local allow = CanUseTurfWar()
-    if allow and not blipsVisible then
-        ZoneManager.InitBlips()
-    elseif not allow and blipsVisible then
+    local keyParts = {}
+    for id, data in pairs(Config.TurfWars) do
+        if CanUseTurf(data) then
+            keyParts[#keyParts + 1] = id
+        end
+    end
+    table.sort(keyParts)
+    local key = table.concat(keyParts, ',')
+    if key == lastBlipKey then return end
+    lastBlipKey = key
+    if key == '' then
         ClearBlips()
-    elseif allow and blipsVisible then
-        -- Keep existing; state colors still update in monitor loop
+    else
+        ZoneManager.InitBlips()
     end
 end
 
@@ -113,47 +120,51 @@ CreateThread(function()
         ZoneManager.RefreshBlips()
 
         local ped = PlayerPedId()
-        if DoesEntityExist(ped) and not IsEntityDead(ped) and CanUseTurfWar() then
+        if DoesEntityExist(ped) and not IsEntityDead(ped) then
             local pCoords = GetEntityCoords(ped)
 
             for id, data in pairs(Config.TurfWars) do
-                local state = GlobalState[('turf_state_%s'):format(id)] or 'IDLE'
-                ZoneManager.UpdateBlipState(id, state)
+                if not CanUseTurf(data) then
+                    InsideZones[id] = false
+                else
+                    local state = GlobalState[('turf_state_%s'):format(id)] or 'IDLE'
+                    ZoneManager.UpdateBlipState(id, state)
 
-                if state == 'ACTIVE' and data.zone and data.zone.enable then
-                    local dist = #(pCoords - data.coords)
-                    local maxRadius = data.zone.radius or 150.0
+                    if state == 'ACTIVE' and data.zone and data.zone.enable then
+                        local dist = #(pCoords - data.coords)
+                        local maxRadius = data.zone.radius or 150.0
 
-                    if dist <= maxRadius then
-                        InsideZones[id] = true
-                    else
-                        if InsideZones[id] then
-                            if not DamageThreads[id] then
-                                DamageThreads[id] = true
-                                CreateThread(function()
-                                    while InsideZones[id] and (GlobalState[('turf_state_%s'):format(id)] == 'ACTIVE') do
-                                        local curDist = #(GetEntityCoords(PlayerPedId()) - data.coords)
-                                        if curDist > maxRadius then
-                                            lib.showTextUI('[!] OUTSIDE TURF BOUNDARY! RETURN IMMEDIATELY!', {
-                                                position = 'top-center',
-                                                icon = 'fa-solid fa-triangle-exclamation',
-                                                style = { backgroundColor = '#b30000', color = '#ffffff' }
-                                            })
-                                            ApplyDamageToPed(PlayerPedId(), Config.GoBackDrainPerSecond or 10, false)
-                                        else
-                                            lib.hideTextUI()
-                                            break
+                        if dist <= maxRadius then
+                            InsideZones[id] = true
+                        else
+                            if InsideZones[id] then
+                                if not DamageThreads[id] then
+                                    DamageThreads[id] = true
+                                    CreateThread(function()
+                                        while InsideZones[id] and (GlobalState[('turf_state_%s'):format(id)] == 'ACTIVE') do
+                                            local curDist = #(GetEntityCoords(PlayerPedId()) - data.coords)
+                                            if curDist > maxRadius then
+                                                lib.showTextUI('[!] OUTSIDE TURF BOUNDARY! RETURN IMMEDIATELY!', {
+                                                    position = 'top-center',
+                                                    icon = 'fa-solid fa-triangle-exclamation',
+                                                    style = { backgroundColor = '#b30000', color = '#ffffff' }
+                                                })
+                                                ApplyDamageToPed(PlayerPedId(), Config.GoBackDrainPerSecond or 10, false)
+                                            else
+                                                lib.hideTextUI()
+                                                break
+                                            end
+                                            Wait(1000)
                                         end
-                                        Wait(1000)
-                                    end
-                                    lib.hideTextUI()
-                                    DamageThreads[id] = nil
-                                end)
+                                        lib.hideTextUI()
+                                        DamageThreads[id] = nil
+                                    end)
+                                end
                             end
                         end
+                    else
+                        InsideZones[id] = false
                     end
-                else
-                    InsideZones[id] = false
                 end
             end
         else

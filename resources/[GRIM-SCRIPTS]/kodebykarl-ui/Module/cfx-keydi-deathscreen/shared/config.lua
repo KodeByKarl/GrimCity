@@ -59,11 +59,11 @@ ConfigDeathScreen.BoneZones = {
     [47495] = "head",   -- FB_L_Lip_Bot
     [61839] = "head",   -- FB_Tongue_000
     [64654] = "head",   -- RB_Neck_1 (skull base)
-    [39317] = "neck",   -- SKEL_Neck_1
+    [39317] = "head",   -- SKEL_Neck_1 (GTA reports this on headshots)
     [35731] = "neck",   -- SKEL_Neck_1 alt
     -- Bone INDEX from GetPedBoneIndex (GetPedLastDamageBone often returns these)
     -- https://docs.fivem.net/natives/?_0x3F428D08BE5AAE31
-    [97]  = "neck",
+    [97]  = "head",
     [98]  = "head",
     [99]  = "head",
     [102] = "head",
@@ -152,6 +152,8 @@ ConfigDeathScreen.HeadBones = {
     [47495] = true,
     [61839] = true,
     [64654] = true,
+    [39317] = true, -- SKEL_Neck_1 — GTA headshot bone
+    [97] = true,
     -- Bone INDEX (GetPedBoneIndex)
     [98] = true,
     [99] = true,

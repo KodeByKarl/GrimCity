@@ -366,7 +366,7 @@ export default function VipStatus({ onClose }: VipStatusProps) {
                 </span>
               </div>
               <p className="text-[11px] text-[#a08890]">
-                Multicharacter Slots · Ped Menu · Welcome Banner · Autofarm Boost
+                Ped Menu · Welcome Banner · Autofarm Boost
               </p>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function VipStatus({ onClose }: VipStatusProps) {
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a08890]">Account Status</span>
                       <h2 className="text-xl font-black text-white">No Active VIP Membership</h2>
                       <p className="text-xs text-[#a08890]">
-                        Unlock extra character slots, full ped customization, and farm bonuses below.
+                        Unlock full ped customization and farm bonuses below.
                       </p>
                     </div>
                   </div>
@@ -564,8 +564,8 @@ export default function VipStatus({ onClose }: VipStatusProps) {
                   {/* Feature Quick Launchers */}
                   <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 border-t border-white/10 pt-3">
                     <div className="rounded-xl border border-white/10 bg-black/30 px-3.5 py-2">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#a08890]">MultiVIP</span>
-                      <p className="text-xs font-black text-white">{vip.characterSlots || 1} Character Slots</p>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#a08890]">Reskin</span>
+                      <p className="text-xs font-black text-white">{vip.pedMenu ? '/reskin look' : 'VIP 2+'}</p>
                     </div>
 
                     <div className="rounded-xl border border-white/10 bg-black/30 px-3.5 py-2">
@@ -743,7 +743,7 @@ export default function VipStatus({ onClose }: VipStatusProps) {
                           </td>
                           <td className="py-2.5 px-3">
                             <span className="rounded border border-[#ff3a3a]/40 bg-[#ff3a3a]/15 px-2 py-0.5 text-[10px] font-black uppercase text-[#ff8080]">
-                              {m.label} ({m.characterSlots} Chars)
+                              {m.label}
                             </span>
                           </td>
                           <td className="py-2.5 px-4 font-mono text-[11px] text-white/90">
@@ -912,7 +912,6 @@ export default function VipStatus({ onClose }: VipStatusProps) {
                           )}
                         >
                           <span className="text-xs font-black uppercase">{t.label}</span>
-                          <span className="text-[9px] text-[#a08890]">{t.characterSlots} Slots</span>
                         </button>
                       ))}
                     </div>
@@ -1031,7 +1030,6 @@ export default function VipStatus({ onClose }: VipStatusProps) {
                       )}
                     >
                       <span className="text-xs font-black uppercase">{t.label}</span>
-                      <span className="text-[9px] text-[#a08890]">{t.characterSlots} Slots</span>
                     </button>
                   ))}
                 </div>

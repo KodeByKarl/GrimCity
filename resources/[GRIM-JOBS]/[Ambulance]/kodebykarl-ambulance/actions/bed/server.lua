@@ -3,7 +3,7 @@ local helpers = require 'helpers.game'
 local menu = require 'shared.menu'
 local RegisteredBed = {}
 local BedCooldown = {}
-local cacheBedData = {}
+local cacheBedData = {} -- keyed by hospital:bedIndex to avoid cross-hospital collisions
 local cacheCheckedPlayers = {}
 local cachePlayersDropInBed = {}
 
@@ -12,6 +12,49 @@ local blacklistedStrings = {
     'amari', 'arrabica', 'rasclatv', 'rasclat', 'kupalino', 'n4gga', 'niga', 'nigger', 'niggabyte',
     'negro', 'niggapoptamous', 'tangina', 'putanginamo', 'putangina', 'gago', 'on top', 'gago ka'
 }
+
+local function bedKey(hospital, bedIndex)
+    return ('%s:%s'):format(hospital, bedIndex)
+end
+
+--- First free bed index for hospital job, or nil if all occupied.
+local function getFreeBedIndex(hospital)
+    local beds = RegisteredBed[hospital]
+    if not beds then return nil end
+    for i = 1, #beds do
+        if not beds[i].state then
+            return i
+        end
+    end
+    return nil
+end
+
+exports('GetFreeBedIndex', getFreeBedIndex)
+
+local function occupyBed(hospital, bedIndex, playerId, identifier)
+    if not RegisteredBed[hospital] or not RegisteredBed[hospital][bedIndex] then
+        return false
+    end
+    RegisteredBed[hospital][bedIndex].state = true
+    cacheBedData[bedKey(hospital, bedIndex)] = {
+        identifier = identifier,
+        playerId = playerId,
+        hospital = hospital,
+        temp = playerId ~= nil and identifier == nil,
+    }
+    return true
+end
+
+local function releaseBed(hospital, bedIndex)
+    if not RegisteredBed[hospital] or not RegisteredBed[hospital][bedIndex] then
+        return
+    end
+    RegisteredBed[hospital][bedIndex].state = false
+    cacheBedData[bedKey(hospital, bedIndex)] = nil
+end
+
+exports('OccupyBed', occupyBed)
+exports('ReleaseBed', releaseBed)
 
 CreateThread(function()
     -- Ensure cfx_keydi_bed table exists in database
@@ -47,6 +90,15 @@ CreateThread(function()
             local row = response[i]
             if row.time > 0 then
                 cachePlayersDropInBed[row.identifier] = {time = row.time, bedIndex = row.bedIndex, hospital = row.hospital}
+                -- Keep bed reserved while patient is offline so others cannot stack on reconnect
+                if RegisteredBed[row.hospital] and RegisteredBed[row.hospital][row.bedIndex] then
+                    RegisteredBed[row.hospital][row.bedIndex].state = true
+                    cacheBedData[bedKey(row.hospital, row.bedIndex)] = {
+                        identifier = row.identifier,
+                        playerId = nil,
+                        hospital = row.hospital,
+                    }
+                end
             end
         end
     end
@@ -151,10 +203,15 @@ RegisterNetEvent('cfx-keydi-ambulance:admitTarget', function(playerId, admitReas
     if not xTarget then return TriggerClientEvent('esx:Notify', xPlayer.source, 'AMBULANCE', 'Invalid Target', 'error', 5000) end
     local id = MySQL.insert.await('INSERT INTO `cfx_keydi_bed` (name, identifier, time, reason, bedIndex, hospital) VALUES (?, ?, ?, ?, ?, ?)', {xTarget.name, xTarget.identifier, admitTime, admitReason, bedIndex, xPlayer.job.name})
     if id ~= 0 then
-        RegisteredBed[xPlayer.job.name][bedIndex].state = true
-        cacheBedData[bedIndex] = {identifier = xTarget.identifier, playerId = xTarget.source}
-        BedCooldown[xTarget.source] = {time = admitTime, bedIndex = bedIndex, identifier = xTarget.identifier, hospital = xPlayer.job.name}
-        TriggerClientEvent('cfx-keydi-ambulance:syncBed', xTarget.source, admitTime, bedIndex, xPlayer.job.name)
+        local hospital = xPlayer.job.name
+        RegisteredBed[hospital][bedIndex].state = true
+        cacheBedData[bedKey(hospital, bedIndex)] = {
+            identifier = xTarget.identifier,
+            playerId = xTarget.source,
+            hospital = hospital,
+        }
+        BedCooldown[xTarget.source] = {time = admitTime, bedIndex = bedIndex, identifier = xTarget.identifier, hospital = hospital}
+        TriggerClientEvent('cfx-keydi-ambulance:syncBed', xTarget.source, admitTime, bedIndex, hospital)
         if AmbulanceLogs and AmbulanceLogs.BedAdmit then
             local job = xPlayer.job and (('%s — %s'):format(xPlayer.job.label or xPlayer.job.name, xPlayer.job.grade_label or '')) or nil
             AmbulanceLogs.BedAdmit({
@@ -176,17 +233,24 @@ RegisterNetEvent('cfx-keydi-ambulance:admitTarget', function(playerId, admitReas
     end
 end)
 
+local function restoreRegionBucket(src)
+    src = tonumber(src)
+    if not src or src < 1 then return end
+    if GetResourceState('kodebykarl-ui') ~= 'started' then return end
+    pcall(function()
+        exports['kodebykarl-ui']:RestorePlayerBucket(src)
+    end)
+end
+
 local function FinishedBed(playerId, bedIndex, hospital)
     local xPlayer = ESX.GetPlayerFromId(playerId)
     if not xPlayer then return end
-    if not RegisteredBed[hospital][bedIndex] or not RegisteredBed[hospital][bedIndex].state then return end
-    local affectedRows = MySQL.update.await('DELETE FROM `cfx_keydi_bed` WHERE identifier = ?', {xPlayer.identifier})
-    local routingId = GetPlayerRoutingBucket(xPlayer.source)
-    if routingId ~= 0 then
-        SetPlayerRoutingBucket(xPlayer.source, 0)
-    end
+    if not RegisteredBed[hospital] or not RegisteredBed[hospital][bedIndex] then return end
+    MySQL.update.await('DELETE FROM `cfx_keydi_bed` WHERE identifier = ?', {xPlayer.identifier})
+    restoreRegionBucket(xPlayer.source)
     RegisteredBed[hospital][bedIndex].state = false
-    cacheBedData[bedIndex] = nil
+    cacheBedData[bedKey(hospital, bedIndex)] = nil
+    cachePlayersDropInBed[xPlayer.identifier] = nil
     BedCooldown[playerId] = nil
     TriggerClientEvent('cfx-keydi-ambulance:removeBedFromTarget', xPlayer.source)
 end
@@ -195,16 +259,21 @@ local function validateUnbed(xPlayer, index, state)
     if not xPlayer then
         return false, 'INVALID PLAYER'
     end
-    if not cacheBedData[index] then
+    local hospital = xPlayer.job and xPlayer.job.name
+    local key = bedKey(hospital, index)
+    if not cacheBedData[key] then
         return false, 'INVALID BED DATA'
     end
-    if not RegisteredBed[xPlayer.job.name]?[index] then
+    if not RegisteredBed[hospital]?[index] then
         return false, 'BED NOT REGISTERED'
     end
     if not state then
         return false, 'INVALID STATE'
     end
-    local targetData = cacheBedData[index]
+    local targetData = cacheBedData[key]
+    if not targetData.playerId then
+        return false, 'PLAYER NOT ONLINE'
+    end
     local xTarget = ESX.GetPlayerFromId(targetData.playerId)
     if not xTarget then
         return false, 'PLAYER NOT ONLINE'
@@ -295,16 +364,33 @@ end)
 
 AddEventHandler('esx:playerDropped', function(playerId)
 	if BedCooldown[playerId] then
-        local xPlayer = BedCooldown[playerId]
-        if xPlayer.time > 0 then
-            MySQL.update.await('UPDATE `cfx_keydi_bed` SET time = ? WHERE identifier = ?', {xPlayer.time, xPlayer.identifier})
-            cachePlayersDropInBed[xPlayer.identifier] = {time = xPlayer.time, bedIndex = xPlayer.bedIndex, hospital = xPlayer.hospital}
+        local bedData = BedCooldown[playerId]
+        local key = bedKey(bedData.hospital, bedData.bedIndex)
+        if bedData.time > 0 then
+            MySQL.update.await('UPDATE `cfx_keydi_bed` SET time = ? WHERE identifier = ?', {bedData.time, bedData.identifier})
+            cachePlayersDropInBed[bedData.identifier] = {
+                time = bedData.time,
+                bedIndex = bedData.bedIndex,
+                hospital = bedData.hospital,
+            }
+            -- Keep occupied while offline so another admit cannot stack on the same bed
+            if RegisteredBed[bedData.hospital] and RegisteredBed[bedData.hospital][bedData.bedIndex] then
+                RegisteredBed[bedData.hospital][bedData.bedIndex].state = true
+            end
+            cacheBedData[key] = {
+                identifier = bedData.identifier,
+                playerId = nil,
+                hospital = bedData.hospital,
+            }
+            print(('^0[^1cfx-keydi-ambulance^0] [%s]: ^2Saved Bed (reserved)'):format(bedData.identifier))
         else
-            MySQL.update.await('DELETE FROM `cfx_keydi_bed` WHERE identifier = ?', {xPlayer.identifier})
+            MySQL.update.await('DELETE FROM `cfx_keydi_bed` WHERE identifier = ?', {bedData.identifier})
+            if RegisteredBed[bedData.hospital] and RegisteredBed[bedData.hospital][bedData.bedIndex] then
+                RegisteredBed[bedData.hospital][bedData.bedIndex].state = false
+            end
+            cacheBedData[key] = nil
+            print(('^0[^1cfx-keydi-ambulance^0] [%s]: ^2Cleared Bed'):format(bedData.identifier))
         end
-        RegisteredBed[xPlayer.hospital][xPlayer.bedIndex].state = false
-        print(('^0[^1cfx-keydi-ambulance^0] [%s]: ^2Saved Bed'):format(xPlayer.identifier))
-        cacheBedData[xPlayer.bedIndex] = nil
         BedCooldown[playerId] = nil
     end
     cacheCheckedPlayers[playerId] = nil
@@ -318,12 +404,24 @@ RegisterNetEvent('cfx-keydi-ambulance:checkBed', function()
     if cacheCheckedPlayers[xPlayer.source] then return end
     if cachePlayersDropInBed[xPlayer.identifier] and cachePlayersDropInBed[xPlayer.identifier].time > 0 then
         local data = cachePlayersDropInBed[xPlayer.identifier]
-        if RegisteredBed[data.hospital][data.bedIndex] and RegisteredBed[data.hospital][data.bedIndex].state then
-            SetPlayerRoutingBucket(xPlayer.source, src)
+        local beds = RegisteredBed[data.hospital]
+        local bed = beds and beds[data.bedIndex]
+            if bed then
+            -- Same hospital bed on reconnect; keep their region bucket
+            bed.state = true
+            BedCooldown[xPlayer.source] = {
+                time = data.time,
+                bedIndex = data.bedIndex,
+                identifier = xPlayer.identifier,
+                hospital = data.hospital,
+            }
+            cacheBedData[bedKey(data.hospital, data.bedIndex)] = {
+                identifier = xPlayer.identifier,
+                playerId = xPlayer.source,
+                hospital = data.hospital,
+            }
+            TriggerClientEvent('cfx-keydi-ambulance:syncBed', xPlayer.source, data.time, data.bedIndex, data.hospital)
         end
-        BedCooldown[xPlayer.source] = {time = data.time, bedIndex = data.bedIndex, identifier = xPlayer.identifier, hospital = data.hospital}
-        cacheBedData[data.bedIndex] = {identifier = xPlayer.identifier, playerId = xPlayer.source}
-        TriggerClientEvent('cfx-keydi-ambulance:syncBed', xPlayer.source, data.time, data.bedIndex, data.hospital)
         cachePlayersDropInBed[xPlayer.identifier] = nil
     end
     cacheCheckedPlayers[xPlayer.source] = true

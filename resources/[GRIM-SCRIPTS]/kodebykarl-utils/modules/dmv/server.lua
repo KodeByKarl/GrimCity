@@ -19,6 +19,11 @@ local function PayHandler(source, price, method)
     if has >= price then
         cachePaid[src] = method or true
         ox_inventory:RemoveItem(src, 'money', price)
+        if method == 'car' or method == 'motorcycle' then
+            pcall(function()
+                exports['kodebykarl-utils']:FgVehicleSession(src, 'plate', true, 15000)
+            end)
+        end
         return true
     end
     return false

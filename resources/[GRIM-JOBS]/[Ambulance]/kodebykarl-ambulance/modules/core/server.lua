@@ -23,6 +23,34 @@ local function setVoiceMute(src, muted)
 	end)
 end
 
+local FG_RESOURCE_CANDIDATES = { 'grimbot', 'fiveguard', 'fg', 'FiveGuard' }
+local DEATH_FG_PERMS = { 'BypassTeleport', 'BypassInvisible', 'BypassFreecam', 'BypassGodMode' }
+
+local function fgResource()
+	local named = GetConvar('fiveguard_resource', '')
+	if named ~= '' and GetResourceState(named) == 'started' then
+		return named
+	end
+	for i = 1, #FG_RESOURCE_CANDIDATES do
+		local name = FG_RESOURCE_CANDIDATES[i]
+		if GetResourceState(name) == 'started' then
+			return name
+		end
+	end
+	return nil
+end
+
+local function fgTemp(src, enable, perms)
+	if type(src) ~= 'number' or src < 1 then return end
+	local resource = fgResource()
+	if not resource then return end
+	pcall(function()
+		for i = 1, #perms do
+			exports[resource]:SetTempPermission(src, 'Client', perms[i], enable == true, false)
+		end
+	end)
+end
+
 local function eacTemp(src, enable, modules)
 	if type(src) ~= 'number' or src < 1 then return end
 	pcall(function()
@@ -45,12 +73,14 @@ local function setDeadState(src, bool, opts)
 	Vars.cacheDeads[src] = bool
 	if bool then
 		eacTemp(src, true, DEATH_EAC_MODULES)
+		fgTemp(src, true, DEATH_FG_PERMS)
 	else
 		-- Revive uses ClearPedTasks / teleport — keep the exception briefly.
 		SetTimeout(8000, function()
 			if not GetPlayerName(src) then return end
 			if not Vars.cacheDeads[src] then
 				eacTemp(src, false, DEATH_EAC_MODULES)
+				fgTemp(src, false, DEATH_FG_PERMS)
 			end
 		end)
 	end
@@ -170,17 +200,48 @@ AddEventHandler('esx:playerLoaded', function(playerId, xPlayer)
 	end)
 end)
 
-ESX.RegisterServerCallback('cfx-keydi-ambulance:checkDeathStatus', function(source, cb)
-	local src = source
-    local xPlayer = ESX.GetPlayerFromId(src)
-    if not xPlayer then
-        return cb(Vars.cacheDeads[src] or false)
-    end
-    local value = MySQL.scalar.await('SELECT `dead` FROM `users` WHERE `identifier` = ?', {xPlayer.identifier})
-    local returnValue = value == 1 and true or false
-    cb(returnValue)
-end)
+local function getDeathStatus(src)
+	src = tonumber(src)
+	if not src then return false end
 
+	if Vars.cacheDeads[src] ~= nil then
+		return Vars.cacheDeads[src] and true or false
+	end
+
+	local xPlayer = ESX.GetPlayerFromId(src)
+	if not xPlayer then
+		return false
+	end
+
+	local ok, value = pcall(function()
+		return MySQL.scalar.await('SELECT `dead` FROM `users` WHERE `identifier` = ?', { xPlayer.identifier })
+	end)
+	local isDead = ok and value == 1
+	Vars.cacheDeads[src] = isDead
+	Player(src).state:set('dead', isDead, true)
+	return isDead
+end
+
+local function registerDeathStatusCallback()
+	ESX.RegisterServerCallback('cfx-keydi-ambulance:checkDeathStatus', function(source, cb)
+		cb(getDeathStatus(source))
+	end)
+
+	if lib and lib.callback and lib.callback.register then
+		lib.callback.register('cfx-keydi-ambulance:checkDeathStatus', function(source)
+			return getDeathStatus(source)
+		end)
+	end
+end
+
+registerDeathStatusCallback()
+
+-- Re-register after restarts / late ESX boot so client never hits "does not exist"
+AddEventHandler('onResourceStart', function(resource)
+	if resource == GetCurrentResourceName() or resource == 'es_extended' then
+		SetTimeout(250, registerDeathStatusCallback)
+	end
+end)
 
 ESX.RegisterServerCallback('cfx-keydi-ambulance:removeItems', function(source, cb)
 	local src = source
@@ -249,11 +310,28 @@ ESX.RegisterServerCallback('cfx-keydi-ambulance:checkIn', function(source, cb, i
 		TriggerClientEvent('cfx-keydi-ambulance:client:ResetLimbs', xPlayer.source)
 		TriggerClientEvent('cfx-keydi-ambulance:client:RemoveBleed', xPlayer.source)
 		exports['es_extended']:SecureSetStatus(xPlayer.source, { hunger = 100, thirst = 100, stress = 0 })
-		SetTimeout(1000, function()
-			local beds = menu.bed.locations[checkInConf.job]
-			if beds and #beds > 0 then
-				TriggerClientEvent('cfx-keydi-ambulance:placeTempBed', xPlayer.source, 1, math.random(1, #beds), checkInConf.job)
+		SetTimeout(500, function()
+			if GetResourceState('kodebykarl-ui') == 'started' then
+				pcall(function()
+					exports['kodebykarl-ui']:RestorePlayerBucket(src)
+				end)
 			end
+		end)
+		SetTimeout(1000, function()
+			local hospital = checkInConf.job
+			local beds = menu.bed.locations[hospital]
+			if not beds or #beds < 1 then return end
+			local bedIndex = exports[GetCurrentResourceName()]:GetFreeBedIndex(hospital)
+			if not bedIndex then return end
+			pcall(function()
+				exports[GetCurrentResourceName()]:OccupyBed(hospital, bedIndex, src, xPlayer.identifier)
+			end)
+			TriggerClientEvent('cfx-keydi-ambulance:placeTempBed', xPlayer.source, 1, bedIndex, hospital)
+			SetTimeout(70 * 1000, function()
+				pcall(function()
+					exports[GetCurrentResourceName()]:ReleaseBed(hospital, bedIndex)
+				end)
+			end)
 		end)
 		if AmbulanceLogs and AmbulanceLogs.CheckIn then
 			AmbulanceLogs.CheckIn({
@@ -265,6 +343,16 @@ ESX.RegisterServerCallback('cfx-keydi-ambulance:checkIn', function(source, cb, i
 				index = index,
 				coords = playerCoords,
 			})
+		end
+		if GetResourceState('kodebykarl-logs') == 'started' then
+			pcall(function()
+				exports['kodebykarl-logs']:LogRevive({
+					src = src,
+					method = 'hospital',
+					revivedByName = 'Hospital Check-In',
+					coords = playerCoords,
+				})
+			end)
 		end
 	end
 	cb(returnValue)
@@ -287,7 +375,7 @@ local excludedJobs = {
 	['sheriff'] = true
 }
 
-RegisterNetEvent('cfx-keydi-ambulance:payFine', function(sandy)
+RegisterNetEvent('cfx-keydi-ambulance:payFine', function(zone)
 	local src = source
 	local xPlayer = ESX.GetPlayerFromId(src)
 	if not xPlayer then return end
@@ -295,7 +383,14 @@ RegisterNetEvent('cfx-keydi-ambulance:payFine', function(sandy)
 	local fine = config.General.RespawnFine or 1000
 	local bankAmount = xPlayer.getAccount('bank').money
 	local paid = false
-	local society = sandy and 'pambulance' or 'ambulance'
+	local society = 'ambulance'
+	if zone == true or zone == 'sandy' or zone == 'sambulance' then
+		society = 'sambulance'
+	elseif zone == 'paleto' or zone == 'pambulance' then
+		society = 'pambulance'
+	elseif type(zone) == 'string' and zone ~= '' then
+		society = zone
+	end
 	if bankAmount >= fine then
 		xPlayer.removeAccountMoney('bank', fine)
 		exports['cfx-keydi-society']:AddMoney(society, fine)
@@ -313,6 +408,56 @@ RegisterNetEvent('cfx-keydi-ambulance:payFine', function(sandy)
 	end
 end)
 
+local function seedEmsJob(name, label, salaryScale)
+	if not ESX.CreateJob then return end
+	local grades = {}
+	for i = 1, #(config.Grades or {}) do
+		local row = config.Grades[i]
+		grades[#grades + 1] = {
+			grade = row.grade,
+			name = row.name,
+			label = row.label,
+			salary = math.floor((row.salary or 0) * (salaryScale or 1)),
+			skin_male = {},
+			skin_female = {},
+		}
+	end
+	pcall(function()
+		ESX.CreateJob(name, label, grades, 'ems')
+	end)
+end
+
+AddEventHandler('onResourceStart', function(res)
+	if res ~= GetCurrentResourceName() then return end
+	local jobs = config.Jobs or {}
+	for _, job in pairs(jobs) do
+		if job.name and job.label then
+			seedEmsJob(job.name, job.label, 1)
+			if job.offDuty then
+				seedEmsJob(job.offDuty, ('Off-Duty %s'):format(job.label), 0)
+			end
+		end
+	end
+end)
+
+exports('GetJobName', function(stationId)
+	local stations = config.Stations or {}
+	local station = stationId and stations[stationId]
+	if station and station.job then return station.job end
+	return 'ambulance'
+end)
+
+exports('GetOffDutyJobName', function(stationId)
+	local jobs = config.Jobs or {}
+	if stationId == 'paleto' or stationId == 'pambulance' then
+		return jobs.pambulance and jobs.pambulance.offDuty or 'offpambulance'
+	end
+	if stationId == 'sandy' or stationId == 'sambulance' then
+		return jobs.sambulance and jobs.sambulance.offDuty or 'offsambulance'
+	end
+	return jobs.ambulance and jobs.ambulance.offDuty or 'offambulance'
+end)
+
 local function isEmsJob(jobName)
 	local jobs = config.General.Dispatch911 and config.General.Dispatch911.jobs or { 'ambulance', 'sambulance', 'pambulance' }
 	for i = 1, #jobs do
@@ -320,6 +465,12 @@ local function isEmsJob(jobName)
 	end
 	return false
 end
+
+RegisterNetEvent('kodebykarl-ambulance:server:deathFreecam', function(enabled)
+	local src = source
+	if not Vars.cacheDeads[src] then return end
+	fgTemp(src, enabled == true, { 'BypassFreecam' })
+end)
 
 RegisterNetEvent('cfx-keydi-ambulance:request911', function()
 	local src = source

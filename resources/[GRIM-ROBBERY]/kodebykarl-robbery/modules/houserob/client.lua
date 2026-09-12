@@ -12,6 +12,41 @@ local soundTriggered = false
 local soundThreadActive = false
 local leaveRobberyHouse, isPlayerPolice, enterRobberyHouse
 
+local function CanUseHouseRob()
+    -- Police can always enter a house (respond / clear).
+    if isPlayerPolice and isPlayerPolice() then
+        return true
+    end
+    -- House doors sit in the city. Region 1 (Main) only.
+    if GetResourceState('kodebykarl-ui') ~= 'started' then
+        return true
+    end
+    local ok, allowed = pcall(function()
+        local exp = exports['kodebykarl-ui']
+        return exp:HasFunction('illegal')
+            or exp:HasFunction('houserob')
+            or exp:HasFunction('housing')
+            or exp:HasFunction('main')
+    end)
+    if not ok then
+        return true
+    end
+    return allowed == true
+end
+
+local function HouseRobWrongRegion()
+    local msg = 'House robbery is only available on Region 1. Open Control Center (F5) → Regions.'
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, text = pcall(function()
+            return exports['kodebykarl-ui']:WrongServerMessage('illegal')
+        end)
+        if ok and type(text) == 'string' and text ~= '' then
+            msg = text
+        end
+    end
+    ESX.Notify('House Robbery', msg, 'error', 5000)
+end
+
 -- Functions
 
 local function DrawText3Ds(x, y, z, text)
@@ -53,11 +88,35 @@ local function resetSoundMeter()
     soundTriggered = false
 end
 
-local function isAimingSilent()
-    local pid = PlayerId()
-    return IsPlayerFreeAiming(pid)
-        or IsControlPressed(0, 25) -- INPUT_AIM
-        or IsDisabledControlPressed(0, 25)
+local function isFiringWeapon()
+    local ped = cache.ped
+    if IsPedShooting(ped) then return true, true end
+    if IsPedArmed(ped, 4) and (IsControlPressed(0, 24) or IsDisabledControlPressed(0, 24)) then
+        return true, false
+    end
+    return false, false
+end
+
+local function getDoorStreetLabel(house)
+    local h = house and Config.HouseRob.Houses[house]
+    if not h or not h.coords then
+        return tostring(house or 'Unknown house')
+    end
+    local c = h.coords
+    local streetHash, crossingHash = GetStreetNameAtCoord(c.x + 0.0, c.y + 0.0, c.z + 0.0)
+    local street = GetStreetNameFromHashKey(streetHash) or ''
+    local crossing = GetStreetNameFromHashKey(crossingHash) or ''
+    local zone = GetNameOfZone(c.x + 0.0, c.y + 0.0, c.z + 0.0)
+    local area = zone and GetLabelText(zone) or ''
+    if area == 'NULL' or area == 'null' then area = '' end
+    if street ~= '' and crossing ~= '' then
+        return ('%s / %s%s'):format(street, crossing, area ~= '' and (' — ' .. area) or '')
+    end
+    if street ~= '' then
+        return area ~= '' and (street .. ' — ' .. area) or street
+    end
+    if area ~= '' then return area end
+    return tostring(house)
 end
 
 local function drawSoundMeter(level)
@@ -93,16 +152,16 @@ local function drawSoundMeter(level)
     SetTextCentre(true)
     SetTextOutline()
     BeginTextCommandDisplayText('STRING')
-    local status = isAimingSilent() and 'AIMING · QUIET' or 'SOUND'
+    local status = 'SOUND'
+    if isFiringWeapon() then
+        status = 'GUNFIRE'
+    end
     AddTextComponentSubstringPlayerName(('%s  %.0f%%'):format(status, level))
     EndTextCommandDisplayText(x, y - 0.016)
 end
 
-local function alertPoliceNoise(house)
-    TriggerServerEvent('cfx-cs-robbery:houserob:server:soundAlert', house)
-    if GetResourceState('cfx-cs-dispatch') == 'started' then
-        pcall(function() exports['cfx-cs-dispatch']:HouseRobbery() end)
-    end
+local function alertPoliceNoise(house, reason)
+    TriggerServerEvent('cfx-cs-robbery:houserob:server:soundAlert', house, getDoorStreetLabel(house), reason)
 end
 
 local function startSoundDetection(house)
@@ -113,7 +172,7 @@ local function startSoundDetection(house)
 
     resetSoundMeter()
     soundThreadActive = true
-    ESX.Notify('House Robbery', 'Keep quiet — aim while walking to stay silent.', 'info', 6000)
+    ESX.Notify('House Robbery', 'Keep quiet — footsteps and gunfire will alert neighbors.', 'info', 6000)
 
     CreateThread(function()
         local lastTick = GetGameTimer()
@@ -127,12 +186,16 @@ local function startSoundDetection(house)
             local ped = cache.ped
             local speed = GetEntitySpeed(ped)
             local moving = speed > (cfg.moveThreshold or 0.45)
-            local aiming = isAimingSilent()
+            local firing, justShot = isFiringWeapon()
             local searching = IsLockpicking
 
-            if searching or not moving or aiming then
+            if justShot then
+                soundLevel = math.min(100.0, soundLevel + (cfg.shotSpike or 60.0))
+            elseif firing then
+                soundLevel = math.min(100.0, soundLevel + (cfg.shotNoise or 40.0) * dt)
+            elseif searching then
                 soundLevel = math.max(0.0, soundLevel - (cfg.idleDecay or 5.0) * dt)
-            else
+            elseif moving then
                 local rate = cfg.walkNoise or 7.5
                 if IsPedSprinting(ped) then
                     rate = cfg.sprintNoise or 28.0
@@ -140,6 +203,8 @@ local function startSoundDetection(house)
                     rate = cfg.runNoise or 18.0
                 end
                 soundLevel = math.min(100.0, soundLevel + rate * dt)
+            else
+                soundLevel = math.max(0.0, soundLevel - (cfg.idleDecay or 5.0) * dt)
             end
 
             drawSoundMeter(soundLevel)
@@ -149,7 +214,7 @@ local function startSoundDetection(house)
                 soundThreadActive = false
                 local exitHouse = currentHouse
                 ESX.Notify('House Robbery', 'Too loud — neighbors heard you. Getting out!', 'error', 7000)
-                alertPoliceNoise(exitHouse)
+                alertPoliceNoise(exitHouse, firing and 'gunfire' or 'noise')
                 if exitHouse then
                     leaveRobberyHouse(exitHouse)
                 end
@@ -163,7 +228,7 @@ local function startSoundDetection(house)
     end)
 end
 
-local function leaveRobberyHouse(house)
+leaveRobberyHouse = function(house)
     soundThreadActive = false
     resetSoundMeter()
     TriggerServerEvent('cfx-cs-robbery:houserob:server:leaveHouse', house)
@@ -188,6 +253,7 @@ local function leaveRobberyHouse(house)
     POIOffsets = nil
     inside = false
     currentHouse = nil
+    LocalPlayer.state:set('inHouseRobbery', false, true)
 end
 
 enterRobberyHouse = function(house)
@@ -210,6 +276,7 @@ enterRobberyHouse = function(house)
     SetEntityCoords(cache.ped, coords.x + POIOffsets.exit.x, coords.y + POIOffsets.exit.y, coords.z + POIOffsets.exit.z)
     inside = true
     currentHouse = house
+    LocalPlayer.state:set('inHouseRobbery', true, true)
     Wait(500)
     TriggerEvent('cfx-cs-weather:client:DisableSync')
     startSoundDetection(house)
@@ -233,6 +300,7 @@ local function forceExitHouseRobbery()
     inside = false
     currentHouse = nil
     POIOffsets = nil
+    LocalPlayer.state:set('inHouseRobbery', false, true)
     TriggerServerEvent('cfx-cs-robbery:houserob:server:leaveHouse', house)
     TriggerEvent('cfx-cs-weather:client:EnableSync')
     if houseObj and next(houseObj) then
@@ -268,7 +336,7 @@ RegisterNetEvent('cfx-cs-robbery:houserob:client:forceExit', forceExitHouseRobbe
 local function lockpickFinish(success)
     ClearPedTasks(cache.ped)
     if not closestHouse then return end
-    TriggerServerEvent('cfx-cs-robbery:houserob:server:finishLockpick', closestHouse, success == true, usingAdvanced == true)
+    TriggerServerEvent('cfx-cs-robbery:houserob:server:finishLockpick', closestHouse, success == true, usingAdvanced == true, getDoorStreetLabel(closestHouse))
 end
 
 isPlayerPolice = function()
@@ -285,6 +353,9 @@ end
 local function startLockpicking(house, isAdvanced)
     if not house then return end
     if IsLockpicking then return end
+    if not CanUseHouseRob() then
+        return HouseRobWrongRegion()
+    end
 
     if Config.HouseRob.LimitTime then
         if GetClockHours() < Config.HouseRob.MinimumTime or GetClockHours() > Config.HouseRob.MaximumTime then
@@ -316,12 +387,23 @@ local function startLockpicking(house, isAdvanced)
     while not HasAnimDictLoaded("veh@break_in@0h@p_m_one@") do Wait(10) end
     TaskPlayAnim(cache.ped, "veh@break_in@0h@p_m_one@", "low_force_entry_ds", 3.0, 3.0, -1, 16, 0, false, false, false)
 
-    local success = false
+    local checks = {}
     if usingAdvanced then
-        success = lib.skillCheck({'easy', 'easy'}, {'w', 'a', 's', 'd'})
+        for i = 1, 10 do
+            checks[i] = i <= 6 and 'easy' or 'medium'
+        end
     else
-        success = lib.skillCheck({'easy', 'easy', 'medium'}, {'w', 'a', 's', 'd'})
+        for i = 1, 10 do
+            if i <= 3 then
+                checks[i] = 'easy'
+            elseif i <= 7 then
+                checks[i] = 'medium'
+            else
+                checks[i] = 'hard'
+            end
+        end
     end
+    local success = lib.skillCheck(checks, {'w', 'a', 's', 'd'})
 
     ClearPedTasks(cache.ped)
     IsLockpicking = false
@@ -364,8 +446,89 @@ end
 
 -- Events
 
+local houseTargetIds = {}
+
+local function refreshHouses()
+    local houses = lib.callback.await('cfx-cs-robbery:houserob:server:GetHouseConfig', false)
+    if type(houses) == 'table' then
+        Config.HouseRob.Houses = houses
+    end
+end
+
+local function clearHouseTargets()
+    if GetResourceState('ox_target') ~= 'started' then
+        houseTargetIds = {}
+        return
+    end
+    for i = 1, #houseTargetIds do
+        pcall(function()
+            exports.ox_target:removeZone(houseTargetIds[i])
+        end)
+    end
+    houseTargetIds = {}
+end
+
+local function setupHouseTargets()
+    if GetResourceState('ox_target') ~= 'started' then return end
+    local houses = Config.HouseRob and Config.HouseRob.Houses
+    if type(houses) ~= 'table' then return end
+
+    clearHouseTargets()
+    for id, house in pairs(houses) do
+        local c = house and house.coords
+        if c and c.x and c.y and c.z then
+            local zoneId = exports.ox_target:addSphereZone({
+                coords = vec3(c.x + 0.0, c.y + 0.0, c.z + 0.0),
+                radius = 1.7,
+                debug = false,
+                options = {
+                    {
+                        name = ('houserob_enter_%s'):format(id),
+                        icon = 'fa-solid fa-door-open',
+                        label = 'Enter house',
+                        distance = 2.2,
+                        canInteract = function()
+                            return (house.opened == true or isPlayerPolice()) and not inside
+                        end,
+                        onSelect = function()
+                            closestHouse = id
+                            if not CanUseHouseRob() then
+                                return HouseRobWrongRegion()
+                            end
+                            TriggerServerEvent('cfx-cs-robbery:houserob:server:enterHouse', id)
+                        end,
+                    },
+                    {
+                        name = ('houserob_lockpick_%s'):format(id),
+                        icon = 'fa-solid fa-unlock',
+                        label = 'Lockpick door',
+                        distance = 2.2,
+                        canInteract = function()
+                            return house.opened ~= true and not isPlayerPolice() and not inside
+                        end,
+                        onSelect = function()
+                            closestHouse = id
+                            startLockpicking(id)
+                        end,
+                    },
+                },
+            })
+            if zoneId then
+                houseTargetIds[#houseTargetIds + 1] = zoneId
+            end
+        end
+    end
+end
+
 RegisterNetEvent('esx:playerLoaded', function()
-    Config.HouseRob.Houses = lib.callback.await('cfx-cs-robbery:houserob:server:GetHouseConfig', false)
+    refreshHouses()
+    setupHouseTargets()
+end)
+
+CreateThread(function()
+    Wait(1500)
+    refreshHouses()
+    setupHouseTargets()
 end)
 
 RegisterNetEvent('cfx-cs-robbery:houserob:client:ResetHouseState', function(house)
@@ -394,7 +557,42 @@ RegisterNetEvent('cfx-cs-robbery:houserob:client:SetBusyState', function(cabin, 
     Config.HouseRob.Houses[house]["furniture"][cabin]["isBusy"] = bool
 end)
 
+RegisterNetEvent('cfx-cs-robbery:houserob:client:policeAlert', function(data)
+    if type(data) ~= 'table' or type(data.coords) ~= 'table' then return end
+    local c = data.coords
+    local x, y, z = (c.x or 0) + 0.0, (c.y or 0) + 0.0, (c.z or 0) + 0.0
+    local duration = tonumber(data.time) or 180000
+
+    ESX.Notify('Dispatch', data.message or 'House robbery in progress.', 'police', data.notifyDuration or 14000)
+    PlaySoundFrontend(-1, 'Event_Start_Text', 'GTAO_FM_Events_Soundset', true)
+
+    local blip = AddBlipForCoord(x, y, z)
+    SetBlipSprite(blip, data.sprite or 411)
+    SetBlipColour(blip, data.color or 1)
+    SetBlipScale(blip, data.scale or 1.1)
+    SetBlipFlashes(blip, true)
+    SetBlipAsShortRange(blip, false)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName(data.label or 'House Robbery')
+    EndTextCommandSetBlipName(blip)
+    SetNewWaypoint(x, y)
+
+    local radius = AddBlipForRadius(x, y, z, data.radius or 60.0)
+    SetBlipHighDetail(radius, true)
+    SetBlipColour(radius, 1)
+    SetBlipAlpha(radius, 110)
+
+    CreateThread(function()
+        Wait(duration)
+        if DoesBlipExist(blip) then RemoveBlip(blip) end
+        if DoesBlipExist(radius) then RemoveBlip(radius) end
+    end)
+end)
+
 RegisterNetEvent('cfx-cs-robbery:houserob:UseLockpick', function(isAdvanced)
+    if not CanUseHouseRob() then
+        return HouseRobWrongRegion()
+    end
     if closestHouse == nil then
         return ESX.Notify('House Robbery', 'You are not near any house door.', 'error', 5000)
     end
@@ -410,19 +608,24 @@ CreateThread(function()
         local PlayerPed = cache.ped
         local PlayerPos = GetEntityCoords(PlayerPed)
         closestHouse = nil
-        if not inside then
-            for k, _ in pairs(Config.HouseRob.Houses) do
-                local houseCoords = vector3(Config.HouseRob.Houses[k]["coords"]["x"], Config.HouseRob.Houses[k]["coords"]["y"], Config.HouseRob.Houses[k]["coords"]["z"])
+        local houses = Config.HouseRob and Config.HouseRob.Houses
+        if not inside and type(houses) == 'table' then
+            for k, house in pairs(houses) do
+                local c = house and house.coords
+                if c and c.x and c.y and c.z then
+                local houseCoords = vector3(c.x + 0.0, c.y + 0.0, c.z + 0.0)
                 local dist = #(PlayerPos - houseCoords)
-                if dist <= 2.0 then
+                if dist <= 2.2 then
                     closestHouse = k
                     inRange = true
                     local isCop = isPlayerPolice()
 
-                    if Config.HouseRob.Houses[k]["opened"] then
+                    if house.opened then
                         DrawText3Ds(houseCoords.x, houseCoords.y, houseCoords.z, '~g~[E]~w~ - To Enter')
                         if IsControlJustPressed(0, 38) then
-                            if Config.HouseRob.LimitTime and (GetClockHours() < Config.HouseRob.MinimumTime or GetClockHours() > Config.HouseRob.MaximumTime) then
+                            if not CanUseHouseRob() then
+                                HouseRobWrongRegion()
+                            elseif Config.HouseRob.LimitTime and (GetClockHours() < Config.HouseRob.MinimumTime or GetClockHours() > Config.HouseRob.MaximumTime) then
                                 ESX.Notify('House Robbery', 'You can\'t do that at this time of day.', 'error', 5000)
                             else
                                 TriggerServerEvent('cfx-cs-robbery:houserob:server:enterHouse', k)
@@ -441,6 +644,7 @@ CreateThread(function()
                             end
                         end
                     end
+                end
                 end
             end
         end

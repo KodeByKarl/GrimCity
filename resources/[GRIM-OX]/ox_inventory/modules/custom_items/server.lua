@@ -60,12 +60,17 @@ local function rollBetaVehicle()
 	return BetaCarPool[1]
 end
 
+local function isPlateTaken(plate)
+	local exists = MySQL.scalar.await('SELECT 1 FROM owned_vehicles WHERE plate = ? LIMIT 1', { plate })
+	return exists ~= nil
+end
+
 local function generateVehiclePlate()
 	if GetResourceState('jg-dealerships-v2') == 'started' then
 		local ok, plate = pcall(function()
 			return exports['jg-dealerships-v2']:generatePlate(nil, true)
 		end)
-		if ok and type(plate) == 'string' and plate ~= '' then
+		if ok and type(plate) == 'string' and plate ~= '' and not isPlateTaken(plate) then
 			return plate
 		end
 	end
@@ -74,25 +79,84 @@ local function generateVehiclePlate()
 		local ok, plate = pcall(function()
 			return exports['jg-dealerships']:generatePlate()
 		end)
-		if ok and type(plate) == 'string' and plate ~= '' then
+		if ok and type(plate) == 'string' and plate ~= '' and not isPlateTaken(plate) then
 			return plate
 		end
 	end
 
-	return ('GR%06d'):format(math.random(0, 999999))
+	for _ = 1, 20 do
+		local plate = ('GR%06d'):format(math.random(0, 999999))
+		if not isPlateTaken(plate) then
+			return plate
+		end
+	end
+
+	return ('GC%06d'):format(math.random(0, 999999))
 end
 
-local function insertOwnedVehicle(identifier, model, plate, namePrefix)
-	MySQL.insert.await(
-		'INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `name`) VALUES (?, ?, ?, ?, ?)',
-		{
-			identifier,
-			plate,
-			('{"model":%s,"plate":"%s"}'):format(joaat(model), plate),
-			true,
-			('%s-%s'):format(namePrefix, plate:upper()),
-		}
-	)
+local function insertOwnedVehicle(identifier, model, plate, namePrefix, garageId)
+	local nick = ('%s-%s'):format(namePrefix, plate:upper())
+	local vehicleJson = json.encode({ model = joaat(model), plate = plate })
+	garageId = garageId or 'Legion Square'
+
+	local ok, err = pcall(function()
+		MySQL.insert.await([[
+			INSERT INTO owned_vehicles
+				(`owner`, `plate`, `vehicle`, `stored`, `in_garage`, `garage_id`, `nickname`, `fuel`, `engine`, `body`)
+			VALUES (?, ?, ?, 1, 1, ?, ?, 100, 1000, 1000)
+		]], { identifier, plate, vehicleJson, garageId, nick })
+	end)
+	if ok then return true end
+
+	ok, err = pcall(function()
+		MySQL.insert.await(
+			'INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `in_garage`, `garage_id`, `nickname`) VALUES (?, ?, ?, 1, 1, ?, ?)',
+			{ identifier, plate, vehicleJson, garageId, nick }
+		)
+	end)
+	if ok then return true end
+
+	ok, err = pcall(function()
+		MySQL.insert.await(
+			'INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`) VALUES (?, ?, ?, 1)',
+			{ identifier, plate, vehicleJson }
+		)
+	end)
+	if ok then return true end
+
+	print(('[ox_inventory] insertOwnedVehicle failed for %s (%s / %s): %s'):format(tostring(identifier), tostring(model), tostring(plate), tostring(err)))
+	return false
+end
+
+local function refundUsedItem(inventory)
+	local itemName = inventory.usingItem and inventory.usingItem.name
+	if not itemName then return end
+	Inventory.AddItem(inventory.id, itemName, 1)
+end
+
+local function giveVehicleItem(inventory, model, namePrefix, title)
+	local xPlayer = ESX.GetPlayerFromId(inventory.id)
+	if not xPlayer then return false end
+
+	local plate = generateVehiclePlate()
+	if not plate or plate == '' then
+		notify(xPlayer.source, title, 'Failed to generate a vehicle plate. Try again.', 'error', 7000)
+		refundUsedItem(inventory)
+		return false
+	end
+
+	if not insertOwnedVehicle(xPlayer.identifier, model, plate, namePrefix) then
+		notify(xPlayer.source, title, 'Failed to add the vehicle to your garage. Try again.', 'error', 7000)
+		refundUsedItem(inventory)
+		return false
+	end
+
+	pcall(function()
+		exports['kodebykarl-ui']:GiveKey(xPlayer.source, plate)
+	end)
+
+	notify(xPlayer.source, title, ('Vehicle added to Legion Square garage. Plate: %s'):format(plate:upper()), 'success', 10000)
+	return true
 end
 
 CreateThread(function()
@@ -234,56 +298,70 @@ end)
 
 exports('pd_ammo_box_9', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
-		if not Inventory.CanCarryItem(inventory.id, 'ammo-9', 50) then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-9', 250) then
 			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
 			return false
 		end
 		return true
 	elseif event == 'usedItem' then
-		Inventory.AddItem(inventory.id, 'ammo-9', 50)
-		notify(inventory.id, 'PD Armory', 'Unpacked 50 rounds of 9mm Ammunition.', 'success', 4000)
+		Inventory.AddItem(inventory.id, 'ammo-9', 250)
+		notify(inventory.id, 'PD Armory', 'Unpacked 250 rounds of 9mm Ammunition.', 'success', 4000)
 		return true
 	end
 end)
 
 exports('pd_ammo_box_rifle', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
-		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle', 60) then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle', 250) then
 			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
 			return false
 		end
 		return true
 	elseif event == 'usedItem' then
-		Inventory.AddItem(inventory.id, 'ammo-rifle', 60)
-		notify(inventory.id, 'PD Armory', 'Unpacked 60 rounds of 5.56 Rifle Ammunition.', 'success', 4000)
+		Inventory.AddItem(inventory.id, 'ammo-rifle', 250)
+		notify(inventory.id, 'PD Armory', 'Unpacked 250 rounds of 5.56 Rifle Ammunition.', 'success', 4000)
 		return true
 	end
 end)
 
 exports('pd_ammo_box_rifle2', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
-		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle2', 60) then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-rifle2', 250) then
 			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
 			return false
 		end
 		return true
 	elseif event == 'usedItem' then
-		Inventory.AddItem(inventory.id, 'ammo-rifle2', 60)
-		notify(inventory.id, 'PD Armory', 'Unpacked 60 rounds of 7.62 Rifle Ammunition.', 'success', 4000)
+		Inventory.AddItem(inventory.id, 'ammo-rifle2', 250)
+		notify(inventory.id, 'PD Armory', 'Unpacked 250 rounds of 7.62 Rifle Ammunition.', 'success', 4000)
 		return true
 	end
 end)
 
 exports('pd_ammo_box_shotgun', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
-		if not Inventory.CanCarryItem(inventory.id, 'ammo-shotgun', 30) then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-shotgun', 250) then
 			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
 			return false
 		end
 		return true
 	elseif event == 'usedItem' then
-		Inventory.AddItem(inventory.id, 'ammo-shotgun', 30)
-		notify(inventory.id, 'PD Armory', 'Unpacked 30 rounds of 12G Shotgun Ammunition.', 'success', 4000)
+		Inventory.AddItem(inventory.id, 'ammo-shotgun', 250)
+		notify(inventory.id, 'PD Armory', 'Unpacked 250 rounds of 12G Shotgun Ammunition.', 'success', 4000)
+		return true
+	end
+end)
+
+exports('pd_ammo_box_45', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not Inventory.CanCarryItem(inventory.id, 'ammo-45', 250) then
+			notify(inventory.id, 'PD Armory', 'Inventory is too full to unpack this ammo box.', 'error', 4000)
+			return false
+		end
+		return true
+	elseif event == 'usedItem' then
+		Inventory.AddItem(inventory.id, 'ammo-45', 250)
+		notify(inventory.id, 'PD Armory', 'Unpacked 250 rounds of .45 ACP Ammunition.', 'success', 4000)
 		return true
 	end
 end)
@@ -393,16 +471,13 @@ exports('sheriff_vest', function(event, item, inventory, slot, data)
 end)
 
 local ProjectPartsBoxContents = {
-	{ item = 'car_battery', count = 1 },
-	{ item = 'car_alternator', count = 1 },
-	{ item = 'car_radiator', count = 1 },
-	{ item = 'car_engine_part', count = 1 },
-	{ item = 'spark_plugs', count = 1 },
-	{ item = 'car_transmission', count = 1 },
-	{ item = 'car_hood', count = 1 },
-	{ item = 'car_door', count = 4 },
-	{ item = 'brake_pads', count = 4 },
-	{ item = 'car_wheel', count = 4 },
+	{ partType = 'engine', count = 1 },
+	{ partType = 'transmission', count = 1 },
+	{ partType = 'suspension', count = 1 },
+	{ partType = 'bodyframe', count = 1 },
+	{ partType = 'tire', count = 4 },
+	{ partType = 'door', count = 4 },
+	{ partType = 'window', count = 4 },
 }
 
 local function resolveProjectModel(metadata)
@@ -410,6 +485,30 @@ local function resolveProjectModel(metadata)
 		return tostring(metadata.model):lower():gsub('%s+', '')
 	end
 	return 'ody18'
+end
+
+local function pickProjectModel()
+	if GetResourceState('kodebykarl-projectcars') == 'started' then
+		local ok, rolled = pcall(function()
+			return exports['kodebykarl-projectcars']:PickRandomProjectModel()
+		end)
+		if ok and type(rolled) == 'string' and rolled ~= '' then
+			return rolled
+		end
+	end
+	return 'ody18'
+end
+
+local function resolvePartItem(partType, model)
+	if GetResourceState('kodebykarl-projectcars') == 'started' then
+		local ok, itemName = pcall(function()
+			return exports['kodebykarl-projectcars']:GetPartItemName(model, partType)
+		end)
+		if ok and type(itemName) == 'string' and itemName ~= '' then
+			return itemName
+		end
+	end
+	return partType
 end
 
 local function buildPartMeta(itemName, model)
@@ -429,21 +528,19 @@ local function buildPartMeta(itemName, model)
 	}
 end
 
--- Full ayuda kit: shell + 25 blueprints + all install parts (vehicle-tagged)
+-- Full ayuda kit: shell + 25 blueprints + all install parts for one vehicle
 local function buildAyudaContents(model)
+	if GetResourceState('kodebykarl-projectcars') == 'started' then
+		local ok, kit = pcall(function()
+			return exports['kodebykarl-projectcars']:GetProjectBuildKit(model)
+		end)
+		if ok and type(kit) == 'table' and #kit > 0 then
+			return kit
+		end
+	end
 	return {
 		{ item = 'vehicle_shell', count = 1, metadata = buildPartMeta('vehicle_shell', model) },
 		{ item = 'car_blueprint', count = 25, metadata = buildPartMeta('car_blueprint', model) },
-		{ item = 'car_battery', count = 1, metadata = buildPartMeta('car_battery', model) },
-		{ item = 'car_alternator', count = 1, metadata = buildPartMeta('car_alternator', model) },
-		{ item = 'car_radiator', count = 1, metadata = buildPartMeta('car_radiator', model) },
-		{ item = 'car_engine_part', count = 1, metadata = buildPartMeta('car_engine_part', model) },
-		{ item = 'spark_plugs', count = 1, metadata = buildPartMeta('spark_plugs', model) },
-		{ item = 'car_transmission', count = 1, metadata = buildPartMeta('car_transmission', model) },
-		{ item = 'car_hood', count = 1, metadata = buildPartMeta('car_hood', model) },
-		{ item = 'car_door', count = 4, metadata = buildPartMeta('car_door', model) },
-		{ item = 'brake_pads', count = 4, metadata = buildPartMeta('brake_pads', model) },
-		{ item = 'car_wheel', count = 4, metadata = buildPartMeta('car_wheel', model) },
 	}
 end
 
@@ -469,19 +566,12 @@ exports('project_parts_box', function(event, item, inventory, slot, data)
 	for i = 1, #ProjectPartsBoxContents do
 		local entry = ProjectPartsBoxContents[i]
 		for _ = 1, (entry.count or 1) do
-			local model = 'ody18'
-			if GetResourceState('kodebykarl-projectcars') == 'started' then
-				local ok, rolled = pcall(function()
-					return exports['kodebykarl-projectcars']:PickRandomProjectModel()
-				end)
-				if ok and type(rolled) == 'string' and rolled ~= '' then
-					model = rolled
-				end
-			end
+			local model = pickProjectModel()
+			local itemName = resolvePartItem(entry.partType, model)
 			contents[#contents + 1] = {
-				item = entry.item,
+				item = itemName,
 				count = 1,
-				metadata = buildPartMeta(entry.item, model),
+				metadata = buildPartMeta(itemName, model),
 			}
 		end
 	end
@@ -512,6 +602,120 @@ exports('project_ayuda_box', function(event, item, inventory, slot, data)
 	elseif event == 'usedItem' then
 		giveProjectContents(inventory.id, contents)
 		notify(inventory.id, 'PROJECT AYUDA', ('Unpacked shell, blueprints, and %s parts.'):format(model:upper()), 'success', 6000)
+		return true
+	end
+end)
+
+local RecycleProjectParts = {
+	'engine',
+	'transmission',
+	'suspension',
+	'bodyframe',
+	'tire',
+	'door',
+	'window',
+}
+
+local RecycleDirtyMoney = { min = 20000, max = 30000 }
+
+local pendingRecycle = {}
+
+local function pickRecycleProjectModel()
+	if GetResourceState('kodebykarl-projectcars') == 'started' then
+		local ok, model = pcall(function()
+			return exports['kodebykarl-projectcars']:PickRandomProjectModel()
+		end)
+		if ok and type(model) == 'string' and model ~= '' then
+			return model
+		end
+	end
+	return 'ody18'
+end
+
+local function rollRecycleContents()
+	local model = pickRecycleProjectModel()
+	local contents = {
+		{ item = 'iron', count = 2 },
+		{ item = 'copper', count = 2 },
+		{ item = 'aluminum', count = 2 },
+		{ item = 'plastic', count = 2 },
+		{ item = 'glass', count = 2 },
+		{ item = 'rubber', count = 2 },
+		{ item = 'steel', count = 2 },
+		{ item = 'gunpowder', count = 2 },
+		{ item = 'car_blueprint', count = 2, metadata = buildPartMeta('car_blueprint', model) },
+	}
+
+	for _ = 1, 2 do
+		local partType = RecycleProjectParts[math.random(1, #RecycleProjectParts)]
+		local partModel = pickRecycleProjectModel()
+		local itemName = resolvePartItem(partType, partModel)
+		contents[#contents + 1] = {
+			item = itemName,
+			count = 1,
+			metadata = buildPartMeta(itemName, partModel),
+		}
+	end
+
+	local dirtyMin = RecycleDirtyMoney.min
+	local dirtyMax = RecycleDirtyMoney.max
+	if dirtyMax < dirtyMin then dirtyMax = dirtyMin end
+	contents[#contents + 1] = {
+		item = 'black_money',
+		count = math.random(dirtyMin, dirtyMax),
+	}
+
+	return contents
+end
+
+local function summarizeRecycleLoot(contents)
+	local grouped = {}
+	local order = {}
+	for i = 1, #contents do
+		local entry = contents[i]
+		local label = Items(entry.item) and Items(entry.item).label or entry.item
+		local model = entry.metadata and entry.metadata.model
+		local key = entry.item .. '\0' .. tostring(model or '')
+		if not grouped[key] then
+			grouped[key] = { item = entry.item, label = label, count = 0, model = model }
+			order[#order + 1] = key
+		end
+		grouped[key].count = grouped[key].count + (entry.count or 1)
+	end
+	local bits = {}
+	for i = 1, #order do
+		local row = grouped[order[i]]
+		if row.item == 'black_money' then
+			bits[#bits + 1] = ('$%s dirty money'):format(row.count)
+		elseif row.model and row.model ~= '' then
+			bits[#bits + 1] = ('%sx %s (%s)'):format(row.count, row.label, tostring(row.model):upper())
+		else
+			bits[#bits + 1] = ('%sx %s'):format(row.count, row.label)
+		end
+	end
+	return table.concat(bits, ', ')
+end
+
+exports('recmats', function(event, item, inventory, slot, data)
+	local invId = inventory and inventory.id
+	if not invId then return false end
+
+	if event == 'usingItem' then
+		local contents = rollRecycleContents()
+		if not canCarryProjectContents(invId, contents) then
+			notify(invId, 'RECYCLING', 'Inventory is too full to sort these materials.', 'error', 5000)
+			return false
+		end
+		pendingRecycle[invId] = contents
+		return true
+	elseif event == 'usedItem' then
+		local contents = pendingRecycle[invId]
+		pendingRecycle[invId] = nil
+		if not contents then
+			contents = rollRecycleContents()
+		end
+		giveProjectContents(invId, contents)
+		notify(invId, 'RECYCLING', ('Sorted %s.'):format(summarizeRecycleLoot(contents)), 'success', 7000)
 		return true
 	end
 end)
@@ -691,17 +895,29 @@ end)
 
 exports('police_vest', function(event, item, inventory, slot, data)
 	if event == 'usingItem' then
-		if not hasGroup(inventory.id, {'police', 'sheriff'}) then
-			notify( inventory.id, 'Inventory', 'You can\'t use this item.', 'error', 5000)
+		if not hasGroup(inventory.id, {'police'}) then
+			notify(inventory.id, 'Inventory', 'Only on-duty police can use this vest.', 'error', 5000)
 			return false
 		end
+		return true
 	end
 	if event == 'usedItem' then
 		grantHealthArmor(inventory.id, 0, 100)
 		local ped = GetPlayerPed(inventory.id)
-		local currentAmour = GetPedArmour(ped) + 100
-		if currentAmour > 100 then currentAmour = 100 end
-		SetPedArmour(ped, currentAmour)
+		SetPedArmour(ped, 100)
+		TriggerClientEvent('ox_items:UsedItem', inventory.id, 'police_vest')
+		return true
+	end
+end)
+
+exports('riot_shield', function(event, item, inventory, slot, data)
+	if event == 'usingItem' then
+		if not hasGroup(inventory.id, {'police', 'sheriff'}) then
+			notify(inventory.id, 'PD Armory', 'Only on-duty police can use a riot shield.', 'error', 5000)
+			return false
+		end
+		-- consume = 0 never reaches usedItem — equip as soon as use is allowed.
+		TriggerClientEvent('cfx-cs-police:EquipShield', inventory.id)
 		return true
 	end
 end)
@@ -789,7 +1005,10 @@ exports('item_beta_car', function(event, item, inventory, slot, data)
 			return false
 		end
 
-		insertOwnedVehicle(xPlayer.identifier, win.model, plate1, 'BETA-' .. win.model:upper())
+		if not insertOwnedVehicle(xPlayer.identifier, win.model, plate1, 'BETA-' .. win.model:upper()) then
+			notify(xPlayer.source, 'BETA CAR', 'Failed to add the prize vehicle. Try again.', 'error', 5000)
+			return false
+		end
 		insertOwnedVehicle(xPlayer.identifier, BetaBonusVehicle.model, plate2, 'BETA-BURRITO')
 
 		cacheBetaCars[xPlayer.identifier] = true
@@ -1100,14 +1319,7 @@ local ItemBoxes = {
 		{ item = 'offroad_tyres', amount = 10 },
 		{ item = 'drift_tuning_kit', amount = 10 },
 		{ item = 'ceramic_brakes', amount = 10 },
-		{ item = 'ecu_stage1', amount = 10 },
-		{ item = 'ecu_stage2', amount = 10 },
-		{ item = 'ecu_stage3', amount = 10 },
 		{ item = 'obd_scanner', amount = 10 },
-		{ item = 'bov_hks', amount = 10 },
-		{ item = 'bov_greddy', amount = 10 },
-		{ item = 'bov_tial', amount = 10 },
-		{ item = 'bov_wrc', amount = 10 },
 		{ item = 'ceramic_coating', amount = 10 },
 		{ item = 'tire_plug_kit', amount = 10 },
 		{ item = 'jumpstarter_pack', amount = 10 },
@@ -1188,22 +1400,19 @@ end)
 
 exports('stash_car', function(event, item, inventory, slot, data)
 	if event == 'usedItem' then
-		local xPlayer = ESX.GetPlayerFromId(inventory.id)
-		if not xPlayer then return false end
-		local plate = generateVehiclePlate()
-		notify(xPlayer.source, 'STASH CAR', 'Your Burrito stash van is waiting at your nearest garage!', 'success', 10000)
-		notify(xPlayer.source, 'STASH CAR', ('Plate: %s'):format(plate:upper()), 'success', 10000)
-		MySQL.insert.await(
-			'INSERT INTO owned_vehicles (`owner`, `plate`, `vehicle`, `stored`, `nickname`) VALUES (?, ?, ?, ?, ?)',
-			{
-				xPlayer.identifier,
-				plate,
-				('{"model":%s,"plate":"%s"}'):format(`burrito`, plate),
-				true,
-				('STASH-%s'):format(plate:upper()),
-			}
-		)
-		return true
+		return giveVehicleItem(inventory, 'burrito', 'STASH', 'STASH CAR')
+	end
+end)
+
+exports('item_sunrise', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		return giveVehicleItem(inventory, 'sunrise1', 'SUNRISE', 'SUNRISE')
+	end
+end)
+
+exports('item_16topcargle', function(event, item, inventory, slot, data)
+	if event == 'usedItem' then
+		return giveVehicleItem(inventory, '16topcargle', 'TOPCAR', 'TOPCAR GLE')
 	end
 end)
 
@@ -1431,4 +1640,8 @@ RegisterNetEvent('wasabi_boombox:registerBoombox', function(netId)
 	if cacheBoombox[networkId] then return end
 	Inventory.RemoveItem(xPlayer.source, 'boombox', 1)
 	cacheBoombox[networkId] = os.time()
+end)
+
+AddEventHandler('playerDropped', function()
+	pendingRecycle[source] = nil
 end)

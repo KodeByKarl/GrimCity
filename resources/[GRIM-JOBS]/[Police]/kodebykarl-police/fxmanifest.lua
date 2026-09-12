@@ -31,6 +31,7 @@ server_script{
     'modules/menu/server.lua',
     'modules/zone/server.lua',
     'modules/coin_farm/server.lua',
+    'modules/station/server.lua',
 }
 
 files {

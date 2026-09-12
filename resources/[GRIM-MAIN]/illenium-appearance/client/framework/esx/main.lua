@@ -3,11 +3,15 @@ if not Framework.ESX() then return end
 local ESX = exports["es_extended"]:getSharedObject()
 Framework.PlayerData = nil
 
-RegisterNetEvent("esx:playerLoaded", function(xPlayer)
+RegisterNetEvent("esx:playerLoaded", function(xPlayer, isNew)
     Framework.PlayerData = xPlayer
     client.job = Framework.PlayerData.job
     client.gang = Framework.PlayerData.gang
     client.citizenid = Framework.PlayerData.identifier
+    -- New characters are opened from es_extended after identity; skip InitAppearance.
+    if isNew or LocalPlayer.state.isNew then
+        return
+    end
     InitAppearance()
 end)
 

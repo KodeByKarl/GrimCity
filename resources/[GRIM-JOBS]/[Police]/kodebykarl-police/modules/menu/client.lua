@@ -174,12 +174,9 @@ end)
 
 AddEventHandler('cfx-cs-police:checkId', function(data)
     if not HasGroup() then return end
-    local targetId = GetTargetServerId(data, 4.0)
-    if not targetId then
-        ESX.Notify(PlayerData.job.label, 'No nearby player.', 'error', 5000)
-        return
-    end
-    checkPlayerId(targetId)
+    WithNearbyPlayer(6.0, 'Check Identification', function(targetId)
+        checkPlayerId(targetId)
+    end)
 end)
 -- End of Check Identification --
 
@@ -398,38 +395,32 @@ RegisterNetEvent('cfx-cs-police:uncuff', uncuffed)
 
 AddEventHandler('cfx-cs-police:Cuff', function(data)
     if not HasGroup() then return end
-    local targetId = GetTargetServerId(data, 5.0)
-    if not targetId then
-        ESX.Notify(PlayerData.job.label, 'No nearby player.', 'error', 5000)
-        return
-    end
-    if Player(targetId).state.dead then
-        ESX.Notify(PlayerData.job.label, 'Person appears unconcious', 'error', 5000)
-        return
-    end
-    if Player(targetId).state.cuffed then
-        ESX.Notify(PlayerData.job.label, 'Person is already cuffed.', 'error', 5000)
-        return
-    end
-    TriggerServerEvent('cfx-cs-police:CuffPlayer', targetId)
+    WithNearbyPlayer(6.0, 'Handcuff Suspect', function(targetId)
+        if Player(targetId).state.dead then
+            ESX.Notify(PlayerData.job.label, 'Person appears unconcious', 'error', 5000)
+            return
+        end
+        if Player(targetId).state.cuffed then
+            ESX.Notify(PlayerData.job.label, 'Person is already cuffed.', 'error', 5000)
+            return
+        end
+        TriggerServerEvent('cfx-cs-police:CuffPlayer', targetId)
+    end)
 end)
 
 AddEventHandler('cfx-cs-police:Uncuff', function(data)
     if not HasGroup() then return end
-    local targetId = GetTargetServerId(data, 5.0)
-    if not targetId then
-        ESX.Notify(PlayerData.job.label, 'No nearby player.', 'error', 5000)
-        return
-    end
-    if Player(targetId).state.dead then
-        ESX.Notify(PlayerData.job.label, 'Person appears unconcious', 'error', 5000)
-        return
-    end
-    if not Player(targetId).state.cuffed then
-        ESX.Notify(PlayerData.job.label, 'Person is not cuffed.', 'error', 5000)
-        return
-    end
-    TriggerServerEvent('cfx-cs-police:UncuffPlayer', targetId)
+    WithNearbyPlayer(6.0, 'Uncuff Suspect', function(targetId)
+        if Player(targetId).state.dead then
+            ESX.Notify(PlayerData.job.label, 'Person appears unconcious', 'error', 5000)
+            return
+        end
+        if not Player(targetId).state.cuffed then
+            ESX.Notify(PlayerData.job.label, 'Person is not cuffed.', 'error', 5000)
+            return
+        end
+        TriggerServerEvent('cfx-cs-police:UncuffPlayer', targetId)
+    end)
 end)
 
 CreateThread(function()
@@ -512,6 +503,41 @@ AddEventHandler('cfx-cs-police:JailPlayer', function(data)
     end
 
     lib.callback.await('xt-prison:server:JailPlayer', false, targetId, time)
+end)
+
+local function CanUnjail()
+    if not HasGroup() then return false end
+    local job = PlayerData and PlayerData.job
+    if (not job or not job.name) and ESX.GetPlayerData then
+        job = ESX.GetPlayerData().job
+    end
+    if not job then return false end
+    local gradeName = tostring(job.grade_name or ''):lower()
+    if gradeName == 'boss' or gradeName == 'director' or gradeName == 'chief' then
+        return true
+    end
+    return (tonumber(job.grade) or 0) >= 1
+end
+
+AddEventHandler('cfx-cs-police:UnjailPlayer', function(data)
+    if not HasGroup() then return end
+    if not CanUnjail() then
+        ESX.Notify(PlayerData.job.label, 'Only officers and directors can unjail.', 'error', 5000)
+        return
+    end
+
+    local targetId = GetTargetServerId(data, 5.0)
+    if not targetId then
+        ESX.Notify(PlayerData.job.label, 'No nearby player.', 'error', 5000)
+        return
+    end
+
+    local released = lib.callback.await('xt-prison:server:unjailPlayerByRoster', false, targetId)
+    if released then
+        ESX.Notify(PlayerData.job.label, 'Suspect released from jail.', 'success', 5000)
+    else
+        ESX.Notify(PlayerData.job.label, 'That player is not in jail, or release failed.', 'error', 5000)
+    end
 end)
 
 RegisterNetEvent('cfx-cs-police:setEscort', function(targetId)
@@ -1144,32 +1170,49 @@ end
 function vehicleInfoMenu(vehicle)
     if not DoesEntityExist(vehicle) then
         ESX.Notify(PlayerData.job.label, 'No vehicle found nearby', 'error', 5000)
-    else
-        local plate = GetVehicleNumberPlateText(vehicle)
-        ESX.TriggerServerCallback('cfx-cs-police:getVehicleOwner', function(ownerData)
-            if ownerData then
-                local Menu = {}
-                if ownerData then
-                    Menu[#Menu + 1] = {
-                        title = ownerData,
-                        icon = 'fa-solid fa-magnifying-glass',
-                    }
-                else 
-                    Menu[#Menu + 1] = {
-                        title = 'Caution!',
-                        icon = 'fa-solid fa-xmark',
-                        description = 'Vehicle Possibly Stolen',
-                    }
-                end
-                lib.registerContext({
-                    id = 'police_menu_vehicle_info',
-                    title = "Vehicle Info",
-                    options = Menu
-                })
-                lib.showContext('police_menu_vehicle_info')
-            end
-        end, ESX.Math.Trim(plate))
+        return
     end
+
+    local plate = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle) or '')
+    local modelHash = GetEntityModel(vehicle)
+    local modelName = GetDisplayNameFromVehicleModel(modelHash) or 'UNKNOWN'
+    local modelLabel = GetLabelText(modelName)
+    if not modelLabel or modelLabel == 'NULL' or modelLabel == '' then
+        modelLabel = modelName
+    end
+
+    ESX.TriggerServerCallback('cfx-cs-police:getVehicleOwner', function(ownerData)
+        local ownerText = 'Unknown / not registered'
+        if type(ownerData) == 'table' then
+            ownerText = ownerData.owner or ownerText
+        elseif type(ownerData) == 'string' then
+            ownerText = ownerData
+        elseif ownerData == false then
+            ownerText = 'Unregistered (possibly stolen)'
+        end
+
+        local Menu = {
+            {
+                title = ('Plate: %s'):format(plate ~= '' and plate or 'N/A'),
+                icon = 'fa-solid fa-id-card',
+            },
+            {
+                title = ('Model: %s'):format(modelLabel),
+                description = ('Spawn: %s'):format(modelName),
+                icon = 'fa-solid fa-car',
+            },
+            {
+                title = ('Owner: %s'):format(ownerText),
+                icon = ownerData and 'fa-solid fa-user' or 'fa-solid fa-xmark',
+            },
+        }
+        lib.registerContext({
+            id = 'police_menu_vehicle_info',
+            title = 'Vehicle Info',
+            options = Menu
+        })
+        lib.showContext('police_menu_vehicle_info')
+    end, plate)
 end
 -- End of Vehicle Info --
 
@@ -1231,7 +1274,7 @@ end
 
 -- Start of Impound Vehicle --
 function impoundVehicle()
-    ExecuteCommand('impound')
+    TriggerEvent('jg-advancedgarages:client:show-impound-form')
 end
 -- End of Impound Vehicle --
 
@@ -1424,25 +1467,60 @@ local function DisableShield(silent)
     RiotShield.active = false
     RiotShield.lastHealth = nil
     ClearPedTasks(ped)
-    LocalPlayer.state.invBusy = false
     if not silent then
-        ESX.Notify(PlayerData.job.label, 'Riot shield deactivated.', 'error', 4000)
+        ESX.Notify(PlayerData.job and PlayerData.job.label or 'Police', 'Riot shield deactivated.', 'error', 4000)
     end
 end
 
+local function loadShieldModel()
+    local cfg = Config.RiotShield
+    local models = { cfg.model, cfg.fallbackModel, `prop_ballistic_shield`, `prop_riot_shield` }
+    for i = 1, #models do
+        local model = models[i]
+        if model then
+            lib.requestModel(model, 8000)
+            if HasModelLoaded(model) then
+                return model
+            end
+        end
+    end
+    return nil
+end
+
 local function EnableShield()
-    if not HasGroup() then return end
+    if not HasGroup() then
+        ESX.Notify('PD Armory', 'Only on-duty police can use a riot shield.', 'error', 4000)
+        return
+    end
     if RiotShield.active then return end
 
     local ped = cache.ped
     local cfg = Config.RiotShield
     local coords = GetEntityCoords(ped)
+    local model = loadShieldModel()
+    if not model then
+        ESX.Notify(PlayerData.job and PlayerData.job.label or 'Police', 'Riot shield model failed to load.', 'error', 4000)
+        return
+    end
 
-    lib.requestModel(cfg.model, 10000)
-    local shield = CreateObjectNoOffset(cfg.model, coords.x, coords.y, coords.z, true, true, false)
-    SetModelAsNoLongerNeeded(cfg.model)
+    local shield = CreateObjectNoOffset(model, coords.x, coords.y, coords.z + 0.2, true, true, false)
+    if (not shield or shield == 0 or not DoesEntityExist(shield)) then
+        shield = CreateObject(model, coords.x, coords.y, coords.z + 0.2, true, true, false)
+    end
+    SetModelAsNoLongerNeeded(model)
+    if not shield or shield == 0 or not DoesEntityExist(shield) then
+        ESX.Notify(PlayerData.job and PlayerData.job.label or 'Police', 'Riot shield could not be equipped.', 'error', 4000)
+        return
+    end
 
-    local boneIndex = GetPedBoneIndex(ped, cfg.bone)
+    SetEntityAsMissionEntity(shield, true, true)
+    SetEntityVisible(shield, true, false)
+    SetEntityCollision(shield, false, false)
+
+    local boneIndex = GetPedBoneIndex(ped, cfg.bone or 45509)
+    if not boneIndex or boneIndex == -1 then
+        boneIndex = GetEntityBoneIndexByName(ped, 'IK_L_Hand')
+    end
     AttachEntityToEntity(
         shield, ped, boneIndex,
         cfg.offset.x, cfg.offset.y, cfg.offset.z,
@@ -1453,9 +1531,8 @@ local function EnableShield()
     RiotShield.entity = shield
     RiotShield.active = true
     RiotShield.lastHealth = GetEntityHealth(ped)
-    LocalPlayer.state.invBusy = true
     PlayShieldAnim(ped)
-    ESX.Notify(PlayerData.job.label, 'Riot shield activated.', 'success', 4000)
+    ESX.Notify(PlayerData.job and PlayerData.job.label or 'Police', 'Riot shield activated.', 'success', 4000)
 
     CreateThread(function()
         local anim = Config.RiotShield.anim
@@ -1490,15 +1567,18 @@ local function EnableShield()
     end)
 end
 
-AddEventHandler('cfx-cs-police:EquipShield', function()
-    if not HasGroup() then return end
+local function ToggleRiotShield()
     if Player(cache.serverId).state.dead then return end
     if RiotShield.active then
         DisableShield()
     else
         EnableShield()
     end
-end)
+end
+
+RegisterNetEvent('cfx-cs-police:EquipShield', ToggleRiotShield)
+RegisterNetEvent('kodebykarl-police:EquipShield', ToggleRiotShield)
+exports('useRiotShield', ToggleRiotShield)
 
 -- Reduce incoming damage while riot shield is active (Config.RiotShield.damageReduction)
 AddEventHandler('gameEventTriggered', function(name, args)

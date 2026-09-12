@@ -676,7 +676,7 @@ ESX.RegisterServerCallback("cfx-keydi-comserv:open", function(source, cb)
     end
 
     cb({
-        brand = ConfigComServ.Brand or "PANDORA CITY",
+        brand = ConfigComServ.Brand or "GRIM CITY",
         defaultActions = ConfigComServ.DefaultActions,
         maxActions = ConfigComServ.MaxActions,
         staffName = getOnlineName(xPlayer),

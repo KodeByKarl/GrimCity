@@ -84,11 +84,71 @@ function Inventory.CanAccessTrunk(entity)
     end
 end
 
+local ownedTrunkCache = {}
+local ownedTrunkPending = {}
+
+local function normalizePlate(plate)
+    if not plate or plate == '' then return '' end
+    return (string.gsub(tostring(plate), '^%s*(.-)%s*$', '%1')):upper()
+end
+
+---@param entity number
+---@return boolean
+function Inventory.IsOwnedTrunk(entity)
+    if not entity or entity == 0 or not DoesEntityExist(entity) then return false end
+
+    local plate = normalizePlate(GetVehicleNumberPlateText(entity))
+    if plate == '' then return false end
+
+    local cached = ownedTrunkCache[plate]
+    if cached ~= nil then return cached end
+
+    if not ownedTrunkPending[plate] then
+        ownedTrunkPending[plate] = true
+
+        CreateThread(function()
+            local ok = lib.callback.await('ox_inventory:canOpenTrunk', false, plate)
+            ownedTrunkCache[plate] = ok == true
+            ownedTrunkPending[plate] = nil
+        end)
+    end
+
+    return false
+end
+
+---@param entity number
+---@return boolean
+function Inventory.EnsureOwnedTrunk(entity)
+    if not entity or entity == 0 or not DoesEntityExist(entity) then return false end
+
+    local plate = normalizePlate(GetVehicleNumberPlateText(entity))
+    if plate == '' then return false end
+
+    if ownedTrunkCache[plate] ~= nil then
+        return ownedTrunkCache[plate]
+    end
+
+    local ok = lib.callback.await('ox_inventory:canOpenTrunk', false, plate)
+    ownedTrunkCache[plate] = ok == true
+    return ownedTrunkCache[plate]
+end
+
+RegisterNetEvent('ox_inventory:setPlayerInventory', function()
+    table.wipe(ownedTrunkCache)
+    table.wipe(ownedTrunkPending)
+end)
+
+exports('IsOwnedTrunk', Inventory.IsOwnedTrunk)
+
 function Inventory.OpenTrunk(entity)
     ---@type number | number[] | nil
     local door = Inventory.CanAccessTrunk(entity)
 
     if not door then return end
+
+    if not Inventory.EnsureOwnedTrunk(entity) then
+        return lib.notify({ id = 'trunk_not_owner', type = 'error', description = locale('trunk_not_owner') })
+    end
 
     local coords = GetEntityCoords(entity)
 
@@ -117,7 +177,9 @@ if shared.target then
         icon = 'fas fa-truck-ramp-box',
         label = locale('open_label', locale('storage')),
         distance = 1.5,
-        canInteract = Inventory.CanAccessTrunk,
+        canInteract = function(entity)
+            return Inventory.CanAccessTrunk(entity) and Inventory.IsOwnedTrunk(entity)
+        end,
         onSelect = function(data)
             return Inventory.OpenTrunk(data.entity)
         end
@@ -301,8 +363,11 @@ end
 exports('GetItemCount', Inventory.GetItemCount)
 
 
-local function openEvidence()
-    client.openInventory('policeevidence')
+local function openEvidence(evidence)
+    client.openInventory('policeevidence', {
+        prefix = evidence and (evidence.prefix or evidence.department) or 'pd',
+        label = evidence and evidence.label,
+    })
 end
 
 local textPrompts = {
@@ -329,14 +394,20 @@ Inventory.Evidence = setmetatable(lib.load('data.evidence'), {
             end
 
             if client.hasGroup(shared.police) then
+                local evidenceLabel = evidence.label or locale('open_police_evidence')
+                local evidencePrefix = evidence.prefix or evidence.department or 'pd'
+
                 if shared.target then
                     if evidence.target then
+                        local locker = evidence
                         evidence.zoneId = Utils.CreateBoxZone(evidence.target, {
                             {
                                 icon = evidence.target.icon or 'fas fa-warehouse',
-                                label = locale('open_police_evidence'),
+                                label = evidenceLabel,
                                 groups = shared.police,
-                                onSelect = openEvidence,
+                                onSelect = function()
+                                    openEvidence(locker)
+                                end,
                                 iconColor = evidence.target.iconColor,
                             }
                         })
@@ -347,8 +418,14 @@ Inventory.Evidence = setmetatable(lib.load('data.evidence'), {
                         coords = evidence.coords,
                         distance = 16,
                         inv = 'policeevidence',
+                        evidencePrefix = evidencePrefix,
+                        evidenceLabel = evidenceLabel,
                         marker = client.evidencemarker,
-                        prompt = textPrompts.evidence,
+                        prompt = {
+                            options = textPrompts.evidence.options,
+                            message = ('**%s**  \n%s'):format(evidenceLabel,
+                                locale('interact_prompt', GetControlInstructionalButton(0, 38, true):sub(3)))
+                        },
                         nearby = Utils.nearbyMarker
                     })
                 end

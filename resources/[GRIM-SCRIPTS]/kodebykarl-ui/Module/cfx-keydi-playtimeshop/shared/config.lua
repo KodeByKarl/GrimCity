@@ -14,21 +14,18 @@ ConfigPlaytimeShop.GarageId = 'Legion Square'
 -- Fallback only if kodebykarl-projectcars is down. Live shop rolls a random pack car per item.
 ConfigPlaytimeShop.ProjectModel = 'ody18'
 
--- Items that get per-vehicle metadata (Vehicle: Odyssey 2018, etc.)
+-- Items that get per-vehicle unique parts (Charger Engine, Civic Tires, etc.)
 ConfigPlaytimeShop.ProjectPartItems = {
     vehicle_shell = true,
     project_parts_box = true,
     car_blueprint = true,
-    car_battery = true,
-    car_alternator = true,
-    car_radiator = true,
-    car_engine_part = true,
-    spark_plugs = true,
-    car_transmission = true,
-    car_hood = true,
-    car_door = true,
-    brake_pads = true,
-    car_wheel = true,
+    engine = true,
+    transmission = true,
+    suspension = true,
+    bodyframe = true,
+    tire = true,
+    door = true,
+    window = true,
 }
 
 -- Street kit (Items tab)
@@ -75,16 +72,13 @@ ConfigPlaytimeShop.Cars = {
         stock = 100,
         image = 'car_blueprint',
     },
-    { id = 'car_battery', label = 'CAR BATTERY', kind = 'part', item = 'car_battery', amount = 1, price = 10, stock = 3, image = 'car_battery' },
-    { id = 'car_alternator', label = 'CAR ALTERNATOR', kind = 'part', item = 'car_alternator', amount = 1, price = 10, stock = 4, image = 'car_alternator' },
-    { id = 'car_radiator', label = 'CAR RADIATOR', kind = 'part', item = 'car_radiator', amount = 1, price = 10, stock = 6, image = 'car_radiator' },
-    { id = 'car_engine_part', label = 'ENGINE PART', kind = 'part', item = 'car_engine_part', amount = 1, price = 10, stock = 3, image = 'car_engine_part' },
-    { id = 'spark_plugs', label = 'SPARK PLUGS', kind = 'part', item = 'spark_plugs', amount = 1, price = 10, stock = 2, image = 'spark_plugs' },
-    { id = 'car_transmission', label = 'TRANSMISSION', kind = 'part', item = 'car_transmission', amount = 1, price = 10, stock = 5, image = 'car_transmission' },
-    { id = 'car_hood', label = 'CAR HOOD', kind = 'part', item = 'car_hood', amount = 1, price = 10, stock = 3, image = 'car_hood' },
-    { id = 'car_door', label = 'CAR DOOR SET', kind = 'part', item = 'car_door', amount = 4, price = 10, stock = 5, image = 'car_door' },
-    { id = 'brake_pads', label = 'BRAKE PADS SET', kind = 'part', item = 'brake_pads', amount = 4, price = 10, stock = 6, image = 'brake_pads' },
-    { id = 'car_wheel', label = 'CAR WHEEL SET', kind = 'part', item = 'car_wheel', amount = 4, price = 10, stock = 6, image = 'car_wheel' },
+    { id = 'engine', label = 'ENGINE', kind = 'part', item = 'engine', amount = 1, price = 10, stock = 3, image = 'car_engine_part' },
+    { id = 'transmission', label = 'TRANSMISSION', kind = 'part', item = 'transmission', amount = 1, price = 10, stock = 5, image = 'car_transmission' },
+    { id = 'suspension', label = 'SUSPENSION', kind = 'part', item = 'suspension', amount = 1, price = 10, stock = 4, image = 'car_wheel' },
+    { id = 'bodyframe', label = 'BODY FRAME', kind = 'part', item = 'bodyframe', amount = 1, price = 10, stock = 3, image = 'vehicle_shell' },
+    { id = 'tire', label = 'TIRES SET', kind = 'part', item = 'tire', amount = 4, price = 10, stock = 6, image = 'car_wheel' },
+    { id = 'door', label = 'DOORS SET', kind = 'part', item = 'door', amount = 4, price = 10, stock = 5, image = 'car_door' },
+    { id = 'window', label = 'WINDOWS SET', kind = 'part', item = 'window', amount = 4, price = 10, stock = 6, image = 'glass' },
 }
 
 ConfigPlaytimeShop.PageSize = 6

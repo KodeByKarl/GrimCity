@@ -15,7 +15,7 @@ import {
 import type { IpadPlayerData } from "./Ipad";
 import { fetchNui } from "@/lib/nui";
 
-export type DeptId = "police" | "sheriff" | "ambulance" | "pambulance" | "doj";
+export type DeptId = "police" | "sheriff" | "ambulance" | "pambulance" | "sambulance" | "doj";
 
 type TabId = "funds" | "staff" | "online" | "announce";
 
@@ -86,6 +86,7 @@ const THEME: Record<DeptId, { accent: string; header: string }> = {
   sheriff: { accent: "#b45309", header: "from-[#2a1a08] to-[#3d2a12]" },
   ambulance: { accent: "#b91c1c", header: "from-[#2a0c0c] to-[#3b1414]" },
   pambulance: { accent: "#9f1239", header: "from-[#2a0c0c] to-[#3b1414]" },
+  sambulance: { accent: "#be123c", header: "from-[#2a0c0c] to-[#3b1414]" },
   doj: { accent: "#7c3aed", header: "from-[#1a0f2e] to-[#2e1a4a]" },
 };
 

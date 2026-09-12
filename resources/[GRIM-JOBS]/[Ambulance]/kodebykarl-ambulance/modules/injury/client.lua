@@ -587,7 +587,7 @@ CreateThread(function()
     Wait(2500)
     prevPos = GetEntityCoords(cache.ped, true)
     while true do
-        if isBleeding > 0 then
+        if isBleeding > 0 and not LocalPlayer.state.spawnProtect then
             local player = cache.ped
             if bleedTickTimer >= Config.BleedTickRate then
                 if not Player(cache.serverId).state.dead and isBleeding > 0 then
@@ -642,7 +642,7 @@ CreateThread(function()
         end
 
         -- Bleed-tick HP loss must not re-apply / escalate bleeding
-        if applyingBleedDamage then
+        if applyingBleedDamage or LocalPlayer.state.spawnProtect then
             playerHealth = health
             playerArmor = armor
             Wait(100)

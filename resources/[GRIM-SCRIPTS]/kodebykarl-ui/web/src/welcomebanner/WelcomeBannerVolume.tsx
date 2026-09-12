@@ -71,34 +71,41 @@ export default function WelcomeBannerVolume({ data, onClose }: WelcomeBannerVolu
   const percent = Math.round(volume * 100);
 
   return (
-    <div className="pandora fixed inset-0 z-[99950] flex items-center justify-center bg-black/55 p-6 font-sans">
-      <div className="pandora-panel relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl border">
-        <div className="flex items-center justify-between border-b border-border/40 px-5 py-4">
+    <div className="pandora fixed inset-0 z-[99950] flex items-center justify-center bg-black/80 p-4 font-sans backdrop-blur-[6px]">
+      <div
+        className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border-2 border-[#ff3a3a]"
+        style={{ background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)" }}
+      >
+        <div
+          className="flex items-center justify-between border-b px-3 py-2"
+          style={{ borderBottomColor: "rgba(255, 58, 58, 0.25)" }}
+        >
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#8fe4ff]">Player Setting</p>
-            <h2 className="text-lg font-black text-white">Banner Volume</h2>
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#ff4d4d]">Player Setting</p>
+            <h2 className="text-[14px] font-black text-white">Banner Volume</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 hover:text-white"
+            className="flex items-center gap-1 rounded-md border border-[#ff3a3a]/30 bg-[#181216] px-2 py-1 text-[10px] font-semibold text-white/80 transition hover:border-[#ff3a3a] hover:text-white"
           >
-            <X className="h-4 w-4" />
+            <span>Esc</span>
+            <X className="h-3 w-3 text-[#ff4d4d]" />
           </button>
         </div>
 
-        <div className="space-y-5 p-5">
-          <p className="text-[12px] leading-relaxed text-white/55">
-            Lower this if welcome banners are too loud or startling. This only changes what you hear — other players are not affected.
+        <div className="space-y-3 p-3">
+          <p className="text-[11px] leading-relaxed text-[#a08890]">
+            Lower this if welcome banners are too loud. Only affects what you hear.
           </p>
 
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm font-bold text-white">
-                {muted ? <VolumeX className="h-4 w-4 text-white/50" /> : <Volume2 className="h-4 w-4 text-[#8fe4ff]" />}
+          <div className="rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[12px] font-bold text-white">
+                {muted ? <VolumeX className="h-3.5 w-3.5 text-[#a08890]" /> : <Volume2 className="h-3.5 w-3.5 text-[#ff4d4d]" />}
                 Your volume
               </span>
-              <span className="text-sm font-black text-[#8fe4ff]">{percent}%</span>
+              <span className="text-[12px] font-black text-[#ff4d4d]">{percent}%</span>
             </div>
 
             <input
@@ -108,24 +115,24 @@ export default function WelcomeBannerVolume({ data, onClose }: WelcomeBannerVolu
               step={0.05}
               value={volume}
               onChange={(e) => commit(Number(e.target.value))}
-              className="w-full"
+              className="w-full accent-[#ff3a3a]"
             />
 
             <button
               type="button"
               onClick={() => commit(muted ? lastAudibleRef.current || 1 : 0)}
               className={cn(
-                "mt-3 w-full rounded-lg border px-3 py-2 text-xs font-bold",
+                "mt-2 w-full rounded-md border px-3 py-1.5 text-[10px] font-bold",
                 muted
-                  ? "border-[#35c7f2]/35 bg-[#35c7f2]/15 text-[#8fe4ff]"
-                  : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                  ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-[#ff4d4d]"
+                  : "border-[#ff3a3a]/25 bg-black/20 text-[#a08890] hover:text-white"
               )}
             >
               {muted ? "Unmute banners" : "Mute banners"}
             </button>
           </div>
 
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-5 gap-1">
             {PRESETS.map((preset) => {
               const active = Math.abs(volume - preset.value) < 0.001;
               return (
@@ -134,10 +141,10 @@ export default function WelcomeBannerVolume({ data, onClose }: WelcomeBannerVolu
                   type="button"
                   onClick={() => commit(preset.value)}
                   className={cn(
-                    "rounded-lg border px-1 py-2 text-[10px] font-bold",
+                    "rounded-md border px-1 py-1.5 text-[9px] font-bold",
                     active
-                      ? "border-[#35c7f2]/40 bg-[#35c7f2]/15 text-[#8fe4ff]"
-                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                      ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-[#ff4d4d]"
+                      : "border-[#ff3a3a]/20 bg-[#181216] text-[#a08890] hover:text-white"
                   )}
                 >
                   {preset.label}
@@ -147,8 +154,13 @@ export default function WelcomeBannerVolume({ data, onClose }: WelcomeBannerVolu
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center justify-center border-t border-white/10 px-5 py-2.5">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45">karlbykode.dev</p>
+        <div
+          className="flex shrink-0 items-center justify-center border-t px-3 py-1.5"
+          style={{ borderTopColor: "rgba(255, 58, 58, 0.25)" }}
+        >
+          <p className="text-[9px] font-semibold tracking-[0.16em] text-[#a08890]">
+            Powered by <strong className="text-[#ff4d4d]">KodeByKarl.Net</strong>
+          </p>
         </div>
       </div>
     </div>

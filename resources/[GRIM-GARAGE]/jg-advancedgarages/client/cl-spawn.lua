@@ -143,8 +143,8 @@ function applyVehicleProperties(vehicle, vehicleData)
     -- Set vehicle mod kit for customization
     SetVehicleModKit(vehicle, 0)
 
-    -- Apply livery if specified
-    if vehicleData.livery and type(vehicleData.livery) == "number" then
+    -- Apply livery if specified (livery 0 is valid; do not treat it as falsy)
+    if type(vehicleData.livery) == "number" then
         SetVehicleMod(vehicle, 48, vehicleData.livery, false)
         SetVehicleLivery(vehicle, vehicleData.livery)
     end

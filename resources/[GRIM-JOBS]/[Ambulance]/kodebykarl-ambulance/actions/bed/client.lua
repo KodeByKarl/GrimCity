@@ -95,11 +95,13 @@ end
 
 RegisterNetEvent('cfx-keydi-ambulance:syncBed', function(admitTime, bedIndex, job)
     if source ~= 65535 then return end
+    local coords = menu.bed.locations[job] and menu.bed.locations[job][bedIndex]
+    if not coords then return end
     Vars.isBed = true
     bedTimer = admitTime
     local ped = cache.ped
-    SetEntityCoords(ped, menu.bed.locations[job][bedIndex].x, menu.bed.locations[job][bedIndex].y, menu.bed.locations[job][bedIndex].z)
-    SetEntityHeading(ped, menu.bed.locations[job][bedIndex].w)
+    SetEntityCoords(ped, coords.x, coords.y, coords.z)
+    SetEntityHeading(ped, coords.w)
     lib.requestAnimDict('anim@gangops@morgue@table@', 10000)
     exports.ox_target:disableTargeting(true)
     CreateThread(function()
@@ -126,8 +128,8 @@ RegisterNetEvent('cfx-keydi-ambulance:syncBed', function(admitTime, bedIndex, jo
         exports.ox_target:disableTargeting(false)
         FreezeEntityPosition(ped, false)
         NetworkSetFriendlyFireOption(true)
-        SetEntityCoords(ped, menu.bed.locations[job][bedIndex].x, menu.bed.locations[job][bedIndex].y, menu.bed.locations[job][bedIndex].z)
-        SetEntityHeading(ped, menu.bed.locations[job][bedIndex].w)
+        SetEntityCoords(ped, coords.x, coords.y, coords.z)
+        SetEntityHeading(ped, coords.w)
     end)
 end)
 
@@ -139,7 +141,8 @@ end)
 RegisterNetEvent('cfx-keydi-ambulance:placeTempBed', function(duration, bedIndex, job)
     if source ~= 65535 then return end
     local ped = cache.ped
-    local coords = menu.bed.locations[job][bedIndex]
+    local coords = menu.bed.locations[job] and menu.bed.locations[job][bedIndex]
+    if not coords then return end
     exports.ox_target:disableTargeting(true)
     SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, false)
     SetEntityHeading(ped, coords.w + 180.0)

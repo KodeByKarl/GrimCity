@@ -45,21 +45,14 @@ local function restoreDeathOnLoad()
 
         TriggerServerEvent('cfx-keydi-ambulance:setPlayerDeathStatus', true, 'restore')
 
-        local ped = PlayerPedId()
-        if ped and ped ~= 0 then
-            SetEntityInvincible(ped, false)
-            SetPlayerInvincible(PlayerId(), false)
-            SetEntityHealth(ped, 0)
-        end
-
         Wait(400)
         if Vars.isReviving then return end
 
-        -- Spawn/appearance can stand them back up; force the death state + lie-down pose
+        -- Do not SetEntityHealth(0): GTA hospital-respawns to campus. Hold at last coords.
         if not Vars.isDead then
             onDeath({ restored = true })
         else
-            client.StartDeathPose()
+            client.StartDeathHoldWatch()
         end
 
         -- Rebind mumble after reconnect, then deafen (dead players cannot hear).
@@ -73,47 +66,80 @@ local function restoreDeathOnLoad()
     end)
 end
 
+local function onDeathStatusChecked(isDead)
+    if isDead then
+        restoreDeathOnLoad()
+    else
+        TriggerServerEvent('cfx-keydi-ambulance:checkBed')
+        TriggerServerEvent('cfx-keydi-ambulance:ensureVoiceUnmute')
+        if GetResourceState('pma-voice') == 'started' then
+            pcall(function()
+                exports['pma-voice']:startJoinHandshake('alive-load')
+            end)
+        end
+    end
+end
+
+local function requestDeathStatus(attempt)
+    attempt = attempt or 1
+    if isChecked then return end
+
+    local function handle(isDead)
+        if isChecked then return end
+        isChecked = true
+        onDeathStatusChecked(isDead and true or false)
+    end
+
+    -- Prefer ox_lib (avoids ESX callback race on resource restart)
+    if lib and lib.callback and lib.callback.await then
+        local ok, isDead = pcall(function()
+            return lib.callback.await('cfx-keydi-ambulance:checkDeathStatus', false)
+        end)
+        if ok and isDead ~= nil then
+            return handle(isDead)
+        end
+    end
+
+    if ESX and ESX.TriggerServerCallback then
+        local answered = false
+        ESX.TriggerServerCallback('cfx-keydi-ambulance:checkDeathStatus', function(isDead)
+            answered = true
+            handle(isDead)
+        end)
+        SetTimeout(2500, function()
+            if answered or isChecked then return end
+            if attempt < 5 then
+                requestDeathStatus(attempt + 1)
+            else
+                -- Fail open: treat as alive so bed/voice still sync
+                handle(false)
+            end
+        end)
+        return
+    end
+
+    if attempt < 5 then
+        SetTimeout(1000, function()
+            requestDeathStatus(attempt + 1)
+        end)
+    else
+        handle(false)
+    end
+end
+
 AddEventHandler('ESX:Client:PlayerLoaded', function()
     local resource = GetInvokingResource()
     if resource == nil or resource ~= 'es_extended' then return end
-    if isChecked then return end
-    isChecked = true
-    ESX.TriggerServerCallback('cfx-keydi-ambulance:checkDeathStatus', function(isDead)
-       if isDead then
-            restoreDeathOnLoad()
-        else
-            TriggerServerEvent('cfx-keydi-ambulance:checkBed')
-            -- Alive on load: clear any stuck mute from previous death session
-            TriggerServerEvent('cfx-keydi-ambulance:ensureVoiceUnmute')
-            if GetResourceState('pma-voice') == 'started' then
-                pcall(function()
-                    exports['pma-voice']:startJoinHandshake('alive-load')
-                end)
-            end
-        end
-    end)
+    requestDeathStatus(1)
 end)
 
 -- Real ESX load event (ESX:Client:PlayerLoaded is never fired by this server's es_extended)
 RegisterNetEvent('esx:playerLoaded', function()
-    if isChecked then return end
-    isChecked = true
-    ESX.TriggerServerCallback('cfx-keydi-ambulance:checkDeathStatus', function(isDead)
-        if isDead then
-            restoreDeathOnLoad()
-        else
-            TriggerServerEvent('cfx-keydi-ambulance:checkBed')
-            TriggerServerEvent('cfx-keydi-ambulance:ensureVoiceUnmute')
-            if GetResourceState('pma-voice') == 'started' then
-                pcall(function()
-                    exports['pma-voice']:startJoinHandshake('alive-load')
-                end)
-            end
-        end
-    end)
+    requestDeathStatus(1)
 end)
 
 RegisterNetEvent('esx:onPlayerLogout', function()
+    client.StopDeathHold()
     client.StopDeathPose()
     isChecked = false
     Vars.isDead = false
@@ -158,37 +184,38 @@ local deathUiMode = 'full' -- 'full' | 'short'
 local selectedRespawnId = nil
 local spawnCfg = require 'shared.spawn'
 
-local function diedInBlaine()
-    return Vars.DiedInBlaine()
-end
-
 local function buildRespawnLocationsPayload()
     local list = {}
     local defaultFine = configs.General.RespawnFine or 1000
-    local blaine = diedInBlaine()
+    local preferred = Vars.SelectStlZone()
     for id, data in pairs(spawnCfg.Locations or {}) do
         if not data.hidden then
-            local zone = data.zone
-            local include = true
-            if zone == 'city' then
-                include = not blaine
-            elseif zone == 'blaine' then
-                include = blaine
+            local requiredJob = data.job
+            if requiredJob then
+                local job = ESX and ESX.PlayerData and ESX.PlayerData.job and ESX.PlayerData.job.name
+                if not job and ESX and ESX.GetPlayerData then
+                    local pd = ESX.GetPlayerData()
+                    job = pd and pd.job and pd.job.name
+                end
+                if job ~= requiredJob then
+                    goto continue
+                end
             end
-            if include then
-                list[#list + 1] = {
-                    id = id,
-                    label = data.label or id,
-                    area = data.area or '',
-                    cost = tonumber(data.cost) or defaultFine,
-                }
-            end
+            list[#list + 1] = {
+                id = id,
+                label = data.label or id,
+                area = data.area or '',
+                cost = tonumber(data.cost) or defaultFine,
+            }
         end
+        ::continue::
     end
     table.sort(list, function(a, b)
+        if a.id == preferred then return true end
+        if b.id == preferred then return false end
         return a.label < b.label
     end)
-    return list
+    return list, preferred
 end
 
 local function setDeathUiFocus(mode)
@@ -239,17 +266,18 @@ local function pushDeathBar(currentTimer, inBleedout)
     if HideNUI then return end
     if not displayed then
         local total = GetDeathTimer()
+        local locs, preferred = buildRespawnLocationsPayload()
         SendNUIMessage({
             type = 'ShowUI',
             time = currentTimer,
             totalTime = total,
-            locations = buildRespawnLocationsPayload(),
+            locations = locs,
+            selectedId = preferred,
             mode = 'full',
         })
         displayed = true
         if not selectedRespawnId then
-            local locs = buildRespawnLocationsPayload()
-            selectedRespawnId = locs[1] and locs[1].id or nil
+            selectedRespawnId = preferred or (locs[1] and locs[1].id) or nil
         end
         CreateThread(function()
             Wait(50)
@@ -406,21 +434,6 @@ local function DeathTimer()
 end
 
 
-local function AutoStuck(ped)
-    Vars.deathToken = (Vars.deathToken or 0) + 1
-    local token = Vars.deathToken
-    CreateThread(function()
-        Wait(2000)
-        -- Cancelled if revived / new death happened
-        if token ~= Vars.deathToken or Vars.isReviving or not Vars.isDead then return end
-        ped = PlayerPedId()
-        local coords = GetEntityCoords(ped)
-        local x, y, z = client.SafeReviveCoords(coords.x, coords.y, coords.z, ped)
-        SetEntityCoordsNoOffset(ped, x, y, z, false, false, false)
-        client.StartDeathPose()
-    end)
-end
-
 onDeath = function(data)
     -- Ignore death events fired while / during revive (esx death-monitor race)
     if Vars.isReviving then return end
@@ -447,15 +460,14 @@ onDeath = function(data)
         Vars.lastHitBoneAt = GetGameTimer()
     end
 
-    if not inPvp then
-        AutoStuck(ped)
-    end
     Vars.isDead = true
+    Vars.deathToken = (Vars.deathToken or 0) + 1
     local _, deathCoords = Vars.CaptureDeathZone(PlayerPedId())
+    client.StartDeathHoldWatch()
+    local stlZone = Vars.SelectStlZone()
+    local zoneName = stlZone == 'paleto_hospital' and 'Paleto' or (stlZone == 'sandy_hospital' and 'Sandy' or 'City')
     local zoneDesc = Vars.diedInRedZone and 'RedZone (1 Min Respawn • $15,000 Fine)' or (
-        Vars.deathInSandy
-            and ('Paleto / Sandy  (5 Min Respawn • $15,000 Fine | Y %.0f)'):format(deathCoords.y)
-            or ('City  (5 Min Respawn • $15,000 Fine | Y %.0f)'):format(deathCoords.y)
+        ('%s  (5 Min Respawn • $15,000 Fine | Y %.0f)'):format(zoneName, deathCoords.y)
     )
     lib.notify({
         title = 'STL Zone',
@@ -463,7 +475,6 @@ onDeath = function(data)
         type = Vars.diedInRedZone and 'error' or (Vars.deathInSandy and 'success' or 'inform'),
         duration = 8000,
     })
-    client.StartDeathPose()
     client.SetDeathHearing(false)
     TriggerServerEvent('cfx-keydi-ambulance:setPlayerDeathStatus', true)
     if GetResourceState('ox_inventory') == 'started' then
@@ -544,7 +555,7 @@ RegisterNetEvent('cfx-keydi-ambulance:revive', function()
     if source ~= 65535 then return end
     if Vars.isReviving then return end
 
-    -- Lock out death re-entry immediately (before any Wait)
+    client.StopDeathHold()
     client.StopDeathPose()
     Vars.isReviving = true
     Vars.isDead = false
@@ -643,79 +654,180 @@ CreateThread(function()
         return GlobalState[('%s:count'):format(jobName)] or 0
     end
 
+    local function spawnCheckInPed(checkIn)
+        if not checkIn.ped or not checkIn.ped.model then return nil end
+        local model = joaat(checkIn.ped.model)
+        lib.requestModel(model, 10000)
+        local heading = checkIn.heading or 0.0
+        local ped = CreatePed(0, model, checkIn.coords.x, checkIn.coords.y, checkIn.coords.z - 1.0, heading, false, true)
+        if not ped or ped == 0 then
+            SetModelAsNoLongerNeeded(model)
+            return nil
+        end
+        SetEntityAsMissionEntity(ped, true, true)
+        SetPedFleeAttributes(ped, 0, false)
+        SetBlockingOfNonTemporaryEvents(ped, true)
+        FreezeEntityPosition(ped, true)
+        SetEntityInvincible(ped, true)
+        if checkIn.ped.scenario then
+            TaskStartScenarioInPlace(ped, checkIn.ped.scenario, 0, true)
+        end
+        SetModelAsNoLongerNeeded(model)
+        return ped
+    end
+
+    local function doCheckIn(index, checkIn)
+        if getJobCount(checkIn.job) >= checkIn.onDuty then
+            ESX.Notify(
+                'AMBULANCE',
+                'There are plenty of medics in the city! Distress for help!',
+                'error',
+                5000
+            )
+            return
+        end
+
+        local progress = lib.progressBar({
+            duration = 1000,
+            label = 'Please Wait . . .',
+            useWhileDead = true,
+            canCancel = false,
+            disable = {
+                car = true,
+            },
+            anim = {
+                scenario = 'WORLD_HUMAN_CLIPBOARD'
+            }
+        })
+
+        if not progress then
+            ESX.Notify('AMBULANCE', 'Failed to check in.', 'error', 5000)
+            return
+        end
+
+        ESX.TriggerServerCallback(
+            'cfx-keydi-ambulance:checkIn',
+            function(success)
+                if success then
+                    ESX.Notify(
+                        'AMBULANCE',
+                        'You have been successfully treated by the hospital staff',
+                        'success',
+                        5000
+                    )
+                else
+                    ESX.Notify(
+                        'AMBULANCE',
+                        'You should have money in your bank account.',
+                        'error',
+                        5000
+                    )
+                end
+            end,
+            index
+        )
+    end
+
+    while GetResourceState('ox_target') ~= 'started' do
+        Wait(200)
+    end
+
+    local function makeCheckInOption(index, checkIn, suffix)
+        local price = checkIn.price or 1000
+        local priceLabel = (ESX and ESX.Math and ESX.Math.GroupDigits and ESX.Math.GroupDigits(price)) or tostring(price)
+        return {
+            name = ('ems_checkin_%s_%s'):format(checkIn.job or index, suffix),
+            label = ('Self Check In - $%s'):format(priceLabel),
+            icon = 'fa-solid fa-hospital',
+            distance = 2.5,
+            onSelect = function()
+                doCheckIn(index, checkIn)
+            end,
+        }
+    end
+
     for i = 1, #configs.CheckIn do
         local checkIn = configs.CheckIn[i]
+        local radius = (checkIn.distance and checkIn.distance.interact) or 2.0
 
         exports.ox_target:addSphereZone({
             coords = checkIn.coords,
-            radius = checkIn.distance.interact,
+            radius = math.max(radius, 1.4),
             debug = false,
-
-            options = {
-                {
-                    label = ('Check In - %s'):format(ESX.Math.GroupDigits(checkIn.price)),
-                    icon = 'fa-solid fa-hospital',
-
-                    canInteract = function()
-                        -- Only allow if medic count is BELOW required
-                        return getJobCount(checkIn.job) < checkIn.onDuty
-                    end,
-
-                    onSelect = function()
-                        -- Re-check server state (safety)
-                        if getJobCount(checkIn.job) >= checkIn.onDuty then
-                            ESX.Notify(
-                                'AMBULANCE',
-                                'There are plenty of medics in the city! Distress for help!',
-                                'error',
-                                5000
-                            )
-                            return
-                        end
-
-                        local progress = lib.progressBar({
-                            duration = 1000,
-                            label = 'Please Wait . . .',
-                            useWhileDead = true,
-                            canCancel = false,
-                            disable = {
-                                car = true,
-                            },
-                            anim = {
-                                scenario = 'WORLD_HUMAN_CLIPBOARD'
-                            }
-                        })
-
-                        if not progress then
-                            ESX.Notify('AMBULANCE', 'Failed to check in.', 'error', 5000)
-                            return
-                        end
-
-                        ESX.TriggerServerCallback(
-                            'cfx-keydi-ambulance:checkIn',
-                            function(success)
-                                if success then
-                                    ESX.Notify(
-                                        'AMBULANCE',
-                                        'You have been successfully treated by the hospital staff',
-                                        'success',
-                                        5000
-                                    )
-                                else
-                                    ESX.Notify(
-                                        'AMBULANCE',
-                                        'You should have money in your bank account.',
-                                        'error',
-                                        5000
-                                    )
-                                end
-                            end,
-                            i
-                        )
-                    end
-                }
-            }
+            options = { makeCheckInOption(i, checkIn, 'zone') },
         })
+
+        local ped = spawnCheckInPed(checkIn)
+        if ped and DoesEntityExist(ped) then
+            SetEntityCollision(ped, true, true)
+            exports.ox_target:addLocalEntity(ped, { makeCheckInOption(i, checkIn, 'ped') })
+        end
+    end
+
+    -- Death disables ox_target globally. Re-enable it at check-in desks so downed players can still use them.
+    CreateThread(function()
+        local targetingAllowed = false
+        while true do
+            local sleep = 1000
+            local nearDesk = false
+            if Vars.isDead then
+                local coords = GetEntityCoords(cache.ped or PlayerPedId())
+                for i = 1, #configs.CheckIn do
+                    local desk = configs.CheckIn[i].coords
+                    if #(coords - vector3(desk.x, desk.y, desk.z)) <= 3.0 then
+                        nearDesk = true
+                        break
+                    end
+                end
+                sleep = nearDesk and 200 or 500
+            end
+
+            if nearDesk and not targetingAllowed then
+                targetingAllowed = true
+                pcall(function()
+                    exports.ox_target:disableTargeting(false)
+                end)
+            elseif not nearDesk and targetingAllowed then
+                targetingAllowed = false
+                if Vars.isDead then
+                    pcall(function()
+                        exports.ox_target:disableTargeting(true)
+                    end)
+                end
+            end
+
+            Wait(sleep)
+        end
+    end)
+
+    -- City HP Surgery NPC desks
+    local surgery = configs.Surgery or {}
+    for i = 1, #surgery do
+        local desk = surgery[i]
+        local model = joaat((desk.ped and desk.ped.model) or 's_m_m_doctor_01')
+        lib.requestModel(model, 10000)
+        local ped = CreatePed(0, model, desk.coords.x, desk.coords.y, desk.coords.z - 1.0, desk.coords.w or 0.0, false, true)
+        if ped and ped ~= 0 then
+            SetEntityAsMissionEntity(ped, true, true)
+            SetPedFleeAttributes(ped, 0, false)
+            SetBlockingOfNonTemporaryEvents(ped, true)
+            FreezeEntityPosition(ped, true)
+            SetEntityInvincible(ped, true)
+            if desk.ped and desk.ped.scenario then
+                TaskStartScenarioInPlace(ped, desk.ped.scenario, 0, true)
+            end
+            exports.ox_target:addLocalEntity(ped, {
+                {
+                    label = desk.label or 'Plastic Surgery',
+                    icon = 'fa-solid fa-user-doctor',
+                    distance = 2.5,
+                    onSelect = function()
+                        TriggerEvent('illenium-appearance:client:OpenSurgeonShop')
+                    end,
+                }
+            })
+        end
+        SetModelAsNoLongerNeeded(model)
     end
 end)
 
@@ -746,7 +858,7 @@ RegisterNUICallback('ems:setDeathUiMode', function(data, cb)
 end)
 
 RegisterNUICallback('ems:selectRespawn', function(data, cb)
-    if not isEmsDummyUi() and not Vars.stlUnlocked then
+    if not isEmsDummyUi() and not Vars.isDead then
         cb({ ok = false })
         return
     end
@@ -812,7 +924,7 @@ RegisterCommand('stuck', function()
     if not Vars.isDead then return end
 
     local ped = PlayerPedId()
-    local coords = GetEntityCoords(ped)
+    local coords = Vars.deathCoords or GetEntityCoords(ped)
     local x, y, z = client.SafeReviveCoords(coords.x, coords.y, coords.z, ped)
     SetEntityCoordsNoOffset(ped, x, y, z, false, false, false)
     FreezeEntityPosition(ped, false)

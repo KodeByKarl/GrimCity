@@ -2,6 +2,13 @@ Config = {}
 
 Config.ServerName = 'Grim City'
 
+--[[
+  Artwork lives in web/src/assets (built into html/assets):
+  - grim-city-logo.png
+  - grim-loading-banner.png
+  - music.mp3
+]]
+
 -- Hide default FiveM busy spinner: setr sv_showBusySpinnerOnLoadingScreen false (server.cfg)
 
 Config.Music = {

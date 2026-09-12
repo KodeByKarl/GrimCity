@@ -16,6 +16,10 @@ local PhonePrefs = {
     useProp = true,
 }
 
+local CallStatus = nil -- 'outgoing' | 'incoming' | 'active' | nil
+local ringtone = false
+local CALL_ANIM = 'cellphone_call_listen_base'
+
 local function ToBool(v, fallback)
     if v == nil then return fallback end
     if v == true or v == 1 or v == '1' or v == 'true' then return true end
@@ -78,7 +82,7 @@ local function LoadAnim(dict, timeoutMs)
     return true
 end
 
-local function PlayAnimAsync()
+local function PlayAnimAsync(kind)
     if not PhonePrefs.useProp or not ConfigPhone.UseProp then return end
     CreateThread(function()
         if not isOpen then return end
@@ -88,7 +92,8 @@ local function PlayAnimAsync()
         local dict = ConfigPhone.Prop.dict
         if not LoadAnim(dict) then return end
         if not isOpen then return end
-        TaskPlayAnim(ped, dict, ConfigPhone.Prop.anim, 3.0, 3.0, -1, 49, 0.0, false, false, false)
+        local anim = (kind == 'call') and CALL_ANIM or ConfigPhone.Prop.anim
+        TaskPlayAnim(ped, dict, anim, 3.0, 3.0, -1, 49, 0.0, false, false, false)
 
         local model = ConfigPhone.Prop.model
         if not LoadModel(model) then return end
@@ -109,6 +114,7 @@ local function StopAnim()
     local ped = PlayerPedId()
     if ConfigPhone.UseProp then
         StopAnimTask(ped, ConfigPhone.Prop.dict, ConfigPhone.Prop.anim, 1.5)
+        StopAnimTask(ped, ConfigPhone.Prop.dict, CALL_ANIM, 1.5)
     end
     if phoneProp and DoesEntityExist(phoneProp) then
         DeleteEntity(phoneProp)
@@ -152,7 +158,34 @@ local function OpenPhone()
     opening = false
 end
 
+local function StopRingtone()
+    ringtone = false
+end
+
+local function StartRingtone()
+    if ringtone then return end
+    ringtone = true
+    CreateThread(function()
+        while ringtone do
+            PlaySoundFrontend(-1, 'Remote_Ring', 'Phone_SoundSet_Michael', true)
+            Wait(2800)
+        end
+    end)
+end
+
+local function ClearCallLocal()
+    CallStatus = nil
+    StopRingtone()
+end
+
 local function ClosePhone()
+    if CallStatus then
+        local ev = CallStatus == 'incoming' and 'cfx-keydi-phone:server:call:decline' or 'cfx-keydi-phone:server:call:hangup'
+        ClearCallLocal()
+        pcall(function()
+            lib.callback.await(ev, false)
+        end)
+    end
     if not isOpen then return end
     isOpen = false
     opening = false
@@ -285,6 +318,86 @@ end)
 
 RegisterNUICallback('cfx-keydi-phone:messages:unread', function(_, cb)
     cb(AwaitPhoneCallback('cfx-keydi-phone:server:messages:unread'))
+end)
+
+RegisterNUICallback('cfx-keydi-phone:call:start', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'Phone closed' })
+        return
+    end
+    if CallStatus then
+        cb({ ok = false, error = 'Already in a call' })
+        return
+    end
+    local result = AwaitPhoneCallback('cfx-keydi-phone:server:call:start', data or {})
+    if result and result.ok then
+        CallStatus = 'outgoing'
+        StartRingtone()
+        PlayAnimAsync('call')
+    end
+    cb(result)
+end)
+
+RegisterNUICallback('cfx-keydi-phone:call:accept', function(_, cb)
+    if CallStatus ~= 'incoming' then
+        cb({ ok = false, error = 'No incoming call' })
+        return
+    end
+    local result = AwaitPhoneCallback('cfx-keydi-phone:server:call:accept')
+    if result and result.ok then
+        CallStatus = 'active'
+        StopRingtone()
+        if not isOpen then
+            OpenPhone()
+        end
+        PlayAnimAsync('call')
+    end
+    cb(result)
+end)
+
+RegisterNUICallback('cfx-keydi-phone:call:decline', function(_, cb)
+    ClearCallLocal()
+    cb(AwaitPhoneCallback('cfx-keydi-phone:server:call:decline'))
+end)
+
+RegisterNUICallback('cfx-keydi-phone:call:hangup', function(_, cb)
+    ClearCallLocal()
+    cb(AwaitPhoneCallback('cfx-keydi-phone:server:call:hangup'))
+end)
+
+RegisterNetEvent('cfx-keydi-phone:client:callIncoming', function(payload)
+    if type(payload) ~= 'table' then return end
+    CallStatus = 'incoming'
+    StartRingtone()
+    if not isOpen then
+        OpenPhone()
+    end
+    SendNUIMessage({
+        action = 'cfx-keydi-phone:call:incoming',
+        data = payload,
+    })
+end)
+
+RegisterNetEvent('cfx-keydi-phone:client:callAccepted', function(payload)
+    CallStatus = 'active'
+    StopRingtone()
+    PlayAnimAsync('call')
+    SendNUIMessage({
+        action = 'cfx-keydi-phone:call:accepted',
+        data = type(payload) == 'table' and payload or {},
+    })
+end)
+
+RegisterNetEvent('cfx-keydi-phone:client:callEnded', function(payload)
+    local wasOpen = isOpen
+    ClearCallLocal()
+    SendNUIMessage({
+        action = 'cfx-keydi-phone:call:ended',
+        data = type(payload) == 'table' and payload or {},
+    })
+    if wasOpen then
+        PlayAnimAsync()
+    end
 end)
 
 RegisterNUICallback('cfx-keydi-phone:settings:get', function(_, cb)

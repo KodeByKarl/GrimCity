@@ -18,6 +18,7 @@ return {
         'vehicle_shell',
         'old_player_box',
         'stash_car',
+        'item_sunrise',
         'food_drinks_box',
         'grim_tea',
         'grim_peas',

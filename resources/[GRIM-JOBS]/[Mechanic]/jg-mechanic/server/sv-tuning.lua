@@ -21,6 +21,10 @@ lib.callback.register("jg-mechanic:server:pay-for-tune", function(source, tuneCa
   end
 
   local tuneLocationConfig = mechanicLocation.tuning[tuneCategory]
+  if not tuneLocationConfig or tuneLocationConfig.enabled ~= true then
+    return false
+  end
+
   if tuneLocationConfig.requiresItem then
     if not tuneData.itemName then
       return false
@@ -80,6 +84,10 @@ lib.callback.register("jg-mechanic:server:remove-tune", function(source, tuneCat
   end
 
   local tuneLocationConfig = mechanicLocation.tuning[tuneCategory]
+  if not tuneLocationConfig or tuneLocationConfig.enabled ~= true then
+    return false
+  end
+
   if tuneLocationConfig.requiresItem then
     if not tuneData.itemName then
       return false

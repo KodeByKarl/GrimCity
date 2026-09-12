@@ -1,8 +1,0 @@
-CREATE TABLE IF NOT EXISTS `multicharacter_slots` (
-    `identifier` VARCHAR(72) NOT NULL,
-    `slots` INT NOT NULL DEFAULT 1,
-    `name` VARCHAR(64) DEFAULT NULL,
-    `granted_by` VARCHAR(64) DEFAULT NULL,
-    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`identifier`)
-);

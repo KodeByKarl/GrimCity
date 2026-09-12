@@ -6,7 +6,7 @@ Config.Heist['lifeinvader'] = {
         require = {
             ['police'] = 0 --8
         },
-        reset = 7200,
+        reset = 500,
         timer = 800,
         distanceToCancel = 10,
         rewards = {

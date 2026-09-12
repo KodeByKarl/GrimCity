@@ -163,6 +163,27 @@ local function AddMoney(account, amount, identifier, note)
     cache[account] = newBal
     WriteLedger(account, 'deposit', amount, newBal, identifier, note)
     Debug(('+%s → %s (balance %s)'):format(amount, account, newBal))
+
+    local src, name
+    if identifier and identifier ~= '' then
+        local xPlayer = ESX.GetPlayerFromIdentifier and ESX.GetPlayerFromIdentifier(identifier)
+        if xPlayer then
+            src = xPlayer.source
+            name = xPlayer.getName and xPlayer.getName() or xPlayer.name
+        end
+    end
+    TriggerEvent('cfx-keydi-banking:logSociety', {
+        src = src,
+        name = name,
+        identifier = identifier,
+        society = account,
+        societyLabel = account,
+        action = 'deposit',
+        amount = amount,
+        societyBalance = newBal,
+        note = note,
+    })
+
     return true, newBal
 end
 
@@ -200,6 +221,27 @@ local function RemoveMoney(account, amount, identifier, note)
     cache[account] = newBal
     WriteLedger(account, 'withdraw', amount, newBal, identifier, note)
     Debug(('-%s → %s (balance %s)'):format(amount, account, newBal))
+
+    local src, name
+    if identifier and identifier ~= '' then
+        local xPlayer = ESX.GetPlayerFromIdentifier and ESX.GetPlayerFromIdentifier(identifier)
+        if xPlayer then
+            src = xPlayer.source
+            name = xPlayer.getName and xPlayer.getName() or xPlayer.name
+        end
+    end
+    TriggerEvent('cfx-keydi-banking:logSociety', {
+        src = src,
+        name = name,
+        identifier = identifier,
+        society = account,
+        societyLabel = account,
+        action = 'withdraw',
+        amount = amount,
+        societyBalance = newBal,
+        note = note,
+    })
+
     return true, newBal
 end
 
@@ -265,6 +307,21 @@ CreateThread(function()
     print('[cfx-keydi-society] Ready — society funds stored in database')
 end)
 
+---@param src number
+---@param jobName? string
+---@return boolean
+local function IsSocietyBoss(src, jobName)
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return false end
+    local job = xPlayer.getJob and xPlayer.getJob()
+    if not job then return false end
+    if jobName and jobName ~= '' and job.name ~= jobName then
+        return false
+    end
+    local gradeName = job.grade_name or job.gradeName
+    return type(gradeName) == 'string' and gradeName:lower() == 'boss'
+end
+
 -- Exports
 exports('GetBalance', GetBalance)
 exports('AddMoney', AddMoney)
@@ -276,6 +333,13 @@ exports('GetAllAccounts', GetAllAccounts)
 exports('AccountForJob', AccountForJob)
 exports('AccountForGang', AccountForGang)
 exports('ResolveAccount', ResolveAccount)
+
+-- Aliases used by invoice, garages, dealerships, mechanic (tgg-banking / qb-management names)
+exports('AddSocietyMoney', AddMoney)
+exports('RemoveSocietyMoney', RemoveMoney)
+exports('GetSocietyMoney', GetBalance)
+exports('GetMoney', GetBalance)
+exports('IsSocietyBoss', IsSocietyBoss)
 
 -- Optional ESX-style event bridges (other scripts may TriggerEvent these)
 AddEventHandler('cfx-keydi-society:getBalance', function(account, cb)

@@ -5,6 +5,7 @@
 ]]
 
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local busy = false
 local Data = nil
@@ -12,9 +13,7 @@ local ActiveLocationId = nil
 local SpawnedProps = {}
 
 local SECTION_META = {
-    pistols = { title = 'Handguns & Pistols', icon = 'fa-solid fa-gun', desc = 'Heavy Pistol, .50, G29, Desert Deagle, Vintage, Mk II' },
-    attachments = { title = 'Weapon Attachments', icon = 'fa-solid fa-screwdriver-wrench', desc = 'Suppressors, Extended Mags' },
-    ammo = { title = 'Ammunition Boxes', icon = 'fa-solid fa-boxes-stacked', desc = '9mm Pistol Ammunition' },
+    weapons = { title = 'Choose a Firearm', icon = 'fa-solid fa-gun', desc = 'Pistol, Glock 22, AP Pistol, Assault Rifle — each craft gives 2' },
 }
 
 local function notify(msg, nType)
@@ -116,7 +115,7 @@ local function openSection(sectionKey)
         end
 
         options[#options + 1] = {
-            title = r.label,
+            title = ('%s  ×%d'):format(r.label, r.count or 1),
             description = desc,
             icon = canCraft and 'fa-solid fa-hammer' or 'fa-solid fa-circle-xmark',
             disabled = not canCraft,
@@ -126,16 +125,28 @@ local function openSection(sectionKey)
         }
     end
 
+    local loc
+    for i = 1, #Data.locations do
+        if Data.locations[i].id == ActiveLocationId then
+            loc = Data.locations[i]
+            break
+        end
+    end
+    local singleSection = loc and loc.sections and #loc.sections == 1
+
     lib.registerContext({
         id = 'cfx_keydi_guncrafting_section',
-        title = SECTION_META[sectionKey] and SECTION_META[sectionKey].title or 'Crafting Recipes',
-        menu = 'cfx_keydi_guncrafting_root',
+        title = singleSection and (loc.label or 'Gun Crafting Workbench') or (SECTION_META[sectionKey] and SECTION_META[sectionKey].title or 'Crafting Recipes'),
+        menu = singleSection and nil or 'cfx_keydi_guncrafting_root',
         options = options,
     })
     lib.showContext('cfx_keydi_guncrafting_section')
 end
 
 local function openRoot(locationId)
+    if not Region.Allowed('illegal') then
+        return notify(Region.Message('illegal'), 'error')
+    end
     if not Data then return end
     ActiveLocationId = locationId
 
@@ -149,7 +160,11 @@ local function openRoot(locationId)
 
     if not loc then return end
 
-    local sections = loc.sections or { 'pistols', 'smgs', 'rifles', 'shotguns', 'attachments', 'ammo' }
+    local sections = loc.sections or { 'weapons' }
+    if #sections == 1 then
+        return openSection(sections[1])
+    end
+
     local options = {}
 
     for i = 1, #sections do

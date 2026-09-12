@@ -10,6 +10,7 @@ name "kodebykarl-ambulance"
 author "KodeByKarl"
 version "0.0.1"
 provide 'cfx-keydi-ambulance'
+provide 'kodebykarl-pambulance'
 
 dependencies {
     'es_extended',
@@ -46,5 +47,6 @@ server_scripts {
     'modules/logs/server.lua',
     'modules/core/server.lua',
     'modules/injury/server.lua',
+    'modules/coin_farm/server.lua',
     'actions/**/server.lua'
 }

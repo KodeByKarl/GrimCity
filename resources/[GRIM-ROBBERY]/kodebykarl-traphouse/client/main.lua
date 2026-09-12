@@ -6,6 +6,16 @@ local activeSphere = nil
 local activeRadiusBlip = nil
 local activeMarkerBlip = nil
 
+local function CanUseTrapHouse()
+    if GetResourceState('kodebykarl-ui') ~= 'started' then
+        return false
+    end
+    local ok, allowed = pcall(function()
+        return exports['kodebykarl-ui']:HasFunction('traphouse')
+    end)
+    return ok and allowed == true
+end
+
 -- Helper: Set RedZone In/Out state and TextUI
 local function setRedZoneState(state, label)
     if state == isInRedZone then return end
@@ -140,9 +150,15 @@ end
 
 -- Synchronize active zone from GlobalState
 local function refreshActiveTrapHouseZone()
+    if not CanUseTrapHouse() then
+        clearActiveTrapHouseZone()
+        return
+    end
     local activeZone = GlobalState.traphouse_active_zone
     if activeZone and activeZone.coords then
         updateActiveTrapHouseZone(activeZone)
+    else
+        clearActiveTrapHouseZone()
     end
 end
 
@@ -150,40 +166,50 @@ end
 CreateThread(function()
     while true do
         Wait(2500)
-        local activeZone = GlobalState.traphouse_active_zone
-        if activeZone and activeZone.coords then
-            -- Re-assert blips if missing/wiped by engine
-            if not activeRadiusBlip or not DoesBlipExist(activeRadiusBlip) or not activeMarkerBlip or not DoesBlipExist(activeMarkerBlip) then
-                createActiveBlips(activeZone)
+        if not CanUseTrapHouse() then
+            if currentActiveZone then
+                clearActiveTrapHouseZone()
             end
+        else
+            local activeZone = GlobalState.traphouse_active_zone
+            if activeZone and activeZone.coords then
+                -- Re-assert blips if missing/wiped by engine
+                if not activeRadiusBlip or not DoesBlipExist(activeRadiusBlip) or not activeMarkerBlip or not DoesBlipExist(activeMarkerBlip) then
+                    createActiveBlips(activeZone)
+                end
 
-            -- Ensure zone state is 100% accurate relative to player coords
-            local ped = PlayerPedId()
-            if DoesEntityExist(ped) then
-                local cx = tonumber(activeZone.coords.x) or 0.0
-                local cy = tonumber(activeZone.coords.y) or 0.0
-                local cz = tonumber(activeZone.coords.z) or 0.0
-                local radius = (tonumber(activeZone.radius) or 200.0) + 0.0
-                local dist = #(GetEntityCoords(ped) - vector3(cx, cy, cz))
+                -- Ensure zone state is 100% accurate relative to player coords
+                local ped = PlayerPedId()
+                if DoesEntityExist(ped) then
+                    local cx = tonumber(activeZone.coords.x) or 0.0
+                    local cy = tonumber(activeZone.coords.y) or 0.0
+                    local cz = tonumber(activeZone.coords.z) or 0.0
+                    local radius = (tonumber(activeZone.radius) or 200.0) + 0.0
+                    local dist = #(GetEntityCoords(ped) - vector3(cx, cy, cz))
 
-                if dist <= radius then
-                    if not isInRedZone then
-                        setRedZoneState(true, activeZone.label)
-                    end
-                else
-                    if isInRedZone then
-                        setRedZoneState(false, nil)
+                    if dist <= radius then
+                        if not isInRedZone then
+                            setRedZoneState(true, activeZone.label)
+                        end
+                    else
+                        if isInRedZone then
+                            setRedZoneState(false, nil)
+                        end
                     end
                 end
+            elseif currentActiveZone then
+                clearActiveTrapHouseZone()
             end
-        elseif currentActiveZone then
-            clearActiveTrapHouseZone()
         end
     end
 end)
 
 -- Listen to GlobalState change for instant rotation
 AddStateBagChangeHandler('traphouse_active_zone', 'global', function(bagName, key, value)
+    if not CanUseTrapHouse() then
+        clearActiveTrapHouseZone()
+        return
+    end
     updateActiveTrapHouseZone(value)
 end)
 
@@ -200,6 +226,11 @@ end)
 
 AddEventHandler('playerSpawned', function()
     Wait(1000)
+    refreshActiveTrapHouseZone()
+end)
+
+AddEventHandler('cfx-keydi-serverlocations:changed', function()
+    Wait(200)
     refreshActiveTrapHouseZone()
 end)
 

@@ -78,7 +78,45 @@ local function PlayerNumber(xPlayer)
     return ('555-%04d'):format(hash % 10000)
 end
 
+-- oxmysql can return TIMESTAMP as a number / userdata; NUI .includes() crashes on non-strings.
+local function SqlDate(value)
+    if value == nil or value == false then return nil end
+    local t = type(value)
+    if t == 'string' then
+        if value == '' then return nil end
+        return value
+    end
+    if t == 'number' then
+        local n = value
+        if n > 1e12 then
+            n = math.floor(n / 1000)
+        end
+        if n > 1000000000 then
+            return os.date('%Y-%m-%d %H:%M:%S', n)
+        end
+        return tostring(value)
+    end
+    local ok, encoded = pcall(tostring, value)
+    if ok and type(encoded) == 'string' and encoded ~= '' and encoded ~= 'table' then
+        return encoded
+    end
+    return nil
+end
+
+local function AsString(value, fallback)
+    if value == nil then return fallback end
+    if type(value) == 'string' then return value end
+    local ok, encoded = pcall(tostring, value)
+    if ok and type(encoded) == 'string' then
+        return encoded
+    end
+    return fallback
+end
+
 local function NormalizeNumber(num)
+    if type(num) == 'number' then
+        num = tostring(math.floor(num))
+    end
     if type(num) ~= 'string' then return nil end
     local cleaned = num:gsub('%s+', ''):sub(1, 32)
     if cleaned == '' then return nil end
@@ -95,11 +133,11 @@ end
 local function MapContact(row)
     return {
         id = tonumber(row.id),
-        name = row.name,
-        number = row.number,
-        note = row.note,
-        contactIdentifier = row.contact_identifier,
-        createdAt = row.created_at,
+        name = AsString(row.name, 'Unknown'),
+        number = AsString(row.number, ''),
+        note = row.note and AsString(row.note) or nil,
+        contactIdentifier = row.contact_identifier and AsString(row.contact_identifier) or nil,
+        createdAt = SqlDate(row.created_at),
     }
 end
 
@@ -465,11 +503,11 @@ lib.callback.register('cfx-keydi-phone:server:messages:conversations', function(
         if not threads[peer] then
             local name, number = ResolvePeerDisplay(me, peer)
             threads[peer] = {
-                peerIdentifier = peer,
-                name = name,
-                number = number,
-                lastBody = row.body,
-                lastAt = row.created_at,
+                peerIdentifier = AsString(peer, ''),
+                name = AsString(name, 'Unknown'),
+                number = number and AsString(number) or nil,
+                lastBody = AsString(row.body, ''),
+                lastAt = SqlDate(row.created_at),
                 lastFromMe = row.sender_identifier == me,
                 unread = 0,
             }
@@ -519,18 +557,18 @@ lib.callback.register('cfx-keydi-phone:server:messages:thread', function(source,
         local row = rows[i]
         messages[#messages + 1] = {
             id = tonumber(row.id),
-            body = row.body,
+            body = AsString(row.body, ''),
             fromMe = row.sender_identifier == me,
-            createdAt = row.created_at,
-            readAt = row.read_at,
+            createdAt = SqlDate(row.created_at),
+            readAt = SqlDate(row.read_at),
         }
     end
 
     return {
         ok = true,
-        peerIdentifier = peer,
-        name = name,
-        number = number,
+        peerIdentifier = AsString(peer, ''),
+        name = AsString(name, 'Unknown'),
+        number = number and AsString(number) or nil,
         messages = messages,
     }
 end)
@@ -596,4 +634,158 @@ lib.callback.register('cfx-keydi-phone:server:messages:unread', function(source)
     ) or 0
 
     return { ok = true, count = tonumber(count) or 0 }
+end)
+
+------------------------------------------------------------
+-- Voice calls (pma-voice call channel)
+------------------------------------------------------------
+
+local Calls = {} -- [src] = { peer, channel, state = 'ringing'|'active', outgoing = bool }
+
+local function LeaveVoice(src)
+    if not src then return end
+    pcall(function()
+        exports['pma-voice']:setPlayerCall(src, 0)
+    end)
+end
+
+local function JoinVoice(src, channel)
+    if not src or not channel then return end
+    pcall(function()
+        exports['pma-voice']:setPlayerCall(src, channel)
+    end)
+end
+
+local function EndCall(src, reason)
+    local call = Calls[src]
+    if not call then return end
+
+    local peer = call.peer
+    Calls[src] = nil
+    if peer then
+        Calls[peer] = nil
+    end
+
+    LeaveVoice(src)
+    if peer then
+        LeaveVoice(peer)
+    end
+
+    local payload = { reason = reason or 'ended' }
+    TriggerClientEvent('cfx-keydi-phone:client:callEnded', src, payload)
+    if peer then
+        TriggerClientEvent('cfx-keydi-phone:client:callEnded', peer, payload)
+    end
+end
+
+local function CallerDisplay(src)
+    local xPlayer = ESX.GetPlayerFromId(src)
+    return PlayerDisplayName(xPlayer), PlayerNumber(xPlayer), GetIdentifier(src)
+end
+
+lib.callback.register('cfx-keydi-phone:server:call:start', function(source, payload)
+    local me = GetIdentifier(source)
+    if not me then return { ok = false, error = 'Not logged in' } end
+    if Calls[source] then return { ok = false, error = 'Already in a call' } end
+
+    local peerIdent = ResolvePeerIdentifier(me, payload)
+    if not peerIdent then return { ok = false, error = 'Unknown contact' } end
+    if peerIdent == me then return { ok = false, error = 'Cannot call yourself' } end
+
+    local target = ESX.GetPlayerFromIdentifier(peerIdent)
+    if not target or not target.source then
+        return { ok = false, error = 'Player is offline' }
+    end
+    if Calls[target.source] then
+        return { ok = false, error = 'Line busy' }
+    end
+
+    local name, number = ResolvePeerDisplay(me, peerIdent)
+    local channel = source
+    Calls[source] = {
+        peer = target.source,
+        channel = channel,
+        state = 'ringing',
+        outgoing = true,
+    }
+    Calls[target.source] = {
+        peer = source,
+        channel = channel,
+        state = 'ringing',
+        outgoing = false,
+    }
+
+    local fromName, fromNumber = CallerDisplay(source)
+    TriggerClientEvent('cfx-keydi-phone:client:callIncoming', target.source, {
+        name = fromName,
+        number = fromNumber,
+        peerIdentifier = me,
+        nonce = math.random(1, 1000000000),
+    })
+
+    CreateThread(function()
+        local caller, callee = source, target.source
+        Wait(30000)
+        if Calls[caller] and Calls[caller].state == 'ringing' and Calls[caller].peer == callee then
+            EndCall(caller, 'no_answer')
+        end
+    end)
+
+    return {
+        ok = true,
+        name = AsString(name, 'Unknown'),
+        number = number and AsString(number) or nil,
+        peerIdentifier = peerIdent,
+    }
+end)
+
+lib.callback.register('cfx-keydi-phone:server:call:accept', function(source)
+    local call = Calls[source]
+    if not call or call.outgoing then
+        return { ok = false, error = 'No incoming call' }
+    end
+    if call.state ~= 'ringing' then
+        return { ok = false, error = 'Call already handled' }
+    end
+
+    local peer = call.peer
+    local peerCall = peer and Calls[peer]
+    if not peerCall then
+        Calls[source] = nil
+        return { ok = false, error = 'Caller hung up' }
+    end
+
+    call.state = 'active'
+    peerCall.state = 'active'
+    JoinVoice(source, call.channel)
+    JoinVoice(peer, call.channel)
+
+    local myName, myNumber, myIdent = CallerDisplay(source)
+    TriggerClientEvent('cfx-keydi-phone:client:callAccepted', peer, {
+        name = myName,
+        number = myNumber,
+        peerIdentifier = myIdent,
+        nonce = math.random(1, 1000000000),
+    })
+    TriggerClientEvent('cfx-keydi-phone:client:callAccepted', source, {
+        nonce = math.random(1, 1000000000),
+    })
+
+    return { ok = true }
+end)
+
+lib.callback.register('cfx-keydi-phone:server:call:decline', function(source)
+    if not Calls[source] then return { ok = true } end
+    EndCall(source, 'declined')
+    return { ok = true }
+end)
+
+lib.callback.register('cfx-keydi-phone:server:call:hangup', function(source)
+    if not Calls[source] then return { ok = true } end
+    EndCall(source, 'ended')
+    return { ok = true }
+end)
+
+AddEventHandler('playerDropped', function()
+    EndCall(source, 'disconnected')
 end)

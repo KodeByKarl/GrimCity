@@ -6,20 +6,52 @@ function GetPlayerIdentity(playerId)
     if not xPlayer then
         return false
     end
-    local data = {
-        name = xPlayer.name,
-        job = xPlayer.job.label,
-        position = xPlayer.job.grade_label,
-        dob = xPlayer.get('dateofbirth') or false,
-        sex = (xPlayer.get('sex') == 'm' and 'Male' or 'Female') or false,
+
+    local dob, sex
+    pcall(function()
+        dob = xPlayer.get('dateofbirth')
+        sex = xPlayer.get('sex')
+    end)
+
+    if not dob or not sex then
+        local row = MySQL.single.await(
+            'SELECT firstname, lastname, dateofbirth, sex FROM users WHERE identifier = ? LIMIT 1',
+            { xPlayer.identifier }
+        )
+        if row then
+            dob = dob or row.dateofbirth
+            sex = sex or row.sex
+            if (not xPlayer.name or xPlayer.name == '') and row.firstname then
+                xPlayer.name = ('%s %s'):format(row.firstname or '', row.lastname or ''):gsub('%s+$', '')
+            end
+        end
+    end
+
+    local licenses = {}
+    pcall(function()
         licenses = xPlayer.getMeta('licenses') or {}
+    end)
+
+    local sexLabel = false
+    if sex == 'm' or sex == 'M' or sex == 0 or sex == 'male' then
+        sexLabel = 'Male'
+    elseif sex == 'f' or sex == 'F' or sex == 1 or sex == 'female' then
+        sexLabel = 'Female'
+    end
+
+    return {
+        name = xPlayer.name,
+        job = xPlayer.job and xPlayer.job.label or 'Unemployed',
+        position = xPlayer.job and xPlayer.job.grade_label or 'N/A',
+        dob = dob or false,
+        sex = sexLabel,
+        licenses = licenses,
     }
-    return data
 end
 
 ESX.RegisterServerCallback('cfx-cs-police:checkPlayerId', function(source, cb, target)
     local src = source
-    if not target or not ESX.VerifyDistance(src, target, 5.0, 'cfx-cs-police:checkPlayerId') then
+    if not target or not ESX.VerifyDistance(src, target, 8.0, 'cfx-cs-police:checkPlayerId') then
         return cb(false)
     end
     if not HasGroup(src) then
@@ -224,7 +256,7 @@ RegisterNetEvent('cfx-cs-police:CuffPlayer', function(target)
     local src = source
     target = tonumber(target)
     if not target or target == -1 or target == src then return end
-    if not ESX.VerifyDistance(src, target, 5.0, 'cfx-cs-police:CuffPlayer') then return end
+    if not ESX.VerifyDistance(src, target, 8.0, 'cfx-cs-police:CuffPlayer') then return end
     if not HasGroup(src) then return end
 
     local alreadyCuffed = cuffedPlayers[target] == true or Player(target).state.cuffed == true
@@ -387,7 +419,11 @@ end
 ESX.RegisterServerCallback('cfx-cs-police:getVehicleOwner', function(source, cb, plate)
     local src = source
     if not HasGroup(src) then return cb(false) end
-    cb(_GetVehicleOwner(plate))
+    local owner = _GetVehicleOwner(plate)
+    cb({
+        owner = owner or false,
+        plate = plate,
+    })
 end)
 -- End of Vehicle Info --
 

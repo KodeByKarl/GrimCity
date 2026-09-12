@@ -80,6 +80,8 @@ lib.callback.register("jg-mechanic:server:pay-for-order-installation", function(
     end
   end
 
+  FgMechanicSession(source, 'apply', true, 15000)
+  FgMechanicSession(source, 'repair', true, 15000)
   return true
 end)
 

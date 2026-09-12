@@ -14,6 +14,7 @@ ConfigScoreboard.ToggleKey = 'F10' -- Default keybind to toggle the scoreboard
 ConfigScoreboard.Jobs = {
     { name = "Los EMS", job = "ambulance" },
     { name = "Paleto EMS", job = "pambulance" },
+    { name = "Sandy EMS", job = "sambulance" },
     { name = "Los Police", job = "police" },
     { name = "Paleto Sheriff", job = "sheriff" },
     { name = "Mechanic", job = "mechanic" },

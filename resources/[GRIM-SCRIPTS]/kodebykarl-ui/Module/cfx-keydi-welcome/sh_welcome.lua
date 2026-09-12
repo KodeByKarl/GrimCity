@@ -1,5 +1,5 @@
 ConfigWelcome = {
-	serverName = "Pandora City",
+	serverName = "Grim City",
 	home = {
 		intro = "We're glad to have you back on the server. Take a moment to review the essentials below before you continue your journey in Los Santos.",
 		points = {

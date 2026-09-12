@@ -1,7 +1,22 @@
 local config = require 'configs.safezone'
 
 local activeZones = 0
+local physicallyInside = 0
 local notified = false
+
+local function setSafezoneState(inside)
+    local value = inside and true or false
+    LocalPlayer.state:set('inSafeZone', value, true)
+    LocalPlayer.state:set('inSafezone', value, true)
+end
+
+local function isInsideSafezone()
+    return activeZones > 0
+end
+
+exports('IsInSafezone', isInsideSafezone)
+exports('isInSafezone', isInsideSafezone)
+exports('isInSafeZone', isInsideSafezone)
 
 local function isPoliceJob(jobName)
     if not jobName then return false end
@@ -92,7 +107,9 @@ CreateThread(function()
                 thickness = zone.thickness or 50.0,
                 debug = zone.debug == true,
                 onEnter = function()
+                    physicallyInside += 1
                     activeZones += 1
+                    setSafezoneState(true)
                     if not notified then
                         notified = true
                         ESX.Notify('SAFEZONE', zone.label or 'Safezone — weapons restricted', 'inform', 5000)
@@ -100,10 +117,17 @@ CreateThread(function()
                     disarmIfNeeded()
                 end,
                 onExit = function()
-                    activeZones = math.max(0, activeZones - 1)
+                    physicallyInside = math.max(0, physicallyInside - 1)
+                    if activeZones > 0 then
+                        activeZones = activeZones - 1
+                    end
                     if activeZones <= 0 then
+                        local wasProtected = notified
                         notified = false
-                        ESX.Notify('SAFEZONE', 'You left the safezone', 'inform', 3000)
+                        setSafezoneState(false)
+                        if wasProtected and physicallyInside <= 0 then
+                            ESX.Notify('SAFEZONE', 'You left the safezone', 'inform', 3000)
+                        end
                     end
                 end,
                 inside = function()
@@ -127,9 +151,52 @@ CreateThread(function()
     end
 end)
 
+CreateThread(function()
+    while not LocalPlayer or not LocalPlayer.state do
+        Wait(100)
+    end
+    setSafezoneState(activeZones > 0)
+end)
+
+RegisterNetEvent('esx:playerLoaded', function()
+    setSafezoneState(activeZones > 0)
+end)
+
+AddEventHandler('onResourceStart', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    CreateThread(function()
+        Wait(250)
+        setSafezoneState(activeZones > 0)
+    end)
+end)
+
 RegisterNetEvent('esx:setJob', function(job)
     ESX.PlayerData.job = job
     if activeZones > 0 then
         disarmIfNeeded()
     end
+end)
+
+local function syncSafezoneAfterRegionChange()
+    -- Region switch does not teleport. Hospital / mechanic / hub polygons
+    -- stay active in every bucket so players cannot holster-check then draw.
+    if physicallyInside > 0 then
+        activeZones = physicallyInside
+        setSafezoneState(true)
+        if not notified then
+            notified = true
+            ESX.Notify('SAFEZONE', 'Safezone — weapons restricted', 'inform', 4000)
+        end
+        disarmIfNeeded()
+        return
+    end
+
+    activeZones = 0
+    notified = false
+    setSafezoneState(false)
+end
+
+AddEventHandler('cfx-keydi-serverlocations:changed', function()
+    Wait(150)
+    syncSafezoneAfterRegionChange()
 end)

@@ -2,16 +2,26 @@
 
 ESX.Table = {}
 
+local esxTimeouts = {}
+local esxTimeoutSeq = 0
+
 function ESX.SetTimeout(msec, cb)
-    local id = GetGameTimer() + msec
+    esxTimeoutSeq = esxTimeoutSeq + 1
+    local id = esxTimeoutSeq
+    esxTimeouts[id] = true
     CreateThread(function()
         Wait(msec)
+        if not esxTimeouts[id] then return end
+        esxTimeouts[id] = nil
         cb()
     end)
     return id
 end
 
 function ESX.ClearTimeout(id)
+    if id ~= nil then
+        esxTimeouts[id] = nil
+    end
 end
 
 function ESX.Await(p)

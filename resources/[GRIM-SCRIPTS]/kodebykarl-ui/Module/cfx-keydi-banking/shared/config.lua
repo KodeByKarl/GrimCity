@@ -24,33 +24,11 @@ ConfigBanking.BankPedLocations = {
 }
 
 --[[
-    Discord logs (same bot pattern as cfx-keydi-utils disconnectlogs / comserv).
-    Create text channels named WITHDRAW, DEPOSIT, SOCIETY, TRANSFER, RICHEST
-    (or set ChannelIDs manually).
+    Discord logs via kodebykarl-logs → ECONOMY channels:
+    #withdraw #deposit #transfer #SOCIETY #RICHEST-PERSON
 ]]
 ConfigBanking.Logs = {
     Enabled = true,
-    Debug = false,
-    BotToken = "MTUzNjM2NDUyMjc5MTUwNjA0Mg.GfAaOT.pXdZcrMv-0yl2Blw9cESfKGSbv56AvD5C6-jTo",
-    GuildID = "1536358290777444397",
-
-    ChannelNames = {
-        withdraw = "WITHDRAW",
-        deposit = "DEPOSIT",
-        society = "SOCIETY",
-        transfer = "TRANSFER",
-        richest = "RICHEST",
-    },
-
-    -- Optional manual overrides (leave empty to auto-find by ChannelNames)
-    ChannelIDs = {
-        withdraw = "1536366505308987452",
-        deposit = "1536366509511811122",
-        society = "1536366513760641175",
-        transfer = "1536366517799624744",
-        richest = "1536366501475647488",
-    },
-
     LogTypes = {
         withdraw = true,
         deposit = true,
@@ -58,21 +36,10 @@ ConfigBanking.Logs = {
         transfer = true,
         richest = true,
     },
-
-    EmbedColors = {
-        withdraw = 15158332, -- red
-        deposit = 5763719,   -- green
-        society = 15844367,  -- gold
-        transfer = 3447003,  -- blue
-        richest = 10181046,  -- purple
-    },
-
-    PostCooldownMs = 500,
 }
 
 --[[
     Periodic richest-player report (ESX users.accounts: money / bank / black_money).
-    Inspired by https://github.com/Edvo1901/mb-GetRichPlayer-ESX
 ]]
 ConfigBanking.Richest = {
     Enabled = true,

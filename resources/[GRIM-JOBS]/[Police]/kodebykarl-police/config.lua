@@ -1,44 +1,16 @@
 Config = {}
 
 --[[
-    Discord logs (same bot pattern as cfx-keydi-utils / banking / business).
-    Create: POLICE-LICENSE, POLICE-DOCS, POLICE-ACTION
+    Discord logs via kodebykarl-logs → POLICE channels:
+    #police-license #police-docs #police-action
 ]]
 Config.Logs = {
     Enabled = true,
-    BotToken = "MTUzNjM2NDUyMjc5MTUwNjA0Mg.GfAaOT.pXdZcrMv-0yl2Blw9cESfKGSbv56AvD5C6-jTo",
-    GuildID = "1536358290777444397",
-
-    ChannelNames = {
-        license = "POLICE-LICENSE",
-        docs = "POLICE-DOCS",
-        action = "POLICE-ACTION",
-    },
-
-    ChannelIDs = {
-        license = "1536366551773610086",
-        docs = "1536366555833696407",
-        action = "1536366560292114482",
-    },
-
     LogTypes = {
         license = true,
         docs = true,
         action = true, -- search, id check, cuff, uncuff, gsr
     },
-
-    EmbedColors = {
-        licenseGrant = 5763719,
-        licenseRevoke = 15158332,
-        docs = 3447003,
-        search = 10181046,
-        id = 3066993,
-        cuff = 15105570,
-        uncuff = 5763719,
-        gsr = 15844367,
-    },
-
-    PostCooldownMs = 500,
 }
 
 -- Object Config --
@@ -75,9 +47,11 @@ Config.GSR = {
 -- Riot Shield (F6 toggle) --
 Config.RiotShield = {
     model = `prop_ballistic_shield`,
+    fallbackModel = `prop_riot_shield`,
     damageReduction = 0.5, -- 0.5 = take 50% damage while shield is active
-    bone = 18905, -- left hand
-    offset = vector3(0.3, 0.0, 0.1),
+    -- Placement from https://github.com/RMC-Developments/Riot-Shield
+    bone = 18905, -- SKEL_L_Hand
+    offset = vector3(0.30, 0.0, 0.10),
     rotation = vector3(270.0, 120.0, 0.0),
     anim = {
         dict = 'missfam4',
@@ -85,11 +59,46 @@ Config.RiotShield = {
     },
 }
 
+Config.OffDutyJob = 'offpolice'
+Config.GarageTakeOutCost = 1000
+
+-- Station interiors / lockers / clothing / duty
+Config.Station = {
+    Wardrobe = {
+        coords = vector3(80.1504, -377.2947, 41.6247),
+        heading = 153.7896,
+        label = 'Police Wardrobe',
+        icon = 'fa-solid fa-shirt',
+    },
+    Duty = {
+        coords = vector3(84.1149, -410.0066, 41.6247),
+        heading = 342.0952,
+        label = 'On / Off Duty',
+        icon = 'fa-solid fa-user-clock',
+    },
+    Garage = {
+        access = vector3(112.8899, -394.3368, 40.3253),
+        heading = 247.4003,
+        spawn = vector4(123.5052, -399.6405, 40.3253, 242.6202),
+        label = 'Police Garage',
+        garageId = 'Police Garage',
+        takeOutCost = 1000,
+    },
+    Helipad = {
+        access = vector3(74.3532, -414.7925, 55.3262),
+        heading = 63.4423,
+        spawn = vector4(86.7077, -404.2123, 55.3262, 69.1803),
+        store = vector4(86.8641, -403.7948, 55.3263, 157.6525),
+        label = 'Police Helipad',
+        garageId = 'Police Helipad',
+    },
+}
+
 -- Law Enforcement Config --
 Config.LawEnforcement = {
     police = {
         Blip = {
-            Coords  = vector3(68.4584, -433.7952, 39.1436),
+            Coords  = vector3(80.1504, -377.2947, 41.6247),
 			Sprite  = 60,
 			Display = 4,
 			Scale   = 1.0,
@@ -139,7 +148,7 @@ Config.Documents = {
     locations = {
         {
             job = 'police',
-            coords = vector3(68.3700, -434.0321, 39.1436),
+            coords = vector3(80.1504, -377.2947, 41.6247),
             radius = 1.5,
             label = 'Open Documents',
             icon = 'fa-solid fa-file-lines',

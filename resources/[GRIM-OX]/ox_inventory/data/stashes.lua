@@ -1,13 +1,13 @@
 return {
 	{
-		coords = vec3(452.3, -991.4, 30.7),
+		coords = vec3(78.9384, -380.8232, 41.7127),
 		target = {
-			loc = vec3(451.25, -994.28, 30.69),
+			loc = vec3(78.9384, -380.8232, 41.7127),
 			length = 1.2,
-			width = 5.6,
-			heading = 0,
-			minZ = 29.49,
-			maxZ = 32.09,
+			width = 1.8,
+			heading = 158.2668,
+			minZ = 40.7,
+			maxZ = 43.2,
 			label = 'Open personal locker'
 		},
 		name = 'policelocker',
@@ -15,7 +15,7 @@ return {
 		owner = true,
 		slots = 70,
 		weight = 70000,
-		groups = shared.police
+		groups = { ['police'] = 0 }
 	},
 
 	{
@@ -57,14 +57,14 @@ return {
 	},
 
 	{
-		coords = vec3(454.4, -980.1, 30.7),
+		coords = vec3(75.1638, -391.0463, 41.6247),
 		target = {
-			loc = vec3(454.4, -980.1, 30.7),
+			loc = vec3(75.1638, -391.0463, 41.6247),
 			length = 1.0,
 			width = 2.0,
-			heading = 90,
-			minZ = 29.5,
-			maxZ = 32.0,
+			heading = 68.9618,
+			minZ = 40.6,
+			maxZ = 43.1,
 			label = 'Open shared locker'
 		},
 		name = 'policeshared',
@@ -72,25 +72,25 @@ return {
 		owner = false,
 		slots = 150,
 		weight = 300000,
-		groups = shared.police
+		groups = { ['police'] = 0 }
 	},
 
 	{
-		coords = vec3(460.8, -985.4, 30.7),
+		coords = vec3(68.2655, -399.3221, 41.6247),
 		target = {
-			loc = vec3(460.8, -985.4, 30.7),
+			loc = vec3(68.2655, -399.3221, 41.6247),
 			length = 1.0,
 			width = 1.5,
-			heading = 0,
-			minZ = 29.5,
-			maxZ = 32.0,
+			heading = 260.1566,
+			minZ = 40.6,
+			maxZ = 43.1,
 			label = 'Open boss locker'
 		},
 		name = 'policeboss',
 		label = 'Police Boss Locker',
 		owner = false,
 		slots = 100,
-		weight = 200000,
+		weight = 1000000,
 		groups = { ['police'] = 6 }
 	},
 
@@ -167,7 +167,7 @@ return {
 		owner = true,
 		slots = 70,
 		weight = 70000,
-		groups = { ['pambulance'] = 0, ['sambulance'] = 0 }
+		groups = { ['pambulance'] = 0 }
 	},
 
 	{
@@ -186,6 +186,44 @@ return {
 		owner = false,
 		slots = 150,
 		weight = 300000,
-		groups = { ['pambulance'] = 0, ['sambulance'] = 0 }
+		groups = { ['pambulance'] = 0 }
+	},
+
+	{
+		coords = vec3(1836.9091, 3619.4370, 34.4751),
+		target = {
+			loc = vec3(1836.9091, 3619.4370, 34.4751),
+			length = 1.0,
+			width = 1.8,
+			heading = 117.0954,
+			minZ = 33.4,
+			maxZ = 36.0,
+			label = 'Open personal locker'
+		},
+		name = 'sambulancelocker',
+		label = 'Personal Locker',
+		owner = true,
+		slots = 70,
+		weight = 70000,
+		groups = { ['sambulance'] = 0 }
+	},
+
+	{
+		coords = vec3(1838.2819, 3622.2393, 34.4751),
+		target = {
+			loc = vec3(1838.2819, 3622.2393, 34.4751),
+			length = 1.0,
+			width = 2.0,
+			heading = 114.2635,
+			minZ = 33.4,
+			maxZ = 36.0,
+			label = 'Open shared locker'
+		},
+		name = 'sambulanceshared',
+		label = 'Sandy EMS Shared Locker',
+		owner = false,
+		slots = 150,
+		weight = 300000,
+		groups = { ['sambulance'] = 0 }
 	},
 }

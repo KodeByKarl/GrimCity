@@ -6,7 +6,7 @@ Config.Heist['warship'] = {
         require = {
             ['police'] = 0 --12
         },
-        reset = 7200,
+        reset = 300,
         timer = 1500,
         distanceToCancel = 10,
         rewards = {

@@ -154,8 +154,6 @@ Config.MechanicLocations = {
       brakes        = { enabled = true, requiresItem = true },
       driftTuning   = { enabled = true, requiresItem = true },
       gearboxes     = { enabled = false, requiresItem = false },
-      ecu           = { enabled = true, requiresItem = true },
-      bov           = { enabled = true, requiresItem = true },
     },
   },
 }

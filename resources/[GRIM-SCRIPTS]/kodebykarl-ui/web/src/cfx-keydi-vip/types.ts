@@ -10,7 +10,7 @@ export interface VipMembership {
   expiresAt: string | null;
   autoRenew: boolean;
   perks: string[];
-  /** MultiVIP character slots if linked */
+  /** Reserved; always 1 character per account */
   characterSlots?: number;
   /** VIP 2+ ped menu access */
   pedMenu?: boolean;
@@ -81,9 +81,8 @@ export const PREVIEW_VIP: VipMembership = {
   perks: [
     "Priority queue",
     "Ped Menu (/pedmenu)",
-    "3 character slots (MultiVIP)",
     "Edit own welcome banner",
     "VIP chat tag",
   ],
-  characterSlots: 3,
+  characterSlots: 1,
 };

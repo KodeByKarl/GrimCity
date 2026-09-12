@@ -1,10 +1,15 @@
 /** Shared NUI fetch with browser mocks for module control pages. */
 
 export function isBrowserEnv() {
-  return (
-    !(window as unknown as { invokeNative?: unknown }).invokeNative &&
-    !navigator.userAgent.includes("FiveM")
-  );
+  const w = window as unknown as {
+    GetParentResourceName?: () => string;
+    invokeNative?: unknown;
+  };
+  if (typeof w.GetParentResourceName === "function") return false;
+  if (typeof w.invokeNative === "function") return false;
+  const ua = navigator.userAgent || "";
+  if (ua.includes("FiveM") || ua.includes("CitizenFX")) return false;
+  return true;
 }
 
 const mockVipTiers = [
@@ -192,6 +197,9 @@ export async function fetchNui<T = unknown>(eventName: string, data?: unknown): 
       const body = data as { identifier?: string };
       mockBusiness.employees = mockBusiness.employees.filter((e) => e.identifier !== body?.identifier);
       return { ok: true, employees: mockBusiness.employees } as T;
+    }
+    if (eventName === "submitIdentity") {
+      return { success: true } as T;
     }
     if (eventName === "cfx-keydi-modules:getPatchNotes") {
       return {

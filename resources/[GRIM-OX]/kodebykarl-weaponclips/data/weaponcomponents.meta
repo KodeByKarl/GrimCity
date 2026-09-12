@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<CWeaponComponentInfoBlob>
+  <Data />
+  <Infos>
+    <Item type="CWeaponComponentClipInfo">
+      <Name>COMPONENT_PUMPSHOTGUN_CLIP_02</Name>
+      <Model />
+      <LocName>WCT_CLIP2</LocName>
+      <LocDesc>WCD_CLIP2</LocDesc>
+      <AttachBone>WAPClip</AttachBone>
+      <AccuracyModifier type="NULL" />
+      <DamageModifier type="NULL" />
+      <bShownOnWheel value="true" />
+      <CreateObject value="false" />
+      <HudDamage value="0" />
+      <HudSpeed value="0" />
+      <HudCapacity value="100" />
+      <HudAccuracy value="0" />
+      <HudRange value="0" />
+      <ClipSize value="16" />
+      <AmmoInfo />
+      <ReloadData ref="RELOAD_DEFAULT_WITH_EMPTIES" />
+    </Item>
+    <Item type="CWeaponComponentClipInfo">
+      <Name>COMPONENT_PUMPSHOTGUN_MK2_CLIP_02</Name>
+      <Model>w_sg_pumpshotgunmk2_mag1</Model>
+      <LocName>WCT_CLIP2</LocName>
+      <LocDesc>WCD_CLIP2</LocDesc>
+      <AttachBone>WAPClip</AttachBone>
+      <AccuracyModifier type="NULL" />
+      <DamageModifier type="NULL" />
+      <bShownOnWheel value="true" />
+      <CreateObject value="true" />
+      <HudDamage value="0" />
+      <HudSpeed value="0" />
+      <HudCapacity value="100" />
+      <HudAccuracy value="0" />
+      <HudRange value="0" />
+      <ClipSize value="16" />
+      <AmmoInfo />
+      <ReloadData ref="RELOAD_DEFAULT_WITH_EMPTIES" />
+    </Item>
+  </Infos>
+  <InfoBlobName>GrimCity Shotgun Extended Clips</InfoBlobName>
+</CWeaponComponentInfoBlob>

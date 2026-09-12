@@ -4,6 +4,7 @@
 ]]
 
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local busy = false
 local Data = nil
@@ -134,6 +135,9 @@ local function openSection(section)
 end
 
 local function openRoot(locationId)
+    if not Region.Allowed('illegal') then
+        return notify(Region.Message('illegal'), 'error')
+    end
     if not Data then
         return notify('Blackmarket unavailable.', 'error')
     end
@@ -220,6 +224,9 @@ CreateThread(function()
                     label = loc.label or 'Blackmarket',
                     distance = dist,
                     onSelect = function()
+                        if not Region.Allowed('illegal') then
+                            return notify(Region.Message('illegal'), 'error')
+                        end
                         openRoot(locId)
                     end,
                 },

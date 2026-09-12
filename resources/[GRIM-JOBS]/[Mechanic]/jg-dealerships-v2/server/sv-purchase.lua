@@ -362,6 +362,8 @@ local function purchaseVehicle(src, purchaseData)
 
   DebugPrint(("Purchase completed successfully - Player: %s, Vehicle: %s, Plate: %s"):format(tostring(src), purchaseData.model, plate), "debug")
 
+  FgDealershipSession(src, 'testdrive', true, 15000)
+
   return true, netId, vehicleId, plate, currencyAmountToPay
 
 end

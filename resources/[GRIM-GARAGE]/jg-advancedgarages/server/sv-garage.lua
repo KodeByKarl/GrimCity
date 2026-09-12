@@ -417,7 +417,7 @@ lib.callback.register("jg-advancedgarages:server:drive-vehicle-out", function(pl
             return false
         end
     end
-    
+
     -- Determine spawn coordinates
     local finalSpawnCoords = spawnCoords
     if garageData and garageData.spawn then
@@ -505,6 +505,25 @@ lib.callback.register("jg-advancedgarages:server:drive-vehicle-out", function(pl
             body = vehicleData.body or 1000.0,
             damage = vehicleData.damage and json.decode(vehicleData.damage) or false
         }
+    end
+
+    local takeOutCost = garageData and garageData.takeOutCost
+    if takeOutCost == nil then
+        -- Public garages charge a take-out fee; skip when the vehicle is already out (return cost applies instead)
+        local vehicleIsOut = vehicleData and tonumber(vehicleData.in_garage) == 0
+        if not vehicleIsOut and garageData and garageData.garageType == "personal" then
+            takeOutCost = Config.GarageVehicleTakeOutCost
+        else
+            takeOutCost = 0
+        end
+    end
+    takeOutCost = tonumber(takeOutCost) or 0
+    if takeOutCost > 0 then
+        local paid = Framework.Server.PlayerRemoveMoney(playerId, takeOutCost, "bank")
+        if not paid then
+            return false
+        end
+        Framework.Server.Notify(playerId, ("Charged $%s to take out this vehicle"):format(takeOutCost), "success")
     end
     
     -- Verify with client before spawning

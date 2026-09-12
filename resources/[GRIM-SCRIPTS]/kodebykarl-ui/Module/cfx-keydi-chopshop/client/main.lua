@@ -72,8 +72,16 @@ local function RunProgress(duration)
     })
 end
 
+local function CanUseChopShop()
+    if not ConfigServerLocations or not ConfigServerLocations.CanUseFunction then
+        return false
+    end
+    return ConfigServerLocations.CanUseFunction("illegal")
+end
+
 local function CanTargetVehicle(entity)
     if chopping then return false end
+    if not CanUseChopShop() then return false end
     if not entity or entity == 0 or not DoesEntityExist(entity) then return false end
     if not IsEntityAVehicle(entity) then return false end
     if not IsAllowedClass(entity) then return false end
@@ -93,6 +101,12 @@ end
 
 local function StartChop(entity)
     if chopping or not CanTargetVehicle(entity) then return end
+    if not CanUseChopShop() then
+        Notify((ConfigServerLocations and ConfigServerLocations.WrongServerMessage)
+            and ConfigServerLocations.WrongServerMessage("illegal")
+            or "Illegal chop is only available on Region 1.", "error")
+        return
+    end
 
     local ped = PlayerPedId()
     if VehicleOccupiedByOther(entity, ped) then

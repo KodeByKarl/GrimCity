@@ -22,13 +22,13 @@ RegisterNetEvent('kodebykarl-turfwar:client:announce', function(msg, msgType)
     })
 end)
 
-local function CanUseTurfWar()
-    -- Region 3 / 4 only (HasFunction turfwar). Never default-allow.
+local function CanUseTurf(data)
+    local fn = (data and data.requireFunction) or 'turfwar'
     if GetResourceState('kodebykarl-ui') ~= 'started' then
         return false
     end
     local ok, allowed = pcall(function()
-        return exports['kodebykarl-ui']:HasFunction('turfwar')
+        return exports['kodebykarl-ui']:HasFunction(fn)
     end)
     return ok and allowed == true
 end
@@ -39,32 +39,34 @@ CreateThread(function()
         local sleep = 700
         local ped = PlayerPedId()
 
-        if DoesEntityExist(ped) and not IsEntityDead(ped) and CanUseTurfWar() then
+        if DoesEntityExist(ped) and not IsEntityDead(ped) then
             local pCoords = GetEntityCoords(ped)
             local nearestTurf = nil
             local nearestDist = 999.0
 
             for id, data in pairs(Config.TurfWars) do
-                local dist = #(pCoords - data.coords)
+                if CanUseTurf(data) then
+                    local dist = #(pCoords - data.coords)
 
-                -- Draw White 3D Marker on Ground when within 25 meters
-                if dist <= 25.0 then
-                    sleep = 0
+                    -- Draw White 3D Marker on Ground when within 25 meters
+                    if dist <= 25.0 then
+                        sleep = 0
 
-                    -- White MarkerTypeVerticalCylinder (Marker Type 1)
-                    DrawMarker(
-                        1,                                -- MarkerTypeVerticalCylinder (1)
-                        data.coords.x, data.coords.y, data.coords.z - 1.0, -- Coords (z adjusted)
-                        0.0, 0.0, 0.0,                    -- Direction
-                        0.0, 0.0, 0.0,                    -- Rotation
-                        2.5, 2.5, 1.0,                    -- Scale (Width, Length, Height)
-                        255, 255, 255, 200,               -- Color (Pure White 255, 255, 255, 200 Alpha)
-                        false, true, 2, false, nil, nil, false
-                    )
+                        -- White MarkerTypeVerticalCylinder (Marker Type 1)
+                        DrawMarker(
+                            1,                                -- MarkerTypeVerticalCylinder (1)
+                            data.coords.x, data.coords.y, data.coords.z - 1.0, -- Coords (z adjusted)
+                            0.0, 0.0, 0.0,                    -- Direction
+                            0.0, 0.0, 0.0,                    -- Rotation
+                            2.5, 2.5, 1.0,                    -- Scale (Width, Length, Height)
+                            255, 255, 255, 200,               -- Color (Pure White 255, 255, 255, 200 Alpha)
+                            false, true, 2, false, nil, nil, false
+                        )
 
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestTurf = { id = id, data = data }
+                        if dist < nearestDist then
+                            nearestDist = dist
+                            nearestTurf = { id = id, data = data }
+                        end
                     end
                 end
             end
@@ -196,40 +198,36 @@ CreateThread(function()
 
     while true do
         Wait(500)
-        if not CanUseTurfWar() then
-            for id, prop in pairs(RewardProps) do
-                if prop and DoesEntityExist(prop) then
-                    DeleteObject(prop)
-                end
-                RewardProps[id] = nil
-            end
-            goto continue
-        end
-
         for id, data in pairs(Config.TurfWars) do
-            local claimable = GlobalState[('turf_claimable_%s'):format(id)] == true
-
-            if claimable then
-                if not RewardProps[id] or not DoesEntityExist(RewardProps[id]) then
-                    lib.requestModel(rewardBagModel, 5000)
-                    if HasModelLoaded(rewardBagModel) then
-                        local zOff = Config.RewardBag.zOffset or -0.98
-                        local prop = CreateObject(rewardBagModel, data.coords.x, data.coords.y, data.coords.z + zOff, false, false, false)
-                        SetEntityHeading(prop, Config.RewardBag.heading or 0.0)
-                        FreezeEntityPosition(prop, true)
-                        SetEntityInvincible(prop, true)
-                        SetModelAsNoLongerNeeded(rewardBagModel)
-                        RewardProps[id] = prop
-                    end
-                end
-            else
+            if not CanUseTurf(data) then
                 if RewardProps[id] and DoesEntityExist(RewardProps[id]) then
                     DeleteObject(RewardProps[id])
                     RewardProps[id] = nil
                 end
+            else
+                local claimable = GlobalState[('turf_claimable_%s'):format(id)] == true
+
+                if claimable then
+                    if not RewardProps[id] or not DoesEntityExist(RewardProps[id]) then
+                        lib.requestModel(rewardBagModel, 5000)
+                        if HasModelLoaded(rewardBagModel) then
+                            local zOff = Config.RewardBag.zOffset or -0.98
+                            local prop = CreateObject(rewardBagModel, data.coords.x, data.coords.y, data.coords.z + zOff, false, false, false)
+                            SetEntityHeading(prop, Config.RewardBag.heading or 0.0)
+                            FreezeEntityPosition(prop, true)
+                            SetEntityInvincible(prop, true)
+                            SetModelAsNoLongerNeeded(rewardBagModel)
+                            RewardProps[id] = prop
+                        end
+                    end
+                else
+                    if RewardProps[id] and DoesEntityExist(RewardProps[id]) then
+                        DeleteObject(RewardProps[id])
+                        RewardProps[id] = nil
+                    end
+                end
             end
         end
-        ::continue::
     end
 end)
 

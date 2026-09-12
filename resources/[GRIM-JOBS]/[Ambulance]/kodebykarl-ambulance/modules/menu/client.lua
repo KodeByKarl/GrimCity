@@ -83,7 +83,49 @@ local function OpenAmbulanceMenu()
             description = 'Send a medical bill to a nearby player',
             icon        = 'fa-solid fa-file-invoice',
             onSelect    = function()
-                exports['cfx-cs-utils']:BillingMenu(job.name)
+                CreateThread(function()
+                    lib.hideContext()
+                    local timeout = GetGameTimer() + 1500
+                    while IsNuiFocused() and GetGameTimer() < timeout do
+                        Wait(50)
+                    end
+                    Wait(80)
+                    SetNuiFocus(false, false)
+                    local opened = false
+                    if GetResourceState('kodebykarl-ui') == 'started' then
+                        opened = pcall(function()
+                            exports['kodebykarl-ui']:OpenInvoice({ view = 'create', force = true })
+                        end)
+                    end
+                    if not opened and GetResourceState('cfx-keydi-ui') == 'started' then
+                        opened = pcall(function()
+                            exports['cfx-keydi-ui']:OpenInvoice({ view = 'create', force = true })
+                        end)
+                    end
+                    if not opened then
+                        ExecuteCommand('billing')
+                    end
+                end)
+            end
+        }
+        options[#options + 1] = {
+            title       = 'Documents',
+            description = 'Open medical certificates and issued documents',
+            icon        = 'fa-solid fa-file-medical',
+            onSelect    = function()
+                CreateThread(function()
+                    lib.hideContext()
+                    Wait(120)
+                    if GetResourceState('kodebykarl-police') == 'started' then
+                        exports['kodebykarl-police']:OpenDocuments()
+                        return
+                    end
+                    if GetResourceState('cfx-cs-police') == 'started' then
+                        exports['cfx-cs-police']:OpenDocuments()
+                        return
+                    end
+                    ExecuteCommand('documents')
+                end)
             end
         }
     end

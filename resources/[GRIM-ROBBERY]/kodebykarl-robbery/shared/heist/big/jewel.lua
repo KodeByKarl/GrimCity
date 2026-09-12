@@ -6,7 +6,7 @@ Config.Heist['jewel'] = {
         require = {
             ['police'] = 0 --6
         },
-        reset = 7200,
+        reset = 500,
         timer = 500,
         distanceToCancel = 3,
         rewards = {

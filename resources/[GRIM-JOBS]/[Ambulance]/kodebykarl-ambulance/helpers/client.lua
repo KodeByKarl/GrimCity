@@ -5,6 +5,17 @@ local client = {}
 local DEATH_DICT = 'dead'
 local DEATH_ANIM = 'dead_a'
 local deathPoseToken = 0
+local deathHoldGen = 0
+
+local function disableGtaDeathRestart()
+    pcall(DisableAutomaticRespawn, true)
+    pcall(SetFadeOutAfterDeath, false)
+    pcall(SetFadeInAfterDeathArrest, false)
+end
+
+CreateThread(function()
+    disableGtaDeathRestart()
+end)
 
 function client.StopDeathPose()
     deathPoseToken = deathPoseToken + 1
@@ -65,6 +76,18 @@ local function restrictCombat()
     DisablePlayerFiring(PlayerId(), true)
 end
 
+local function applySpawnProtectNatives(ped)
+    SetEntityInvincible(ped, true)
+    SetPlayerInvincible(PlayerId(), true)
+    SetPedCanBeTargetted(ped, false)
+    SetEntityAlpha(ped, 180, false)
+    SetEntityCanBeDamaged(ped, false)
+end
+
+function client.IsSpawnProtected()
+    return LocalPlayer.state.spawnProtect == true
+end
+
 function client.StartSpawnProtection(duration)
     duration = math.max(1, tonumber(duration) or 60)
     spawnProtectGen = spawnProtectGen + 1
@@ -79,14 +102,36 @@ function client.StartSpawnProtection(duration)
         end)
 
         local lastShown = -1
+        local lockedHealth, lockedArmor = nil, nil
+
         while myGen == spawnProtectGen and GetGameTimer() < endsAt do
             local ped = PlayerPedId()
-            SetEntityInvincible(ped, true)
-            SetPlayerInvincible(PlayerId(), true)
-            SetPedCanBeTargetted(ped, false)
-            SetEntityAlpha(ped, 180, false)
-            SetEntityCanBeDamaged(ped, false)
+            applySpawnProtectNatives(ped)
             restrictCombat()
+
+            local hp = GetEntityHealth(ped)
+            local armor = GetPedArmour(ped)
+            if not lockedHealth then
+                lockedHealth = hp >= 100 and hp or GetEntityMaxHealth(ped)
+                if not lockedHealth or lockedHealth < 100 then
+                    lockedHealth = 200
+                end
+                lockedArmor = armor or 0
+                if hp < lockedHealth then
+                    SetEntityHealth(ped, lockedHealth)
+                end
+            else
+                if hp > lockedHealth then
+                    lockedHealth = hp
+                elseif hp < lockedHealth then
+                    SetEntityHealth(ped, lockedHealth)
+                end
+                if armor > lockedArmor then
+                    lockedArmor = armor
+                elseif armor < lockedArmor then
+                    SetPedArmour(ped, lockedArmor)
+                end
+            end
 
             local left = math.ceil((endsAt - GetGameTimer()) / 1000)
             if left ~= lastShown then
@@ -128,9 +173,11 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 CreateThread(function()
+    local remoteProtect = {}
     while true do
         local sleep = 400
         local players = GetActivePlayers()
+        local seen = {}
         for i = 1, #players do
             local ply = players[i]
             if ply ~= PlayerId() then
@@ -140,13 +187,24 @@ CreateThread(function()
                 if ped ~= 0 and DoesEntityExist(ped) then
                     if protected then
                         sleep = 0
+                        seen[sid] = true
+                        remoteProtect[sid] = true
                         SetEntityCanBeDamaged(ped, false)
                         SetEntityAlpha(ped, 180, false)
                         SetPedCanBeTargetted(ped, false)
-                    else
+                    elseif remoteProtect[sid] then
+                        seen[sid] = true
                         ResetEntityAlpha(ped)
+                        SetEntityCanBeDamaged(ped, true)
+                        SetPedCanBeTargetted(ped, true)
+                        remoteProtect[sid] = nil
                     end
                 end
+            end
+        end
+        for sid in pairs(remoteProtect) do
+            if not seen[sid] then
+                remoteProtect[sid] = nil
             end
         end
         Wait(sleep)
@@ -190,6 +248,92 @@ function client.StartDeathPose()
         end
     end)
 end
+
+--- Keep the body at the death spot. GTA otherwise hospital-respawns to campus (lapagan).
+function client.HoldDeathInPlace()
+    if Vars.isReviving then return end
+    disableGtaDeathRestart()
+
+    local ped = PlayerPedId()
+    local coords = Vars.deathCoords
+    if not coords and ped and ped ~= 0 then
+        coords = GetEntityCoords(ped)
+        Vars.deathCoords = coords
+    end
+    if not coords then return end
+
+    Vars.holdingDeath = true
+    local heading = (ped and ped ~= 0) and GetEntityHeading(ped) or 0.0
+    local x, y, z = coords.x or coords[1], coords.y or coords[2], coords.z or coords[3]
+
+    if ped and ped ~= 0 and (IsPedFatallyInjured(ped) or IsEntityDead(ped) or GetEntityHealth(ped) <= 101) then
+        NetworkResurrectLocalPlayer(x, y, z, heading, true, false)
+        Wait(0)
+        ped = PlayerPedId()
+    end
+
+    ped = PlayerPedId()
+    if ped and ped ~= 0 then
+        SetEntityCoordsNoOffset(ped, x, y, z, false, false, false)
+        SetEntityHeading(ped, heading)
+        local maxHealth = GetEntityMaxHealth(ped)
+        if not maxHealth or maxHealth < 100 then
+            maxHealth = 200
+        end
+        SetEntityHealth(ped, maxHealth)
+        SetEntityInvincible(ped, true)
+        SetPlayerInvincible(PlayerId(), true)
+        SetPedCanRagdoll(ped, false)
+    end
+
+    if ESX and ESX.SetPlayerData then
+        ESX.SetPlayerData('dead', true)
+    end
+    LocalPlayer.state:set('dead', true, true)
+    Vars.holdingDeath = false
+    client.StartDeathPose()
+end
+
+function client.StartDeathHoldWatch()
+    deathHoldGen = deathHoldGen + 1
+    local gen = deathHoldGen
+    local token = Vars.deathToken
+
+    CreateThread(function()
+        client.HoldDeathInPlace()
+        while gen == deathHoldGen and token == Vars.deathToken and Vars.isDead and not Vars.isReviving do
+            disableGtaDeathRestart()
+            local ped = PlayerPedId()
+            local deathAt = Vars.deathCoords
+            if ped and ped ~= 0 and deathAt then
+                local now = GetEntityCoords(ped)
+                local dest = vector3(deathAt.x or deathAt[1], deathAt.y or deathAt[2], deathAt.z or deathAt[3])
+                local nativelyDead = IsPedFatallyInjured(ped) or IsEntityDead(ped) or GetEntityHealth(ped) <= 101
+                if #(now - dest) > 25.0 or nativelyDead then
+                    client.HoldDeathInPlace()
+                end
+            end
+            Wait(400)
+        end
+    end)
+end
+
+function client.StopDeathHold()
+    deathHoldGen = deathHoldGen + 1
+    Vars.holdingDeath = false
+end
+
+AddEventHandler('playerSpawned', function()
+    if Vars.isReviving then return end
+    if Vars.holdingDeath or Vars.isDead then
+        if ESX and ESX.SetPlayerData then
+            ESX.SetPlayerData('dead', true)
+        end
+        if not Vars.holdingDeath then
+            client.HoldDeathInPlace()
+        end
+    end
+end)
 
 --- After NetworkResurrectLocalPlayer, unmute and rebind proximity.
 --- Spawn events also reinit; a later call is OK (token-based, latest wins).
@@ -240,7 +384,7 @@ function client.RemoveRPDeath(customCoords)
     end
     CreateThread(function()
         local function doRespawn()
-            TriggerServerEvent('cfx-keydi-ambulance:payFine', Vars.deathInSandy or Vars.inSandy)
+            TriggerServerEvent('cfx-keydi-ambulance:payFine', Vars.DiedInPaleto() and 'pambulance' or (Vars.DiedInBlaine() and 'sambulance' or 'ambulance'))
             TriggerServerEvent('cfx-keydi-ambulance:setPlayerDeathStatus', false)
 
             local spawnCoords = customCoords
@@ -261,11 +405,11 @@ function client.RemoveRPDeath(customCoords)
                 elseif spawnCoords and spawnCoords.xyz then
                     client.RespawnPed(cache.ped, spawnCoords.xyz, spawnCoords.w or 0.0)
                 else
-                    if Vars.DiedInBlaine() then
-                        client.RespawnPed(cache.ped, vector3(-283.6857, 6325.4751, 32.3472), 278.8888)
-                    else
-                        client.RespawnPed(cache.ped, vector3(-1038.44, -1356.31, 5.9474), 170.0)
-                    end
+                    local spawn = require 'shared.spawn'
+                    local zoneId = Vars.SelectStlZone()
+                    local loc = spawn.Locations[zoneId] or spawn.Locations.integrity_way or spawn.Locations.murrieta
+                    local c = loc.coords
+                    client.RespawnPed(cache.ped, vector3(c.x, c.y, c.z), c.w or 0.0)
                 end
             end)
             if not ok then
@@ -288,7 +432,7 @@ function client.RemoveRPDeath(customCoords)
 end
 
 function RespawnAtLocation(coords)
-    TriggerServerEvent('cfx-keydi-ambulance:payFine', Vars.inSandy)
+    TriggerServerEvent('cfx-keydi-ambulance:payFine', Vars.DiedInPaleto() and 'pambulance' or (Vars.DiedInBlaine() and 'sambulance' or 'ambulance'))
     client.RemoveRPDeath(coords)
 end
 
@@ -299,6 +443,7 @@ local function isDead()
 end
 
 exports('isDead', isDead)
+exports('IsSpawnProtected', client.IsSpawnProtected)
 
 --- Keep the exact death/revive Z. GetGroundZ from +50 hits building roofs
 --- and ejects players who died inside a house. Only snap if they are clearly
@@ -346,7 +491,8 @@ function client.RespawnPed(ped, coords, heading)
     local z = (coords.z or coords[3]) + 0.0
     heading = heading or 0.0
 
-    -- Block death re-entry while we resurrect (esx death monitor + AutoStuck race)
+    -- Block death re-entry while we resurrect (esx death monitor + death-hold race)
+    client.StopDeathHold()
     client.StopDeathPose()
     Vars.isReviving = true
     Vars.isDead = false
@@ -394,6 +540,7 @@ function client.RespawnPed(ped, coords, heading)
 
     placeAtExactCoords(ped)
     NetworkResurrectLocalPlayer(x, y, z, heading, true, false)
+    TriggerServerEvent('cfx-keydi-serverlocations:server:restoreBucket')
     pcall(NetworkSetVoiceActive, true)
     Wait(300)
     ped = PlayerPedId()
@@ -422,6 +569,9 @@ function client.RespawnPed(ped, coords, heading)
     SetPlayerInvincible(PlayerId(), false)
     NetworkSetFriendlyFireOption(true)
     SetPedCanBeTargetted(ped, true)
+    if LocalPlayer.state.spawnProtect then
+        applySpawnProtectNatives(ped)
+    end
 
     -- Force upright at the exact revive coords (no Z lift — that ejects interiors)
     ClearPedTasksImmediately(ped)
@@ -450,7 +600,11 @@ function client.RespawnPed(ped, coords, heading)
     end
 
     SetEntityVisible(ped, true, false)
-    ResetEntityAlpha(ped)
+    if LocalPlayer.state.spawnProtect then
+        applySpawnProtectNatives(ped)
+    else
+        ResetEntityAlpha(ped)
+    end
     NetworkSetEntityInvisibleToNetwork(ped, false)
     SetEntityCollision(ped, true, true)
     SetEntityCoordsNoOffset(ped, x, y, z, false, false, false)
@@ -553,6 +707,7 @@ function client.RespawnPed(ped, coords, heading)
     TriggerServerEvent('esx:onPlayerSpawn')
     TriggerEvent('esx:onPlayerSpawn')
     TriggerEvent('playerSpawned')
+    TriggerServerEvent('cfx-keydi-serverlocations:server:restoreBucket')
     exports.ox_target:disableTargeting(false)
 
     -- Mic/voice often dies across NetworkResurrectLocalPlayer; reset after ped is alive
@@ -564,7 +719,11 @@ function client.RespawnPed(ped, coords, heading)
         for _ = 1, 30 do
             local p = PlayerPedId()
             SetEntityVisible(p, true, false)
-            ResetEntityAlpha(p)
+            if LocalPlayer.state.spawnProtect then
+                applySpawnProtectNatives(p)
+            else
+                ResetEntityAlpha(p)
+            end
             NetworkSetEntityInvisibleToNetwork(p, false)
             SetEntityCollision(p, true, true)
             if IsEntityPositionFrozen(p) then

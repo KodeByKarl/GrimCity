@@ -6,12 +6,22 @@ const AVAILABLE_JOBS = [
     logo: 'https://i.imgur.com/YsTyMCc.png',
   },
   {
+    job: 'sheriff',
+    templateGrades: [0, 1, 2, 3, 4],
+    logo: 'https://i.imgur.com/YsTyMCc.png',
+  },
+  {
     job: 'ambulance',
     templateGrades: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     logo: 'https://i.imgur.com/YsTyMCc.png',
   },
   {
     job: 'sambulance',
+    templateGrades: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    logo: 'https://i.imgur.com/YsTyMCc.png',
+  },
+  {
+    job: 'pambulance',
     templateGrades: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     logo: 'https://i.imgur.com/YsTyMCc.png',
   },

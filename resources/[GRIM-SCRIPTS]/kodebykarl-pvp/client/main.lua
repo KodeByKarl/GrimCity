@@ -196,6 +196,10 @@ RegisterNetEvent('kodebykarl-pvp:endMatch', function()
     SetPvpState(false)
     SetLocalPlayerAsGhost(false)
     DeleteExitPeds()
+    TriggerEvent('ox_inventory:disarm', true)
+    RemoveAllPedWeapons(PlayerPedId(), true)
+    SetCurrentPedWeapon(PlayerPedId(), `WEAPON_UNARMED`, true)
+    SetPedArmour(PlayerPedId(), 0)
 
     local dest = leaveCoords or Config.Leave
     leaveCoords = nil

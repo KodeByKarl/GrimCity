@@ -455,9 +455,21 @@ function Framework.Client.VehicleGiveKeys(plate, vehicleEntity, origin)
 
   elseif Config.VehicleKeys == "cfx-keydi-carlock" then
 
-    if GetResourceState("cfx-keydi-ui") == "started" then
+    local given = false
 
-      exports["cfx-keydi-ui"]:GiveKey(plate)
+    if GetResourceState("kodebykarl-ui") == "started" then
+
+      given = pcall(function()
+
+        exports["kodebykarl-ui"]:GiveKey(plate)
+
+      end)
+
+    end
+
+    if not given then
+
+      TriggerServerEvent("cfx-keydi-carlock:server:giveKey", plate)
 
     end
 
@@ -527,9 +539,21 @@ function Framework.Client.VehicleRemoveKeys(plate, vehicleEntity, origin)
 
   elseif Config.VehicleKeys == "cfx-keydi-carlock" then
 
-    if GetResourceState("cfx-keydi-ui") == "started" then
+    local removed = false
 
-      exports["cfx-keydi-ui"]:RemoveKey(plate)
+    if GetResourceState("kodebykarl-ui") == "started" then
+
+      removed = pcall(function()
+
+        exports["kodebykarl-ui"]:RemoveKey(plate)
+
+      end)
+
+    end
+
+    if not removed then
+
+      TriggerServerEvent("cfx-keydi-carlock:server:removeKey", plate)
 
     end
 

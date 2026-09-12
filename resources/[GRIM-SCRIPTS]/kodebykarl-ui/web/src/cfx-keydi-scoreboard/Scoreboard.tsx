@@ -214,7 +214,7 @@ function Panel({
         </div>
       </header>
 
-      <div className="relative z-10 min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4 custom-scrollbar">
+      <div className="relative z-10 min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-5 py-4 no-scrollbar">
         {children}
       </div>
 

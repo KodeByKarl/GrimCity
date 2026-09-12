@@ -56,6 +56,7 @@ local function stopDeathFreecam(resetToBody)
     destroyCam()
     keepBodyVisible()
     notifyNui(false)
+    TriggerServerEvent('kodebykarl-ambulance:server:deathFreecam', false)
 end
 
 local function startDeathFreecam()
@@ -85,6 +86,7 @@ local function startDeathFreecam()
     active = true
     speed = 0.8
     notifyNui(true)
+    TriggerServerEvent('kodebykarl-ambulance:server:deathFreecam', true)
 
     CreateThread(function()
         local sensitivity = 4.0

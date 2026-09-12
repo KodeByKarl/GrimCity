@@ -280,7 +280,7 @@ end
 
 local function panelPayload(src)
     return {
-        brand = ConfigLockScript.Brand or "PANDORA CITY",
+        brand = ConfigLockScript.Brand or "GRIM CITY",
         staffName = getPlayerName(src),
         staffId = src,
         staffIdentifier = getIdentifier(src),

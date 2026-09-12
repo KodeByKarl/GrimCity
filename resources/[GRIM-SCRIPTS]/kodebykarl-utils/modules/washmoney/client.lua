@@ -1,6 +1,7 @@
 local WashMoney = require 'configs.washmoney'
 local helpers = require 'helpers.game'
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local function startExchange(mode)
     local fromItem = mode == 'dm_to_money' and 'black_money' or 'money'
@@ -56,6 +57,9 @@ local function startExchange(mode)
 end
 
 local function OpenMoneyWash()
+    if not Region.Allowed('illegal') then
+        return ESX.Notify('WASH MONEY', Region.Message('illegal'), 'error', 5000)
+    end
     local dirty = Vars.ox:Search('count', 'black_money') or 0
     local clean = Vars.ox:Search('count', 'money') or 0
 

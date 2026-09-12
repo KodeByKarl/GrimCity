@@ -44,6 +44,10 @@ ESX.SecureNetEvent('esx:playerLoaded', function(xPlayer)
 	PlayerData = xPlayer
 end)
 
+RegisterNetEvent('esx:playerLoaded', function(xPlayer)
+	PlayerData = xPlayer
+end)
+
 ESX.SecureNetEvent('esx:setJob', function(job)
 	PlayerData.job = job
 end)
@@ -88,7 +92,10 @@ function GetTargetServerId(data, maxDistance)
         if type(data.targetId) == 'number' then
             return data.targetId
         end
-        if data.entity and DoesEntityExist(data.entity) and IsPedAPlayer(data.entity) then
+        if type(data.id) == 'number' and data.id > 0 and GetPlayerName(data.id) then
+            return data.id
+        end
+        if data.entity and type(data.entity) == 'number' and DoesEntityExist(data.entity) and IsPedAPlayer(data.entity) then
             local player = NetworkGetPlayerIndexFromPed(data.entity)
             if player and player ~= -1 then
                 return GetPlayerServerId(player)
@@ -97,7 +104,52 @@ function GetTargetServerId(data, maxDistance)
     end
 
     local player = lib.getClosestPlayer(GetEntityCoords(cache.ped), maxDistance, false)
-    return player and GetPlayerServerId(player) or nil
+    if player then
+        return GetPlayerServerId(player)
+    end
+
+    local nearby = lib.getNearbyPlayers(GetEntityCoords(cache.ped), maxDistance, false)
+    if nearby and nearby[1] then
+        return GetPlayerServerId(nearby[1].id)
+    end
+    return nil
+end
+
+function WithNearbyPlayer(maxDistance, title, onPicked)
+    local targetId = GetTargetServerId(nil, maxDistance)
+    if targetId then
+        onPicked(targetId)
+        return
+    end
+
+    local nearby = lib.getNearbyPlayers(GetEntityCoords(cache.ped), maxDistance or 5.0, false)
+    if not nearby or #nearby < 1 then
+        ESX.Notify(PlayerData.job and PlayerData.job.label or 'POLICE', 'No nearby player.', 'error', 5000)
+        return
+    end
+
+    if #nearby == 1 then
+        onPicked(GetPlayerServerId(nearby[1].id))
+        return
+    end
+
+    local options = {}
+    for i = 1, #nearby do
+        local nearbyId = GetPlayerServerId(nearby[i].id)
+        options[#options + 1] = {
+            icon = 'user',
+            title = 'ID ' .. nearbyId,
+            onSelect = function()
+                onPicked(nearbyId)
+            end,
+        }
+    end
+    lib.registerContext({
+        id = 'police_menu_nearby_player',
+        title = title or 'Select Player',
+        options = options,
+    })
+    lib.showContext('police_menu_nearby_player')
 end
 
 function GetVehicleInDirection()

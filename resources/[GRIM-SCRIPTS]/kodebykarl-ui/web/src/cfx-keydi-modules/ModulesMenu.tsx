@@ -58,7 +58,7 @@ export default function ModulesMenu({
     {
       id: "indicator",
       name: "Damage Indicator",
-      desc: "Personalize hitmarkers, damage fonts, colors, and timing.",
+      desc: "Zone-colored hitmarkers, dead labels, fonts, and timing.",
       icon: <Zap className="h-5 w-5 text-[#ff4d4d]" />,
       action: onOpenDamageIndicator,
       tag: "COMBAT",

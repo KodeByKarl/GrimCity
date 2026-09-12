@@ -648,8 +648,9 @@ RegisterNetEvent('ox_items:UsedItem', function(item)
         if newHealth > 200 then newHealth = 200 end
         SetEntityHealth(cache.ped, newHealth)
     elseif item == 'joint' then
-        -- Joint: +50 armour only
-        AddArmourToPed(cache.ped, 50)
+        local ped = cache.ped
+        local current = GetPedArmour(ped) or 0
+        SetPedArmour(ped, math.min(100, current + 50))
     elseif item == 'energy_drink' then
         energyDrinkBoost = true
         SetTimeout(5000, function()
@@ -663,6 +664,16 @@ RegisterNetEvent('ox_items:UsedItem', function(item)
         if not maxHealth or maxHealth < 200 then maxHealth = 200 end
         SetEntityHealth(ped, maxHealth)
         SetPedArmour(ped, 100)
+    elseif item == 'police_vest' then
+        local ped = cache.ped
+        SetPlayerMaxArmour(cache.playerId, 100)
+        SetPedArmour(ped, 100)
+        local model = GetEntityModel(ped)
+        if model == `mp_m_freemode_01` then
+            SetPedComponentVariation(ped, 9, 16, 0, 0)
+        elseif model == `mp_f_freemode_01` then
+            SetPedComponentVariation(ped, 9, 18, 0, 0)
+        end
     elseif item == 'police_vitamins' or item == 'sheriff_vitamins' then
         local ped = cache.ped
         TriggerEvent('cfx-keydi-ambulance:client:RemoveBleed')
@@ -675,7 +686,8 @@ RegisterNetEvent('ox_items:UsedItem', function(item)
         SetPedArmour(ped, 100)
     elseif item == 'police_drink' or item == 'sheriff_drink' then
         policeDrinkBoost = true
-        SetTimeout(10000, function()
+        local duration = item == 'police_drink' and 3000 or 10000
+        SetTimeout(duration, function()
             policeDrinkBoost = false
             SetPedMoveRateOverride(cache.ped, 1.0)
             SetRunSprintMultiplierForPlayer(cache.playerId, 1.0)

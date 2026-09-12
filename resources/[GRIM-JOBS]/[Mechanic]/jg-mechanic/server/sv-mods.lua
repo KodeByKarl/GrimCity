@@ -111,6 +111,7 @@ lib.callback.register("jg-mechanic:server:open-mods-menu", function(source, vehi
       SetVehicleNumberPlateText(vehicle, Config.ChangePlateDuringPreview)
     end
   end
+  FgMechanicSession(source, 'mods', true)
   return true
 end)
 
@@ -119,6 +120,7 @@ lib.callback.register("jg-mechanic:server:close-mods-menu", function(source, veh
   if vehicle and DoesEntityExist(vehicle) then
     Entity(vehicle).state:set("inMechanicMenu", nil, true)
   end
+  FgMechanicSession(source, 'mods', false)
   return true
 end)
 
@@ -130,6 +132,7 @@ lib.callback.register("jg-mechanic:server:self-service-mods-applied", function(s
       SetVehicleNumberPlateText(vehicle, plate)
     end
   end
+  FgMechanicSession(source, 'mods', false)
 
   if not Webhooks.SelfService then
     return true
@@ -250,6 +253,7 @@ lib.callback.register("jg-mechanic:server:self-service-repair-vehicle", function
     addToSocietyFund(source, mechanicName, price)
   end
 
+  FgMechanicSession(source, 'repair', true, 8000)
   return true
 end)
 

@@ -15,6 +15,9 @@ lib.callback.register('cfx-keydi-utils:rental:pay', function(source, price, depo
     local cash = ox_inventory:Search(src, 'count', 'money') or 0
     if cash >= total then
         ox_inventory:RemoveItem(src, 'money', total)
+        pcall(function()
+            exports['kodebykarl-utils']:FgVehicleSession(src, 'plate', true, 10000)
+        end)
         return true, 'cash'
     end
 
@@ -23,6 +26,9 @@ lib.callback.register('cfx-keydi-utils:rental:pay', function(source, price, depo
     local bank = bankAccount and bankAccount.money or 0
     if bank >= total then
         xPlayer.removeAccountMoney('bank', total)
+        pcall(function()
+            exports['kodebykarl-utils']:FgVehicleSession(src, 'plate', true, 10000)
+        end)
         return true, 'bank'
     end
 

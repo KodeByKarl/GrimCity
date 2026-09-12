@@ -2,6 +2,7 @@ local config = require 'configs.illegalmenu'
 if not config.enable then return end
 
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local dragging = {
     active = false,
@@ -262,6 +263,9 @@ local function openIllegalMenu()
     if serviceJob then
         openServiceMenu(serviceJob)
         return
+    end
+    if not Region.Allowed('illegal') then
+        return notify(Region.Message('illegal'), 'error')
     end
     if isBlocked() then return end
 

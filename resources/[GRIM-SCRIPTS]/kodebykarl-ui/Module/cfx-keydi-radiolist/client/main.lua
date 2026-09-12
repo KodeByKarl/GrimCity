@@ -24,6 +24,17 @@ local function FormatChannel(channel)
     return ('%.2f MHz'):format(tonumber(channel) or 0.0)
 end
 
+local function getRadioResourceFrequency()
+    if GetResourceState('cfx-keydi-radio') ~= 'started' then return 0 end
+    local ok, freq = pcall(function()
+        return exports['cfx-keydi-radio']:getFrequency()
+    end)
+    if ok then
+        return tonumber(freq) or 0
+    end
+    return 0
+end
+
 local function GetLocalDisplayName()
     if ESX and ESX.GetPlayerData then
         local pData = ESX.GetPlayerData()
@@ -262,9 +273,18 @@ exports('ToggleRadioList', function()
     end
 end)
 
+-- Primary hook from cfx-keydi-radio (join / leave / disable)
+AddEventHandler('cfx-keydi-radio:channelChanged', setRadioChannel)
+AddEventHandler('cfx-keydi-radiolist:setChannel', setRadioChannel)
+
 -- Restore HUD if already on a channel after resource restart
 CreateThread(function()
     Wait(1500)
+    local fromRadio = getRadioResourceFrequency()
+    if fromRadio > 0 then
+        setRadioChannel(fromRadio)
+        return
+    end
     local channel = tonumber(LocalPlayer.state.radioChannel) or 0
     if channel > 0 then
         setRadioChannel(channel)

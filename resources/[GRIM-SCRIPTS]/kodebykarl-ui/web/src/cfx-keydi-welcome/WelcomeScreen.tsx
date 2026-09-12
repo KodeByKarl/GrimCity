@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import grimLogo from "@/assets/grim-city-logo.png";
 
-type UpdateTag = "Feature" | "Fix" | "Security" | "Performance" | "Rework";
+type UpdateTag = "Feature" | "Fix" | "Security" | "Performance" | "Rework" | "Major Update" | string;
 
 interface WelcomeUpdate {
   version: string;
@@ -38,8 +38,9 @@ interface WelcomeScreenProps {
 
 type WelcomeTab = "home" | "updates";
 
-const TAG_STYLES: Record<UpdateTag, { icon: React.ReactNode; bg: string; text: string }> = {
+const TAG_STYLES: Record<string, { icon: React.ReactNode; bg: string; text: string }> = {
   Feature: { icon: <Sparkles className="h-3 w-3" />, bg: "rgba(255, 58, 58, 0.25)", text: "#ffb3b3" },
+  "Major Update": { icon: <Sparkles className="h-3 w-3" />, bg: "rgba(255, 58, 58, 0.25)", text: "#ffb3b3" },
   Fix: { icon: <Wrench className="h-3 w-3" />, bg: "rgba(255, 128, 128, 0.25)", text: "#ffffff" },
   Security: { icon: <ShieldCheck className="h-3 w-3" />, bg: "rgba(40, 160, 100, 0.3)", text: "#adfcbe" },
   Performance: { icon: <Zap className="h-3 w-3" />, bg: "rgba(255, 210, 76, 0.28)", text: "#ffeeb8" },
@@ -64,7 +65,7 @@ export default function WelcomeScreen({ data, onClose }: WelcomeScreenProps) {
   };
 
   return (
-    <div className="pandora fixed inset-0 flex items-center justify-center p-8 bg-black/70 backdrop-blur-[6px] select-none pointer-events-auto animate-fade-in font-sans z-45">
+    <div className="pandora fixed inset-0 flex items-center justify-center p-8 bg-black/70 backdrop-blur-[6px] select-none pointer-events-auto animate-fade-in font-sans z-[80]">
       <div className="pandora-panel w-full max-w-6xl overflow-hidden rounded-2xl border-2 border-[#ff3a3a] h-[540px] flex flex-col relative bg-[#0d0d12]">
         {/* Top Navigation */}
         <div className="flex items-center justify-between border-b border-[#ff3a3a]/30 px-6 py-4">
@@ -258,7 +259,7 @@ export default function WelcomeScreen({ data, onClose }: WelcomeScreenProps) {
                 {/* Updates scroll list */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mt-4 space-y-3.5 max-h-[300px]">
                   {visibleUpdates.map((u, i) => {
-                    const style = TAG_STYLES[u.tag] || TAG_STYLES.Feature;
+        const style = TAG_STYLES[u.tag] || TAG_STYLES.Feature;
                     return (
                       <article
                         key={`${u.version}-${i}`}

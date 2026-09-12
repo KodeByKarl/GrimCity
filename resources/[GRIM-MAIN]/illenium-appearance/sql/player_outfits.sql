@@ -7,7 +7,7 @@
 
 CREATE TABLE IF NOT EXISTS `player_outfits` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `citizenid` varchar(50) DEFAULT NULL,
+  `citizenid` varchar(64) DEFAULT NULL,
   `outfitname` varchar(50) NOT NULL DEFAULT '0',
   `model` varchar(50) DEFAULT NULL,
   `props` varchar(1000) DEFAULT NULL,

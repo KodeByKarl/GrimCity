@@ -4,7 +4,6 @@ local Items = require 'modules.items.server'
 local Inventory = require 'modules.inventory.server'
 local TriggerEventHooks = require 'modules.hooks.server'
 local Shops = {}
-local locations = shared.target and 'targets' or 'locations'
 
 ---@class OxShopItem
 ---@field slot number
@@ -49,7 +48,8 @@ end
 ---@param shopType string
 ---@param properties OxShop
 local function registerShopType(shopType, properties)
-	local shopLocations = properties[locations] or properties.locations
+	local shopLocations = (properties.targets and properties.targets[1] and properties.targets)
+		or properties.locations
 
 	if shopLocations then
 		Shops[shopType] = properties
@@ -74,23 +74,24 @@ local function createShop(shopType, id)
 
 	if not shop then return end
 
-	local store = (shop[locations] or shop.locations)?[id]
+	-- NPC shops often leave `targets` empty and only set `locations`.
+	-- Empty `{}` is truthy, so `(shop.targets or shop.locations)` must not win over a real location.
+	local store = (shop.targets and shop.targets[id]) or (shop.locations and shop.locations[id])
 
 	if not store then return end
 
 	local groups = shop.groups or shop.jobs
-    local coords
+	local coords
+	local storeType = type(store)
 
-    if shared.target then
-        if store.length then
-            local z = store.loc.z + math.abs(store.minZ - store.maxZ) / 2
-            coords = vec3(store.loc.x, store.loc.y, z)
-        else
-            coords = store.coords or store.loc
-        end
-    else
-        coords = store
-    end
+	if storeType == 'vector3' or storeType == 'vector4' then
+		coords = vec3(store.x, store.y, store.z)
+	elseif store.length and store.loc then
+		local z = store.loc.z + math.abs(store.minZ - store.maxZ) / 2
+		coords = vec3(store.loc.x, store.loc.y, z)
+	else
+		coords = store.coords or store.loc
+	end
 
 	shop[id] = {
 		label = shop.name,

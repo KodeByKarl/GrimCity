@@ -1,18 +1,22 @@
 return {
 	{
-		coords = vec3(23.2886, -429.7853, 33.5622),
+		coords = vec3(79.4085, -389.1056, 41.6248),
+		prefix = 'pd',
+		label = 'Police Evidence',
 		target = { -- qtarget support
-			name = 'mrpd_evidence', -- name of zone must be uniuqe
-			loc = vec3(23.2886, -429.7853, 33.5622),
+			name = 'mrpd_evidence', -- name of zone must be unique
+			loc = vec3(79.4085, -389.1056, 41.6248),
 			length = 1.4,
-			width = 3.2,
-			heading = 0,
-			minZ = 29.09,
-			maxZ = 31.89
+			width = 2.0,
+			heading = 67.8423,
+			minZ = 40.6,
+			maxZ = 43.1
 		}
 	},
 	{
 		coords = vec3(1888.1609, 3663.3677, 34.1130),
+		prefix = 'sd',
+		label = 'Sheriff Evidence',
 		target = {
 			name = 'sheriff_evidence',
 			loc = vec3(1888.1609, 3663.3677, 34.1130),

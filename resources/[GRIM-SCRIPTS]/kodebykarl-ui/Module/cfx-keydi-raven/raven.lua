@@ -1,6 +1,7 @@
 --[[
-    Raven - Pig Slaughter / Hunting
-    One-file module (client + server via IsDuplicityVersion).
+    Raven - Shared pig hunt (server-side session + networked pigs).
+    One player starts the hunt; everyone nearby sees the dome and the same pigs.
+    Walking into the dome joins the hunt and gives a knife. Leave = knife gone.
 ]]
 
 ConfigRaven = {
@@ -23,19 +24,27 @@ ConfigRaven = {
     Pig = {
         model = "a_c_pig",
         coords = vec4(-2108.3953, 2663.3638, 2.8277, 32.0394),
-        count = 15,
-        spawnRadius = 12.0,
+        count = 5,
+        spawnRadius = 10.0,
+        health = 200,
+        hitsToKill = 2,
     },
 
     RequiredWeapon = "WEAPON_KNIFE",
     RewardItem = "raw_meat",
     RewardMin = 1,
     RewardMax = 3,
-    ToolUses = 100, -- harvests before knife breaks (-1 durability per harvest)
+    ToolUses = 100,
 
-    HuntZoneRadius = 75.0,
+    HuntZoneRadius = 25.0,
+    HuntZoneGraceMs = 900,
+    HuntZoneMarker = { r = 200, g = 36, b = 36, a = 72 },
+    HuntZoneBlip = { color = 1, alpha = 120 },
+    JobKnifeLabel = "Raven Hunting Knife",
     HarvestDistance = 2.5,
     HarvestDuration = 4000,
+    KnifeHitDistance = 3.25,
+    KnifeHitCooldown = 350,
 }
 
 local function CanUseRaven(src)
@@ -54,23 +63,88 @@ local function DebugLog(msg)
     end
 end
 
+local function HuntCenter()
+    local pig = ConfigRaven.Pig.coords
+    return vector3(pig.x, pig.y, pig.z)
+end
+
+local function HuntRadius()
+    return tonumber(ConfigRaven.HuntZoneRadius) or 25.0
+end
+
 if IsDuplicityVersion() then
     ---------------------------------------------------------------------------
-    -- SERVER
+    -- SERVER — shared session, networked pigs
     ---------------------------------------------------------------------------
-    local hunters = {}          -- [src] = true after startHunt at the farm
-    local pendingHarvest = {}   -- [src] = GetGameTimer() when beginHarvest accepted
+    local sessionActive = false
+    local sessionBucket = 0
+    local hunters = {}          -- [src] = { knife, entered }
+    local pendingHarvest = {}   -- [src] = { netId, started }
+    local pigs = {}             -- [netId] = { entity, netId, hits, dead, harvester }
+    local lastHitAt = {}        -- [src] = gameTimer
 
-    local function IsNearPigFarm(src)
+    local function JobKnifeMeta()
+        return {
+            ravenJob = true,
+            label = ConfigRaven.JobKnifeLabel or "Raven Hunting Knife",
+            description = "Temporary hunt knife. Removed when you leave the Raven zone.",
+        }
+    end
+
+    local function IsInsideHuntZone(src)
         local ped = GetPlayerPed(src)
         if not ped or ped == 0 then return false end
-        local playerCoords = GetEntityCoords(ped)
-        local pig = ConfigRaven.Pig.coords
+        return #(GetEntityCoords(ped) - HuntCenter()) <= HuntRadius()
+    end
+
+    local function IsNearStartNpc(src)
+        local ped = GetPlayerPed(src)
+        if not ped or ped == 0 then return false end
         local farmer = ConfigRaven.Ped.coords
-        local pigCenter = vector3(pig.x, pig.y, pig.z)
-        local npcPos = vector3(farmer.x, farmer.y, farmer.z)
-        local zone = ConfigRaven.HuntZoneRadius or 75.0
-        return #(playerCoords - pigCenter) <= zone or #(playerCoords - npcPos) <= 12.0
+        return #(GetEntityCoords(ped) - vector3(farmer.x, farmer.y, farmer.z)) <= 12.0
+    end
+
+    local function IsHunting(src)
+        return hunters[src] ~= nil
+    end
+
+    local function CountHunters()
+        local n = 0
+        for _ in pairs(hunters) do
+            n = n + 1
+        end
+        return n
+    end
+
+    local function PigNetIds()
+        local list = {}
+        for netId, pig in pairs(pigs) do
+            if pig.entity and DoesEntityExist(pig.entity) then
+                list[#list + 1] = netId
+            end
+        end
+        return list
+    end
+
+    local function PublishSession()
+        GlobalState:set("ravenHunt", {
+            active = sessionActive,
+            radius = HuntRadius(),
+            x = ConfigRaven.Pig.coords.x,
+            y = ConfigRaven.Pig.coords.y,
+            z = ConfigRaven.Pig.coords.z,
+            pigs = PigNetIds(),
+        }, true)
+    end
+
+    local function SyncPigs(target)
+        local payload = PigNetIds()
+        if target then
+            TriggerClientEvent("cfx-keydi-raven:syncPigs", target, payload)
+        else
+            TriggerClientEvent("cfx-keydi-raven:syncPigs", -1, payload)
+        end
+        PublishSession()
     end
 
     local function HasKnife(src)
@@ -78,160 +152,360 @@ if IsDuplicityVersion() then
         if type(count) == "table" then
             count = count[ConfigRaven.RequiredWeapon] or 0
         end
-        if (tonumber(count) or 0) > 0 then return true end
-
-        local countItem = exports.ox_inventory:Search(src, "count", "knife") or 0
-        if type(countItem) == "table" then
-            countItem = countItem["knife"] or 0
-        end
-        return (tonumber(countItem) or 0) > 0
+        return (tonumber(count) or 0) > 0
     end
 
-    local function WearKnife(src)
-        local targetItem = ConfigRaven.RequiredWeapon
-        local slots = exports.ox_inventory:Search(src, "slots", targetItem)
-        local slot = nil
+    local function HasJobKnife(src)
+        local slots = exports.ox_inventory:Search(src, "slots", ConfigRaven.RequiredWeapon)
+        if type(slots) ~= "table" then return false end
+        for _, entry in pairs(slots) do
+            if type(entry) == "table" and entry.metadata and entry.metadata.ravenJob then
+                return true, entry
+            end
+        end
+        return false
+    end
+
+    local function StripJobKnife(src)
+        local slots = exports.ox_inventory:Search(src, "slots", ConfigRaven.RequiredWeapon)
         if type(slots) == "table" then
             for _, entry in pairs(slots) do
-                if type(entry) == "table" and entry.slot then
-                    slot = entry
-                    break
+                if type(entry) == "table" and entry.slot and entry.metadata and entry.metadata.ravenJob then
+                    pcall(function()
+                        exports.ox_inventory:RemoveItem(src, ConfigRaven.RequiredWeapon, entry.count or 1, nil, entry.slot)
+                    end)
                 end
             end
         end
-
-        if not slot then
-            targetItem = "knife"
-            slots = exports.ox_inventory:Search(src, "slots", targetItem)
-            if type(slots) == "table" then
-                for _, entry in pairs(slots) do
-                    if type(entry) == "table" and entry.slot then
-                        slot = entry
-                        break
-                    end
-                end
-            end
+        TriggerClientEvent("cfx-keydi-raven:disarmKnife", src)
+        if hunters[src] then
+            hunters[src].knife = false
         end
-
-        if not slot then return false, false end
-
-        local uses = tonumber(ConfigRaven.ToolUses) or 100
-        if uses < 1 then uses = 100 end
-        local drain = 100 / uses
-
-        local dur = slot.metadata and slot.metadata.durability
-        if type(dur) ~= "number" then
-            dur = 100
-        end
-
-        dur = dur - drain
-        if dur <= 0 then
-            exports.ox_inventory:RemoveItem(src, targetItem, 1, nil, slot.slot)
-            return true, true
-        end
-
-        exports.ox_inventory:SetDurability(src, slot.slot, dur)
-        return true, false
     end
 
-    lib.callback.register("cfx-keydi-raven:canStart", function(source)
-        if not CanUseRaven(source) then
-            return false, "wrong_server"
+    local function GiveJobKnife(src)
+        local hasJob, entry = HasJobKnife(src)
+        if hasJob then
+            if hunters[src] then hunters[src].knife = true end
+            TriggerClientEvent("cfx-keydi-raven:equipKnife", src, entry and entry.slot)
+            return true
         end
-        local ok, hasKnife = pcall(HasKnife, source)
-        if not ok or not hasKnife then
-            return false, "knife"
+        local added = exports.ox_inventory:AddItem(src, ConfigRaven.RequiredWeapon, 1, JobKnifeMeta())
+        if added then
+            if hunters[src] then hunters[src].knife = true end
+            local _, given = HasJobKnife(src)
+            TriggerClientEvent("cfx-keydi-raven:equipKnife", src, given and given.slot)
+            return true
         end
-        if not IsNearPigFarm(source) then
-            return false, "distance"
+        return false
+    end
+
+    local function RandomPigCoords()
+        local center = HuntCenter()
+        local radius = ConfigRaven.Pig.spawnRadius or 10.0
+        local angle = math.random() * math.pi * 2
+        local dist = math.random() * radius
+        return center.x + math.cos(angle) * dist, center.y + math.sin(angle) * dist, center.z, math.random(0, 359) + 0.0
+    end
+
+    local function DeletePig(netId)
+        local pig = pigs[netId]
+        if not pig then return end
+        if pig.entity and DoesEntityExist(pig.entity) then
+            DeleteEntity(pig.entity)
         end
+        pigs[netId] = nil
+    end
+
+    local function SpawnPig()
+        local model = joaat(ConfigRaven.Pig.model)
+        local x, y, z, heading = RandomPigCoords()
+        local ped = CreatePed(28, model, x, y, z, heading, true, true)
+        if not ped or ped == 0 then
+            ped = CreatePed(0, model, x, y, z, heading, true, true)
+        end
+        if not ped or ped == 0 then
+            DebugLog("failed to spawn networked pig")
+            return nil
+        end
+
+        SetEntityAsMissionEntity(ped, true, true)
+        pcall(SetEntityOrphanMode, ped, 2)
+        SetEntityRoutingBucket(ped, sessionBucket or 0)
+        SetPedFleeAttributes(ped, 0, false)
+        SetBlockingOfNonTemporaryEvents(ped, true)
+        pcall(SetPedSuffersCriticalHits, ped, false)
+        SetEntityInvincible(ped, false)
+        local health = math.max(200, tonumber(ConfigRaven.Pig.health) or 200)
+        pcall(SetPedMaxHealth, ped, health)
+        SetEntityHealth(ped, health)
+        SetPedArmour(ped, 0)
+        TaskWanderInArea(ped, HuntCenter().x, HuntCenter().y, HuntCenter().z, ConfigRaven.Pig.spawnRadius or 10.0, 2.0, 3.0)
+
+        local netId = NetworkGetNetworkIdFromEntity(ped)
+        if not netId or netId == 0 then
+            DeleteEntity(ped)
+            return nil
+        end
+
+        pigs[netId] = {
+            entity = ped,
+            netId = netId,
+            hits = 0,
+            dead = false,
+            harvester = nil,
+        }
+        return netId
+    end
+
+    local function CountLivingPigs()
+        local n = 0
+        for _, pig in pairs(pigs) do
+            if pig.entity and DoesEntityExist(pig.entity) and not pig.dead and not IsEntityDead(pig.entity) then
+                n = n + 1
+            end
+        end
+        return n
+    end
+
+    local function EnsurePigCount()
+        local needed = (ConfigRaven.Pig.count or 5) - CountLivingPigs()
+        local spawned = false
+        for _ = 1, math.max(0, needed) do
+            if SpawnPig() then
+                spawned = true
+            end
+        end
+        if spawned then
+            SyncPigs()
+        end
+    end
+
+    local function ClearAllPigs()
+        for netId in pairs(pigs) do
+            DeletePig(netId)
+        end
+        pigs = {}
+        SyncPigs()
+    end
+
+    local function EndSession()
+        sessionActive = false
+        for src in pairs(hunters) do
+            StripJobKnife(src)
+            pendingHarvest[src] = nil
+            TriggerClientEvent("cfx-keydi-raven:forceStop", src, "Raven hunt ended.")
+        end
+        hunters = {}
+        pendingHarvest = {}
+        ClearAllPigs()
+        PublishSession()
+    end
+
+    local function LeaveHunter(src, reason, silent)
+        if not IsHunting(src) then return end
+        if pendingHarvest[src] then
+            local pig = pigs[pendingHarvest[src].netId]
+            if pig and pig.harvester == src then
+                pig.harvester = nil
+            end
+        end
+        StripJobKnife(src)
+        hunters[src] = nil
+        pendingHarvest[src] = nil
+        if not silent then
+            TriggerClientEvent("cfx-keydi-raven:forceStop", src, reason)
+        else
+            TriggerClientEvent("cfx-keydi-raven:forceStop", src, nil)
+        end
+        if CountHunters() < 1 then
+            EndSession()
+        end
+    end
+
+    local function JoinHunter(src)
+        if not sessionActive then return false, "inactive" end
+        if not CanUseRaven(src) then return false, "wrong_server" end
+        if hunters[src] then return true end
+        hunters[src] = { knife = false, entered = IsInsideHuntZone(src) }
+        pendingHarvest[src] = nil
+        TriggerClientEvent("cfx-keydi-raven:joined", src)
+        SyncPigs(src)
         return true
-    end)
+    end
+
+    local function StartSession(src)
+        sessionActive = true
+        sessionBucket = GetPlayerRoutingBucket(src) or 0
+        hunters[src] = { knife = false, entered = IsInsideHuntZone(src) }
+        pendingHarvest[src] = nil
+        EnsurePigCount()
+        PublishSession()
+        TriggerClientEvent("cfx-keydi-raven:joined", src)
+        return true
+    end
 
     lib.callback.register("cfx-keydi-raven:startHunt", function(src)
         if type(src) ~= "number" or src < 1 then return false, "invalid" end
         if not CanUseRaven(src) then return false, "wrong_server" end
-        if not IsNearPigFarm(src) then return false, "distance" end
-        local ok, hasKnife = pcall(HasKnife, src)
-        if not ok or not hasKnife then return false, "knife" end
-        hunters[src] = true
-        pendingHarvest[src] = nil
-        return true
+        if not IsNearStartNpc(src) and not IsInsideHuntZone(src) then return false, "distance" end
+
+        if sessionActive then
+            local ok, reason = JoinHunter(src)
+            if not ok then return false, reason end
+            if IsInsideHuntZone(src) and not GiveJobKnife(src) then
+                return false, "inventory"
+            end
+            return true, "joined"
+        end
+
+        StartSession(src)
+        if IsInsideHuntZone(src) and not GiveJobKnife(src) then
+            LeaveHunter(src, nil, true)
+            return false, "inventory"
+        end
+        return true, "started"
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:enterZone", function()
+        local src = source
+        if type(src) ~= "number" or src < 1 then return end
+        if not sessionActive then return end
+        if not CanUseRaven(src) then return end
+        if not IsInsideHuntZone(src) then return end
+
+        JoinHunter(src)
+        hunters[src].entered = true
+        if not GiveJobKnife(src) then
+            TriggerClientEvent("cfx-keydi-raven:notify", src, "Make space in your inventory for the hunt knife.", "error")
+        end
     end)
 
     RegisterNetEvent("cfx-keydi-raven:stopHunt", function()
         local src = source
-        hunters[src] = nil
-        pendingHarvest[src] = nil
+        LeaveHunter(src, nil, true)
     end)
 
-    lib.callback.register("cfx-keydi-raven:beginHarvest", function(src)
-        if type(src) ~= "number" or src < 1 then return false end
-        if not hunters[src] then return false end
-        if not IsNearPigFarm(src) then
-            hunters[src] = nil
-            pendingHarvest[src] = nil
-            return false
-        end
-        local ok, hasKnife = pcall(HasKnife, src)
-        if not ok or not hasKnife then return false end
+    RegisterNetEvent("cfx-keydi-raven:knifeHit", function(netId)
+        local src = source
+        netId = tonumber(netId)
+        if type(src) ~= "number" or src < 1 or not netId then return end
+        if not sessionActive or not IsHunting(src) or not IsInsideHuntZone(src) then return end
+        if not HasKnife(src) then return end
 
         local now = GetGameTimer()
-        local pending = pendingHarvest[src]
-        local duration = ConfigRaven.HarvestDuration or 4000
-        if pending and (now - pending) < (duration * 3) then
-            return false
+        if lastHitAt[src] and (now - lastHitAt[src]) < (ConfigRaven.KnifeHitCooldown or 350) then
+            return
+        end
+        lastHitAt[src] = now
+
+        local pig = pigs[netId]
+        if not pig or pig.dead or not pig.entity or not DoesEntityExist(pig.entity) then return end
+
+        local ped = GetPlayerPed(src)
+        if not ped or ped == 0 then return end
+        if #(GetEntityCoords(ped) - GetEntityCoords(pig.entity)) > (ConfigRaven.KnifeHitDistance or 3.25) then
+            return
         end
 
-        pendingHarvest[src] = now
+        pig.hits = (pig.hits or 0) + 1
+        local needed = math.max(1, tonumber(ConfigRaven.Pig.hitsToKill) or 2)
+        if pig.hits >= needed then
+            pig.dead = true
+            SetEntityHealth(pig.entity, 0)
+            TriggerClientEvent("cfx-keydi-raven:pigDead", -1, netId)
+        else
+            local health = math.max(200, tonumber(ConfigRaven.Pig.health) or 200)
+            SetEntityHealth(pig.entity, health)
+        end
+    end)
+
+    lib.callback.register("cfx-keydi-raven:beginHarvest", function(src, netId)
+        netId = tonumber(netId)
+        if type(src) ~= "number" or src < 1 or not netId then return false, "invalid" end
+        if not IsHunting(src) or not IsInsideHuntZone(src) or not HasKnife(src) then
+            return false, "denied"
+        end
+
+        local pig = pigs[netId]
+        if not pig or not pig.entity or not DoesEntityExist(pig.entity) then
+            return false, "gone"
+        end
+        if not pig.dead and not IsEntityDead(pig.entity) then
+            return false, "alive"
+        end
+        if pig.harvester and pig.harvester ~= src then
+            return false, "busy"
+        end
+
+        local ped = GetPlayerPed(src)
+        if #(GetEntityCoords(ped) - GetEntityCoords(pig.entity)) > (ConfigRaven.HarvestDistance + 1.5) then
+            return false, "distance"
+        end
+
+        pig.harvester = src
+        pendingHarvest[src] = { netId = netId, started = GetGameTimer() }
         return true
     end)
 
-    RegisterNetEvent("cfx-keydi-raven:harvest", function()
+    RegisterNetEvent("cfx-keydi-raven:cancelHarvest", function(netId)
         local src = source
-        if type(src) ~= "number" or src < 1 then return end
-
-        if not hunters[src] then
-            KeydiElectron.Flag(src, "Raven harvest exploit (no hunt session)", "cfx-keydi-raven")
-            return
+        netId = tonumber(netId)
+        local pending = pendingHarvest[src]
+        if pending then
+            local pig = pigs[pending.netId]
+            if pig and pig.harvester == src then
+                pig.harvester = nil
+            end
         end
+        pendingHarvest[src] = nil
+        if netId and pigs[netId] and pigs[netId].harvester == src then
+            pigs[netId].harvester = nil
+        end
+    end)
 
-        local started = pendingHarvest[src]
-        if not started then
-            KeydiElectron.Flag(src, "Raven harvest exploit (no begin)", "cfx-keydi-raven")
+    RegisterNetEvent("cfx-keydi-raven:harvest", function(netId)
+        local src = source
+        netId = tonumber(netId)
+        if type(src) ~= "number" or src < 1 or not netId then return end
+
+        local pending = pendingHarvest[src]
+        if not pending or pending.netId ~= netId then
+            if KeydiElectron and KeydiElectron.Flag then
+                KeydiElectron.Flag(src, "Raven harvest exploit (no begin)", "cfx-keydi-raven")
+            end
             return
         end
 
         local duration = ConfigRaven.HarvestDuration or 4000
-        if (GetGameTimer() - started) < (duration - 400) then
-            KeydiElectron.Flag(src, "Raven harvest exploit (skipped wait)", "cfx-keydi-raven")
+        if (GetGameTimer() - pending.started) < (duration - 400) then
+            if KeydiElectron and KeydiElectron.Flag then
+                KeydiElectron.Flag(src, "Raven harvest exploit (skipped wait)", "cfx-keydi-raven")
+            end
             return
         end
         pendingHarvest[src] = nil
 
-        if not IsNearPigFarm(src) then
-            hunters[src] = nil
-            TriggerClientEvent("cfx-keydi-raven:notify", src, "Too far from the pig farm.", "error")
+        if not IsHunting(src) or not IsInsideHuntZone(src) or not HasKnife(src) then
             return
         end
 
-        if not HasKnife(src) then
-            TriggerClientEvent("cfx-keydi-raven:notify", src, "You need a knife to harvest meat.", "error")
+        local pig = pigs[netId]
+        if not pig or pig.harvester ~= src then
+            TriggerClientEvent("cfx-keydi-raven:notify", src, "Someone else already claimed that pig.", "error")
             return
         end
 
         local amount = math.random(ConfigRaven.RewardMin, ConfigRaven.RewardMax)
-        local grindBonus = 0
         pcall(function()
             if exports["kodebykarl-ui"] and exports["kodebykarl-ui"].GetVipGrindBonus then
-                grindBonus = exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0
+                amount = amount + (exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0)
             end
         end)
-        if grindBonus > 0 then
-            amount = amount + grindBonus
-        end
+
         local canCarry = exports.ox_inventory:CanCarryAmount(src, ConfigRaven.RewardItem) or 0
         if canCarry < 1 then
+            pig.harvester = nil
             TriggerClientEvent("cfx-keydi-raven:notify", src, "You cannot carry any more raw meat.", "error")
             return
         end
@@ -240,35 +514,66 @@ if IsDuplicityVersion() then
         end
 
         local added = exports.ox_inventory:AddItem(src, ConfigRaven.RewardItem, amount)
-        if added then
-            local _, broken = WearKnife(src)
-            if broken then
-                TriggerClientEvent("cfx-keydi-raven:notify", src, ("You harvested %dx Raw Meat — your knife broke."):format(amount), "error")
-            else
-                TriggerClientEvent("cfx-keydi-raven:notify", src, ("You harvested %dx Raw Meat"):format(amount), "success")
-            end
-            TriggerClientEvent("cfx-keydi-raven:harvested", src)
-        else
+        if not added then
+            pig.harvester = nil
             TriggerClientEvent("cfx-keydi-raven:notify", src, "Failed to add raw meat.", "error")
+            return
         end
+
+        DeletePig(netId)
+        EnsurePigCount()
+        SyncPigs()
+        TriggerClientEvent("cfx-keydi-raven:notify", src, ("You harvested %dx Raw Meat"):format(amount), "success")
+        TriggerClientEvent("cfx-keydi-raven:harvested", src, netId)
     end)
 
     CreateThread(function()
         while true do
-            Wait(2000)
-            for src in pairs(hunters) do
-                if not IsNearPigFarm(src) then
-                    hunters[src] = nil
-                    pendingHarvest[src] = nil
+            Wait(1000)
+            if sessionActive then
+                for src in pairs(hunters) do
+                    if not GetPlayerName(src) then
+                        LeaveHunter(src, nil, true)
+                    elseif not IsInsideHuntZone(src) and not IsNearStartNpc(src) then
+                        LeaveHunter(src, "You left the Raven hunt zone. The knife was taken.", false)
+                    elseif IsInsideHuntZone(src) then
+                        hunters[src].entered = true
+                        if not hunters[src].knife then
+                            GiveJobKnife(src)
+                        end
+                    end
                 end
+
+                for netId, pig in pairs(pigs) do
+                    if not pig.entity or not DoesEntityExist(pig.entity) then
+                        pigs[netId] = nil
+                    elseif not pig.dead and IsEntityDead(pig.entity) then
+                        pig.dead = true
+                        TriggerClientEvent("cfx-keydi-raven:pigDead", -1, netId)
+                    end
+                end
+                EnsurePigCount()
             end
         end
     end)
 
     AddEventHandler("playerDropped", function()
-        local src = source
-        hunters[src] = nil
-        pendingHarvest[src] = nil
+        LeaveHunter(source, nil, true)
+    end)
+
+    AddEventHandler("onResourceStop", function(resourceName)
+        if resourceName ~= GetCurrentResourceName() then return end
+        for src in pairs(hunters) do
+            StripJobKnife(src)
+        end
+        ClearAllPigs()
+        sessionActive = false
+        PublishSession()
+    end)
+
+    CreateThread(function()
+        Wait(500)
+        PublishSession()
     end)
 else
     ---------------------------------------------------------------------------
@@ -281,44 +586,103 @@ else
     local farmerTargetZone = nil
     local hunting = false
     local harvesting = false
-    local pigs = {} -- { entity = number, dead = bool, targeted = bool }
+    local insideHuntZone = false
+    local huntSphere = nil
+    local huntRadiusBlip = nil
+    local pigs = {} -- [netId] = { entity, dead, targeted }
+    local LeaveHunt
 
     local function Notify(msg, nType)
         ESX.ShowNotification(msg, nType or "info")
     end
 
-    local function PlayerHasKnife()
-        local weapon = ConfigRaven.RequiredWeapon
-        local items
-        pcall(function()
-            items = exports.ox_inventory:GetPlayerItems()
-        end)
-        if type(items) == "table" then
-            for _, item in pairs(items) do
-                if type(item) == "table" and (item.name == weapon or item.name == "knife") then
-                    local dur = item.metadata and item.metadata.durability
-                    if dur == nil or (type(dur) == "number" and dur > 0) then
-                        return true
-                    end
-                end
-            end
-        end
+    local function HideHuntText()
+        pcall(lib.hideTextUI)
+    end
 
+    local function ShowHuntText()
+        lib.showTextUI("RAVEN HUNT  •  Shared pigs  •  Knife in the dome", {
+            position = "top-center",
+            icon = "fa-solid fa-bacon",
+            style = {
+                borderRadius = "6px",
+                backgroundColor = "rgba(13, 13, 18, 0.9)",
+                color = "#ff6b6b",
+                border = "1px solid rgba(255, 58, 58, 0.4)",
+                padding = "6px 12px",
+                fontSize = "12px",
+                fontWeight = "600",
+            },
+        })
+    end
+
+    local function SessionActive()
+        local data = GlobalState.ravenHunt
+        return data and data.active == true
+    end
+
+    local function DestroyHuntZone()
+        insideHuntZone = false
+        HideHuntText()
+        if huntSphere then
+            huntSphere:remove()
+            huntSphere = nil
+        end
+        if huntRadiusBlip and DoesBlipExist(huntRadiusBlip) then
+            RemoveBlip(huntRadiusBlip)
+        end
+        huntRadiusBlip = nil
+    end
+
+    local function CreateHuntZone()
+        if huntSphere then return end
+        local center = HuntCenter()
+        local radius = HuntRadius()
+
+        huntRadiusBlip = AddBlipForRadius(center.x, center.y, center.z, radius)
+        local blipCfg = ConfigRaven.HuntZoneBlip or {}
+        SetBlipColour(huntRadiusBlip, blipCfg.color or 1)
+        SetBlipAlpha(huntRadiusBlip, blipCfg.alpha or 120)
+        SetBlipAsShortRange(huntRadiusBlip, false)
+
+        huntSphere = lib.zones.sphere({
+            coords = center,
+            radius = radius,
+            debug = ConfigRaven.Debug,
+            onEnter = function()
+                insideHuntZone = true
+                ShowHuntText()
+                TriggerServerEvent("cfx-keydi-raven:enterZone")
+            end,
+            onExit = function()
+                insideHuntZone = false
+                HideHuntText()
+                if not hunting then return end
+                local grace = tonumber(ConfigRaven.HuntZoneGraceMs) or 900
+                CreateThread(function()
+                    Wait(grace)
+                    if hunting and not insideHuntZone then
+                        LeaveHunt(true)
+                        Notify("You left the Raven hunt zone. The knife was taken.", "error")
+                    end
+                end)
+            end,
+        })
+
+        if #(GetEntityCoords(PlayerPedId()) - center) <= radius then
+            insideHuntZone = true
+            ShowHuntText()
+            TriggerServerEvent("cfx-keydi-raven:enterZone")
+        end
+    end
+
+    local function PlayerHasKnife()
         local count = 0
         pcall(function()
-            count = exports.ox_inventory:Search("count", weapon) or 0
+            count = exports.ox_inventory:Search("count", ConfigRaven.RequiredWeapon) or 0
         end)
         if type(count) == "table" then
-            count = count[weapon] or 0
-        end
-        if (tonumber(count) or 0) > 0 then return true end
-
-        count = 0
-        pcall(function()
-            count = exports.ox_inventory:Search("count", "knife") or 0
-        end)
-        if type(count) == "table" then
-            count = count["knife"] or 0
+            count = count[ConfigRaven.RequiredWeapon] or 0
         end
         return (tonumber(count) or 0) > 0
     end
@@ -339,135 +703,77 @@ else
         return hash
     end
 
-    local function RandomPigCoords()
-        local center = ConfigRaven.Pig.coords
-        local radius = ConfigRaven.Pig.spawnRadius or 12.0
-        local angle = math.random() * math.pi * 2
-        local dist = math.random() * radius
-        local x = center.x + math.cos(angle) * dist
-        local y = center.y + math.sin(angle) * dist
-        local z = center.z
-        local found, groundZ = GetGroundZFor_3dCoord(x, y, z + 5.0, false)
-        if found and groundZ and math.abs(groundZ - z) < 8.0 then
-            z = groundZ
+    local function ResolvePigEntity(netId)
+        if not netId then return 0 end
+        if not NetworkDoesNetworkIdExist(netId) then return 0 end
+        local entity = NetworkGetEntityFromNetworkId(netId)
+        if entity and entity ~= 0 and DoesEntityExist(entity) then
+            return entity
         end
-        return x, y, z, math.random(0, 359) + 0.0
+        return 0
     end
 
-    local function CountLivingPigs()
-        local count = 0
-        for _, pig in ipairs(pigs) do
-            if pig.entity and DoesEntityExist(pig.entity) and not IsEntityDead(pig.entity) then
-                count = count + 1
-            end
+    local function ClearPigTarget(pig)
+        if pig and pig.targeted and pig.entity and DoesEntityExist(pig.entity) then
+            pcall(function()
+                exports.ox_target:removeLocalEntity(pig.entity)
+            end)
         end
-        return count
+        if pig then pig.targeted = false end
     end
 
-    local function SpawnPig()
-        local hash = LoadModel(ConfigRaven.Pig.model)
-        if not hash then
-            DebugLog("failed to load pig model")
-            return nil
-        end
-
-        local x, y, z, heading = RandomPigCoords()
-        local ped = CreatePed(28, hash, x, y, z, heading, false, true)
-        if not ped or ped == 0 then
-            SetModelAsNoLongerNeeded(hash)
-            return nil
-        end
-
-        SetEntityAsMissionEntity(ped, true, true)
-        SetPedFleeAttributes(ped, 0, false)
-        SetBlockingOfNonTemporaryEvents(ped, true)
-        SetPedCanRagdoll(ped, true)
-        SetEntityHealth(ped, 200)
-
-        local center = ConfigRaven.Pig.coords
-        TaskWanderInArea(ped, center.x, center.y, center.z, ConfigRaven.Pig.spawnRadius or 12.0, 2.0, 3.0)
-        SetModelAsNoLongerNeeded(hash)
-
-        pigs[#pigs + 1] = {
-            entity = ped,
-            dead = false,
-            targeted = false,
-        }
-
-        return ped
-    end
-
-    local function EnsurePigCount()
-        local living = CountLivingPigs()
-        local needed = ConfigRaven.Pig.count - living
-        for _ = 1, needed do
-            SpawnPig()
-        end
-    end
-
-    local function CleanupPig(index)
-        local pig = pigs[index]
-        if not pig then return end
-
-        if pig.entity and DoesEntityExist(pig.entity) then
-            if pig.targeted then
-                pcall(function()
-                    exports.ox_target:removeLocalEntity(pig.entity)
-                end)
-            end
-            DeleteEntity(pig.entity)
-        end
-
-        table.remove(pigs, index)
-    end
-
-    local function ClearAllPigs()
-        for i = #pigs, 1, -1 do
-            CleanupPig(i)
+    local function ClearLocalPigs()
+        for _, pig in pairs(pigs) do
+            ClearPigTarget(pig)
         end
         pigs = {}
     end
 
-    local function StopHunting(silent)
+    function LeaveHunt(silent)
         if not hunting then return end
         hunting = false
         harvesting = false
-        ClearAllPigs()
+        HideHuntText()
         TriggerServerEvent("cfx-keydi-raven:stopHunt")
         if not silent then
-            Notify("Pig hunting stopped.", "info")
+            Notify("You left the Raven hunt.", "info")
         end
     end
 
-    local function StartHarvest(entity)
-        if harvesting or not hunting then return end
-        if not entity or not DoesEntityExist(entity) then return end
+    local function StartHarvest(netId)
+        if harvesting or not hunting or not insideHuntZone then return end
+        local pig = pigs[netId]
+        local entity = pig and pig.entity or ResolvePigEntity(netId)
+        if not entity or entity == 0 or not DoesEntityExist(entity) then
+            Notify("That pig is gone.", "error")
+            return
+        end
         if not IsEntityDead(entity) then
             Notify("The pig is still alive.", "error")
             return
         end
-
-        local playerPed = PlayerPedId()
-        if #(GetEntityCoords(playerPed) - GetEntityCoords(entity)) > ConfigRaven.HarvestDistance + 1.0 then
+        if #(GetEntityCoords(PlayerPedId()) - GetEntityCoords(entity)) > ConfigRaven.HarvestDistance + 1.0 then
             Notify("Move closer to the pig.", "error")
             return
         end
-
-        local hasKnife = PlayerHasKnife()
-        if not hasKnife then
-            Notify("You need a knife to harvest meat.", "error")
+        if not PlayerHasKnife() then
+            Notify("You need the hunt knife to harvest meat.", "error")
             return
         end
 
         harvesting = true
-
-        local began = lib.callback.await("cfx-keydi-raven:beginHarvest", false)
+        local began, reason = lib.callback.await("cfx-keydi-raven:beginHarvest", false, netId)
         if not began then
             harvesting = false
-            Notify("You cannot harvest right now.", "error")
+            if reason == "busy" then
+                Notify("Someone else is already harvesting that pig.", "error")
+            else
+                Notify("You cannot harvest right now.", "error")
+            end
             return
         end
 
+        local playerPed = PlayerPedId()
         GiveWeaponToPed(playerPed, joaat(ConfigRaven.RequiredWeapon), 0, false, true)
         SetCurrentPedWeapon(playerPed, joaat(ConfigRaven.RequiredWeapon), true)
 
@@ -476,95 +782,149 @@ else
             label = "Harvesting raw meat…",
             useWhileDead = false,
             canCancel = true,
-            disable = {
-                move = true,
-                car = true,
-                combat = true,
-            },
-            anim = {
-                dict = "amb@medic@standing@kneel@base",
-                clip = "base",
-            },
+            disable = { move = true, car = true, combat = true },
+            anim = { dict = "amb@medic@standing@kneel@base", clip = "base" },
         })
 
         if not success or not hunting then
             harvesting = false
             ClearPedTasks(playerPed)
+            TriggerServerEvent("cfx-keydi-raven:cancelHarvest", netId)
             return
         end
 
-        TriggerServerEvent("cfx-keydi-raven:harvest")
-
-        for i = #pigs, 1, -1 do
-            local pig = pigs[i]
-            if pig.entity == entity then
-                if pig.targeted then
-                    pcall(function()
-                        exports.ox_target:removeLocalEntity(entity)
-                    end)
-                end
-                if DoesEntityExist(entity) then
-                    DeleteEntity(entity)
-                end
-                table.remove(pigs, i)
-                break
-            end
-        end
-
-        EnsurePigCount()
+        TriggerServerEvent("cfx-keydi-raven:harvest", netId)
         harvesting = false
     end
 
-    local function AddHarvestTarget(pigIndex)
-        local pig = pigs[pigIndex]
-        if not pig or pig.targeted or not pig.entity or not DoesEntityExist(pig.entity) then return end
-
+    local function AddHarvestTarget(netId)
+        local pig = pigs[netId]
+        if not pig or pig.targeted then return end
         local entity = pig.entity
+        if not entity or entity == 0 or not DoesEntityExist(entity) then return end
+
         pig.targeted = true
         exports.ox_target:addLocalEntity(entity, {
             {
-                name = ("raven_harvest_%s"):format(entity),
+                name = ("raven_harvest_%s"):format(netId),
                 icon = "fa-solid fa-drumstick-bite",
                 label = "Harvest Raw Meat",
                 distance = ConfigRaven.HarvestDistance,
                 canInteract = function()
-                    return hunting and not harvesting and DoesEntityExist(entity) and IsEntityDead(entity)
+                    return hunting and insideHuntZone and not harvesting
+                        and DoesEntityExist(entity) and IsEntityDead(entity)
                 end,
                 onSelect = function()
-                    StartHarvest(entity)
+                    StartHarvest(netId)
                 end,
             },
         })
     end
 
-    local function StartHunting()
-        if hunting then
-            Notify("You are already hunting pigs.", "info")
-            return
+    local function SyncPigList(netIds)
+        local keep = {}
+        if type(netIds) == "table" then
+            for i = 1, #netIds do
+                keep[netIds[i]] = true
+            end
         end
 
+        for netId, pig in pairs(pigs) do
+            if not keep[netId] then
+                ClearPigTarget(pig)
+                pigs[netId] = nil
+            end
+        end
+
+        for netId in pairs(keep) do
+            if not pigs[netId] then
+                pigs[netId] = { entity = 0, dead = false, targeted = false, hitsSent = 0 }
+            end
+        end
+    end
+
+    RegisterNetEvent("cfx-keydi-raven:syncPigs", function(netIds)
+        SyncPigList(netIds)
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:pigDead", function(netId)
+        netId = tonumber(netId)
+        if not netId then return end
+        pigs[netId] = pigs[netId] or { entity = 0, dead = true, targeted = false }
+        pigs[netId].dead = true
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:harvested", function(netId)
+        netId = tonumber(netId)
+        if netId and pigs[netId] then
+            ClearPigTarget(pigs[netId])
+            pigs[netId] = nil
+        end
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:joined", function()
+        hunting = true
+        CreateHuntZone()
+        Notify("You joined the Raven hunt. Kill the shared pigs — first to harvest keeps the meat.", "success")
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:equipKnife", function(slot)
+        CreateThread(function()
+            Wait(250)
+            if type(slot) == "number" then
+                local ok = pcall(function()
+                    exports.ox_inventory:useSlot(slot)
+                end)
+                if ok then return end
+            end
+            local ped = PlayerPedId()
+            local hash = joaat(ConfigRaven.RequiredWeapon)
+            GiveWeaponToPed(ped, hash, 0, false, true)
+            SetCurrentPedWeapon(ped, hash, true)
+        end)
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:disarmKnife", function()
+        local ped = PlayerPedId()
+        local hash = joaat(ConfigRaven.RequiredWeapon)
+        if GetSelectedPedWeapon(ped) == hash then
+            SetCurrentPedWeapon(ped, `WEAPON_UNARMED`, true)
+        end
+        RemoveWeaponFromPed(ped, hash)
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:forceStop", function(reason)
+        hunting = false
+        harvesting = false
+        HideHuntText()
+        if reason then
+            Notify(reason, "error")
+        end
+        if not SessionActive() then
+            DestroyHuntZone()
+            ClearLocalPigs()
+        end
+    end)
+
+    local function StartHunting()
+        if hunting then
+            Notify("You are already in the Raven hunt.", "info")
+            return
+        end
         if not CanUseRaven() then
             Notify(
                 (ConfigServerLocations and ConfigServerLocations.WrongServerMessage)
                     and ConfigServerLocations.WrongServerMessage("grind")
-                    or "Pig hunting is only available on Server #2 · Grind.",
+                    or "Pig hunting is only available on Region 1 · Main.",
                 "error"
             )
             return
         end
 
-        local playerPed = PlayerPedId()
-        local playerCoords = GetEntityCoords(playerPed)
+        local playerCoords = GetEntityCoords(PlayerPedId())
         local npcPos = vector3(ConfigRaven.Ped.coords.x, ConfigRaven.Ped.coords.y, ConfigRaven.Ped.coords.z)
-        local pigCenter = vector3(ConfigRaven.Pig.coords.x, ConfigRaven.Pig.coords.y, ConfigRaven.Pig.coords.z)
-
-        if #(playerCoords - npcPos) > 15.0 and #(playerCoords - pigCenter) > ConfigRaven.HuntZoneRadius then
-            Notify("Stay near the pig farm area to hunt.", "error")
-            return
-        end
-
-        if not PlayerHasKnife() then
-            Notify("You need a Knife in your inventory to start hunting.", "error")
+        if #(playerCoords - npcPos) > 15.0 and #(playerCoords - HuntCenter()) > HuntRadius() then
+            Notify("Stay near the pig farm to start Raven.", "error")
             return
         end
 
@@ -574,61 +934,85 @@ else
                 Notify(
                     (ConfigServerLocations and ConfigServerLocations.WrongServerMessage)
                         and ConfigServerLocations.WrongServerMessage("grind")
-                        or "Pig hunting is only available on Server #2 · Grind.",
+                        or "Pig hunting is only available on Region 1 · Main.",
                     "error"
                 )
+            elseif reason == "inventory" then
+                Notify("Make space in your inventory for the hunt knife.", "error")
             else
-                Notify("Stay near the pig farm area to hunt.", "error")
+                Notify("Stay near the pig farm to start Raven.", "error")
             end
-            return
         end
-
-        hunting = true
-        EnsurePigCount()
-        Notify("Pig hunting started. Kill pigs and harvest meat with your knife.", "success")
     end
 
-    -- Maintain living pig count + attach harvest targets on death
+    -- Visible 3D dome for everyone while the shared hunt is active
     CreateThread(function()
         while true do
-            if hunting then
-                for i = #pigs, 1, -1 do
-                    local pig = pigs[i]
-                    if not pig.entity or not DoesEntityExist(pig.entity) then
-                        table.remove(pigs, i)
-                    elseif IsEntityDead(pig.entity) then
-                        if not pig.dead then
+            if SessionActive() then
+                CreateHuntZone()
+                local center = HuntCenter()
+                local radius = HuntRadius()
+                local color = ConfigRaven.HuntZoneMarker or { r = 200, g = 36, b = 36, a = 72 }
+                DrawMarker(
+                    28,
+                    center.x, center.y, center.z,
+                    0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0,
+                    radius, radius, radius,
+                    color.r, color.g, color.b, color.a,
+                    false, false, 2, false, nil, nil, false
+                )
+                Wait(0)
+            else
+                if not hunting then
+                    DestroyHuntZone()
+                    ClearLocalPigs()
+                end
+                Wait(400)
+            end
+        end
+    end)
+
+    AddStateBagChangeHandler("ravenHunt", "global", function(_, _, value)
+        if type(value) == "table" and value.active and type(value.pigs) == "table" then
+            SyncPigList(value.pigs)
+            CreateHuntZone()
+        elseif not (value and value.active) then
+            if not hunting then
+                DestroyHuntZone()
+                ClearLocalPigs()
+            end
+        end
+    end)
+
+    -- Resolve networked pigs + report knife hits to the server
+    CreateThread(function()
+        local knife = joaat(ConfigRaven.RequiredWeapon)
+        while true do
+            if SessionActive() then
+                for netId, pig in pairs(pigs) do
+                    if not pig.entity or pig.entity == 0 or not DoesEntityExist(pig.entity) then
+                        pig.entity = ResolvePigEntity(netId)
+                        pig.targeted = false
+                    end
+
+                    local entity = pig.entity
+                    if entity and entity ~= 0 and DoesEntityExist(entity) then
+                        if IsEntityDead(entity) then
                             pig.dead = true
-                            AddHarvestTarget(i)
-                            -- Respawn living pig so living count stays at 15
-                            EnsurePigCount()
-                        end
-                    else
-                        local pCoords = GetEntityCoords(pig.entity)
-                        local center = ConfigRaven.Pig.coords
-                        if #(pCoords - vector3(center.x, center.y, center.z)) > (ConfigRaven.Pig.spawnRadius + 25.0) then
-                            CleanupPig(i)
+                            if hunting and not pig.targeted then
+                                AddHarvestTarget(netId)
+                            end
+                        elseif hunting and insideHuntZone and HasEntityBeenDamagedByWeapon(entity, knife, 0) then
+                            ClearEntityLastWeaponDamage(entity)
+                            ClearEntityLastDamageEntity(entity)
+                            TriggerServerEvent("cfx-keydi-raven:knifeHit", netId)
                         end
                     end
                 end
-
-                EnsurePigCount()
-
-                -- Auto-stop if player leaves the farm area
-                local center = ConfigRaven.Pig.coords
-                local pedCoords = GetEntityCoords(PlayerPedId())
-                local npcPos = vector3(ConfigRaven.Ped.coords.x, ConfigRaven.Ped.coords.y, ConfigRaven.Ped.coords.z)
-                local distToPigCenter = #(pedCoords - vector3(center.x, center.y, center.z))
-                local distToFarmer = #(pedCoords - npcPos)
-
-                if distToPigCenter > ConfigRaven.HuntZoneRadius and distToFarmer > (ConfigRaven.HuntZoneRadius + 10.0) then
-                    StopHunting()
-                    Notify("You left the pig farm area.", "error")
-                end
-
-                Wait(500)
+                Wait(50)
             else
-                Wait(1000)
+                Wait(400)
             end
         end
     end)
@@ -651,7 +1035,7 @@ else
                 {
                     name = "raven_start_hunt",
                     icon = "fa-solid fa-bacon",
-                    label = "Start Pig Hunting",
+                    label = "Start Raven",
                     distance = 2.5,
                     canInteract = function()
                         return CanUseRaven() and not hunting
@@ -663,13 +1047,13 @@ else
                 {
                     name = "raven_stop_hunt",
                     icon = "fa-solid fa-ban",
-                    label = "Stop Pig Hunting",
+                    label = "Leave Raven",
                     distance = 2.5,
                     canInteract = function()
                         return hunting
                     end,
                     onSelect = function()
-                        StopHunting()
+                        LeaveHunt()
                     end,
                 },
             },
@@ -678,13 +1062,9 @@ else
 
     local function SpawnFarmer()
         if npcPed and DoesEntityExist(npcPed) then return end
-
         local pedCfg = ConfigRaven.Ped
         local hash = LoadModel(pedCfg.model)
-        if not hash then
-            print("[Raven] Failed to load NPC model")
-            return
-        end
+        if not hash then return end
 
         local c = pedCfg.coords
         RequestCollisionAtCoord(c.x, c.y, c.z)
@@ -716,10 +1096,8 @@ else
         npcPed = nil
     end
 
-    -- Setup: wait for ox_target, register sphere zone, create blip, manage NPC streaming
     CreateThread(function()
         Wait(1000)
-
         while GetResourceState("ox_target") ~= "started" do
             Wait(200)
         end
@@ -741,6 +1119,12 @@ else
             SetBlipDisplay(farmBlip, 0)
         end
 
+        local hunt = GlobalState.ravenHunt
+        if hunt and hunt.active and type(hunt.pigs) == "table" then
+            SyncPigList(hunt.pigs)
+            CreateHuntZone()
+        end
+
         while true do
             local dist = #(GetEntityCoords(PlayerPedId()) - GetFarmerCoords())
             if CanUseRaven() and dist < 80.0 then
@@ -754,12 +1138,15 @@ else
 
     AddEventHandler("onResourceStop", function(resourceName)
         if resourceName ~= GetCurrentResourceName() then return end
-        StopHunting(true)
+        if hunting then
+            LeaveHunt(true)
+        end
+        DestroyHuntZone()
+        ClearLocalPigs()
         if farmerTargetZone and GetResourceState("ox_target") == "started" then
             pcall(function()
                 exports.ox_target:removeZone(farmerTargetZone)
             end)
-            farmerTargetZone = nil
         end
         DeleteFarmer()
         if farmBlip then
@@ -776,7 +1163,9 @@ else
             SetBlipAsShortRange(farmBlip, true)
         end
         if not enabled then
-            StopHunting(true)
+            if hunting then
+                LeaveHunt(true)
+            end
             DeleteFarmer()
         end
     end)

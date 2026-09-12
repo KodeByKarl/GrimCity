@@ -12,8 +12,39 @@ local function CountInMatch()
     return n
 end
 
+local function KeepItemsList()
+    local keep = Config.KeepItems
+    if type(keep) == 'table' and keep[1] then
+        return keep
+    end
+    return false
+end
+
+local function RemoveLoadoutItems(src)
+    local items = Config.LoadoutItems
+    if type(items) ~= 'table' then
+        items = { Config.WeaponName, Config.AmmoName }
+    end
+    for i = 1, #items do
+        local name = items[i]
+        if type(name) == 'string' and name ~= '' then
+            local count = ox_inventory:GetItemCount(src, name) or 0
+            if count > 0 then
+                ox_inventory:RemoveItem(src, name, count)
+            end
+        end
+    end
+    -- Equipped weapon slot (not always in items until disarmed)
+end
+
 local function ClearPvpInventory(src)
-    ox_inventory:ClearInventory(src, Config.KeepItems)
+    -- Disarm first so the equipped arena gun is back in a slot, then wipe.
+    pcall(function()
+        TriggerClientEvent('ox_inventory:disarm', src, true)
+    end)
+    local keep = KeepItemsList()
+    ox_inventory:ClearInventory(src, keep)
+    RemoveLoadoutItems(src)
 end
 
 local function Notify(src, msg, nType)
@@ -80,6 +111,15 @@ RegisterNetEvent('kodebykarl-pvp:requestLeave', function()
         TriggerClientEvent('cfx-keydi-ambulance:revive', src)
         TriggerClientEvent('cfx-keydi-ambulance:client:ResetLimbs', src)
         TriggerClientEvent('cfx-keydi-ambulance:client:RemoveBleed', src)
+        if GetResourceState('kodebykarl-logs') == 'started' then
+            pcall(function()
+                exports['kodebykarl-logs']:LogRevive({
+                    src = src,
+                    method = 'pvp',
+                    revivedByName = 'PvP Leave',
+                })
+            end)
+        end
     end
     LeaveMatch(src, true)
 end)
@@ -100,6 +140,15 @@ RegisterNetEvent('kodebykarl-pvp:requestRevive', function()
     TriggerClientEvent('cfx-keydi-ambulance:revive', src)
     TriggerClientEvent('cfx-keydi-ambulance:client:ResetLimbs', src)
     TriggerClientEvent('cfx-keydi-ambulance:client:RemoveBleed', src)
+    if GetResourceState('kodebykarl-logs') == 'started' then
+        pcall(function()
+            exports['kodebykarl-logs']:LogRevive({
+                src = src,
+                method = 'pvp',
+                revivedByName = 'PvP Arena',
+            })
+        end)
+    end
 end)
 
 local function GivePvpLoadout(src)

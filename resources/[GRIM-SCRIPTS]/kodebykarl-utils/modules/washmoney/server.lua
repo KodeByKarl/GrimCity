@@ -1,5 +1,6 @@
 local WashMoney = require 'configs.washmoney'
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 local MoneyWashCooldown = {}
 
 local VALID_MODES = {
@@ -107,6 +108,16 @@ RegisterNetEvent('cfx-keydi-utils:WashMoney', function(amount, mode)
     local src = source
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
+
+    if not Region.Allowed('illegal', src) then
+        TriggerClientEvent('ox_lib:notify', src, {
+            title = 'WASH MONEY',
+            description = Region.Message('illegal'),
+            type = 'error',
+            duration = 5000,
+        })
+        return
+    end
 
     mode = type(mode) == 'string' and mode or 'dm_to_money'
     local success, resultOrReason = ValidateExchange(xPlayer, amount, mode)

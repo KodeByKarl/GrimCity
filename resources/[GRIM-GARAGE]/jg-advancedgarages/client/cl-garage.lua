@@ -307,10 +307,6 @@ function storeVehicleInGarage(garageId, vehicleType)
         Framework.Client.Notify(Locale.vehicleStoreError, "error")
         isStoringVehicle = false
         return false
-    elseif isSpawnerGarage and existingVehicle then
-        Framework.Client.Notify(Locale.vehicleStoreError, "error")
-        isStoringVehicle = false
-        return false
     end
     
     -- Get vehicle properties and damage
@@ -378,13 +374,12 @@ function storeVehicleInGarage(garageId, vehicleType)
     -- Remove vehicle keys
     Framework.Client.VehicleRemoveKeys(vehiclePlate, currentVehicle, garageData and garageData.garageType)
     
-    -- Handle air/sea vehicle positioning
+    -- Only warp air/sea players if they would fall after the vehicle is deleted
     if garageData and garageData.coords and (vehicleType == "air" or vehicleType == "sea") then
-        local vehicleCoords = GetEntityCoords(currentVehicle)
-        local garageCoords = garageData.coords
-        
-        if #(garageCoords.xyz - vehicleCoords.xyz) > 0.5 then
-            local playerPed = cache.ped or PlayerPedId()
+        local playerPed = cache.ped or PlayerPedId()
+        local height = GetEntityHeightAboveGround(playerPed)
+        if height > 8.0 then
+            local garageCoords = garageData.coords
             SetEntityCoords(playerPed, garageCoords.x, garageCoords.y, garageCoords.z, false, false, false, false)
         end
     end
@@ -474,7 +469,13 @@ RegisterNUICallback("drive-vehicle", function(data, callback)
         )
     end
     
-    local result = driveVehicleOut(data.plate, data.garageId, data.spawnerIndex, spawnCoords)
+    local ok, result = pcall(driveVehicleOut, data.plate, data.garageId, data.spawnerIndex, spawnCoords)
+    
+    if not ok then
+        print("^1[ERROR] drive-vehicle: " .. tostring(result) .. "^0")
+        callback({ error = true })
+        return
+    end
     
     if not result then
         callback({ error = true })

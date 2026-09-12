@@ -39,6 +39,10 @@ AddEventHandler('cfx-keydi-chat:init', function()
     if configured then
         TriggerClientEvent('chat:addSuggestions', src, configured)
     end
+
+    if GetJobCommandSuggestions then
+        TriggerClientEvent('chat:addSuggestions', src, GetJobCommandSuggestions())
+    end
 end)
 
 -- Handle standard text messages

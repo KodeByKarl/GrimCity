@@ -8,7 +8,7 @@ end
 
 local function templateBackground(data, fallback)
     if data and data.gif then
-        -- Fixed compact card: image covers the box (crop), badge/logo side kept visible.
+        -- Logo stays on the right; card height can grow with wrapped text.
         return "background-image: linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.15) 100%), url('"
             .. data.gif
             .. "'); background-size: cover; background-position: center right; background-repeat: no-repeat;"
@@ -19,8 +19,8 @@ local function templateBackground(data, fallback)
     return "background: " .. (fallback or "#0f0f13") .. ";"
 end
 
---- Compact size matched to Traphouse chat cards (padding 8x12, ~single-block height).
-local ANNOUNCE_CARD_STYLE = "height: 52px; min-height: 52px; max-height: 52px; overflow: hidden; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-family: 'Outfit', sans-serif; position: relative; display: flex; flex-direction: column; justify-content: center; gap: 2px; max-width: 100%; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
+--- Compact for short messages; grows so long /wl /ems /gang text stays fully readable.
+local ANNOUNCE_CARD_STYLE = "min-height: 52px; height: auto; max-height: none; overflow: visible; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-family: 'Outfit', sans-serif; position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: 3px; max-width: 100%; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
 
 --- Freestyle job banner. Per-job colors/gifs override default.
 function ResolveJobTemplate(jobName, jobLabel)
@@ -89,13 +89,14 @@ function BuildAnnouncementHtml(data, headerLeft, fallbackBg, borderColor)
     local backgroundStyle = templateBackground(data, fallbackBg)
     local border = borderColor or "rgba(255, 255, 255, 0.08)"
     local overlay = (data and data.gif) and "" or "box-shadow: inset 0 0 40px rgba(0,0,0,0.45), 0 4px 15px rgba(0,0,0,0.5);"
+    local gifPad = (data and data.gif) and "padding-right: 72px;" or ""
 
-    return '<div style="' .. backgroundStyle .. ' color: ' .. color .. '; border: 1px solid ' .. border .. '; ' .. ANNOUNCE_CARD_STYLE .. ' ' .. overlay .. '">'
-        .. '  <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 10px; color: ' .. headerColor .. '; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">'
-        .. '    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">' .. headerLeft .. '</span>'
+    return '<div style="' .. backgroundStyle .. ' color: ' .. color .. '; border: 1px solid ' .. border .. '; ' .. ANNOUNCE_CARD_STYLE .. ' ' .. gifPad .. ' ' .. overlay .. '">'
+        .. '  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 10px; color: ' .. headerColor .. '; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.2;">'
+        .. '    <span style="min-width: 0; flex: 1; word-break: break-word; overflow-wrap: anywhere;">' .. headerLeft .. '</span>'
         .. '    <span style="flex-shrink: 0; opacity: 0.9;">{2}</span>'
         .. '  </div>'
-        .. '  <div style="color: ' .. color .. '; font-size: 12px; font-weight: 700; text-transform: uppercase; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{1}</div>'
+        .. '  <div style="color: ' .. color .. '; font-size: 12px; font-weight: 700; text-transform: uppercase; line-height: 1.35; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; overflow: visible;">{1}</div>'
         .. '</div>'
 end
 
@@ -106,77 +107,297 @@ if ConfigChat.clearCommand or true then
     end, false)
 end
 
--- Me Command (3D Text Display)
+-- Me Command (Grim City 3D NUI)
 local meConfig = ConfigChat.Me3D or {}
-local meLanguage = ConfigChat.Me3DLanguage or 'en'
+local meLanguage = ConfigChat.Me3DLanguage or meConfig.language or 'en'
 local meLang = ConfigChat.Me3DLanguages and ConfigChat.Me3DLanguages[meLanguage] or {}
+local meCooldown = {}
+
+local function sanitizeMeText(text)
+    text = tostring(text or '')
+    text = text:gsub('[%c]', ' ')
+    text = text:gsub('[~¦^<>]', '')
+    text = text:gsub('%s+', ' ')
+    text = text:match('^%s*(.-)%s*$') or ''
+    local maxLen = tonumber(meConfig.maxLength) or 140
+    if #text > maxLen then
+        text = text:sub(1, maxLen)
+    end
+    return text
+end
+
+function BroadcastMe3D(source, actionText)
+    if not source or source <= 0 then return false end
+    if meConfig.enabled == false then return false end
+
+    local text = sanitizeMeText(actionText)
+    if text == '' then return false end
+
+    local now = GetGameTimer()
+    local waitMs = tonumber(meConfig.cooldownMs) or 1500
+    if meCooldown[source] and (now - meCooldown[source]) < waitMs then
+        return false
+    end
+    meCooldown[source] = now
+
+    local prefix = meLang and meLang.prefix
+    local display = (type(prefix) == 'string' and prefix ~= '') and (prefix .. text) or text
+
+    if GetResourceState('discord-logs') == 'started' then
+        pcall(function()
+            exports['discord-logs']:LogChatMessage(source, "/me " .. text)
+        end)
+    elseif GetResourceState('ox_lib') == 'started' then
+        pcall(function()
+            lib.logger(source, '/me Log', '"'..GetPlayerName(source)..'" ['..source..'] said: "'..text..'"')
+        end)
+    end
+
+    GlobalState.SlashMe = {
+        text = display,
+        target = source
+    }
+    TriggerClientEvent('cfx-keydi-chat:me3d', -1, source, display)
+    return true
+end
 
 if meLang and meLang.commandName then
     GlobalState.SlashMe = {}
 
-    RegisterCommand(meLang.commandName, function(source, args, rawCommand)
-        local text = table.concat(args, " ")
-        if text == '' then return end
-        if text:find('¦') or text:find('~') then return end
-        
-        -- Log /me usage
-        if GetResourceState('discord-logs') == 'started' then
-            pcall(function()
-                exports['discord-logs']:LogChatMessage(source, "/me " .. text)
-            end)
-        elseif GetResourceState('ox_lib') == 'started' then
-            pcall(function()
-                lib.logger(source, '/me Log', '"'..GetPlayerName(source)..'" ['..source..'] said: "'..text..'"')
-            end)
-        end
-        
-        GlobalState.SlashMe = {
-            text = text,
-            target = source
-        }
+    RegisterCommand(meLang.commandName, function(source, args)
+        BroadcastMe3D(source, table.concat(args, ' '))
     end, false)
 end
 
--- WL (Job Announcement Command)
-if ConfigChat.jobTemplate.enabled then
-    RegisterCommand(ConfigChat.jobTemplate.command, function(source, args, rawCommand)
-        local xPlayer = ESX.GetPlayerFromId(source)
-        if not xPlayer then return end
+AddEventHandler('playerDropped', function()
+    meCooldown[source] = nil
+end)
 
-        local jobName = xPlayer.job and xPlayer.job.name
-        local jobLabel = xPlayer.job and xPlayer.job.label or (jobName and jobName:gsub("^%l", string.upper) or "JOB")
-        local gradeLabel = xPlayer.job and xPlayer.job.grade_label or "Region 4"
-        local message = table.concat(args, " ")
-        local time = os.date("%H:%M")
+local function getJobTemplatePaymentAmount(jobName)
+    local pay = ConfigChat.jobTemplatePayment
+    if not pay or not pay.enabled then return 0 end
+    jobName = type(jobName) == 'string' and jobName:lower() or nil
+    if not jobName or not pay.jobs or not pay.jobs[jobName] then return 0 end
+    return math.floor(tonumber(pay.amount) or 0)
+end
 
-        local jobData = ResolveJobTemplate(jobName, jobLabel)
-        if not jobData then
-            TriggerClientEvent('chat:addMessage', source, {
-                template = '<div style="color: #ff3b30; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px;">[SYSTEM] Your job does not have authorization to use this announcement!</div>'
-            })
-            return
+local function chargeJobTemplatePayment(xPlayer, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if amount <= 0 then return true end
+
+    local bank = 0
+    local cash = 0
+    if xPlayer.getAccount then
+        local bankAcc = xPlayer.getAccount('bank')
+        bank = bankAcc and tonumber(bankAcc.money) or 0
+        local moneyAcc = xPlayer.getAccount('money')
+        cash = moneyAcc and tonumber(moneyAcc.money) or 0
+    end
+    if cash <= 0 and xPlayer.getMoney then
+        cash = tonumber(xPlayer.getMoney()) or 0
+    end
+
+    local reason = 'Job announcement template'
+    if bank >= amount then
+        xPlayer.removeAccountMoney('bank', amount, reason)
+        return true
+    end
+    if cash >= amount then
+        if xPlayer.removeAccountMoney then
+            xPlayer.removeAccountMoney('money', amount, reason)
+        elseif xPlayer.removeMoney then
+            xPlayer.removeMoney(amount, reason)
+        else
+            return false
         end
+        return true
+    end
+    return false
+end
 
-        if message == "" then
-            TriggerClientEvent('chat:addMessage', source, {
-                template = '<div style="color: #e3a71b; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px;">[SYSTEM] Please enter a message! Format: /' .. ConfigChat.jobTemplate.command .. ' [message]</div>'
-            })
-            return
+local function chatSystem(source, color, text)
+    TriggerClientEvent('chat:addMessage', source, {
+        template = '<div style="color: ' .. color .. '; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px;">[SYSTEM] ' .. text .. '</div>'
+    })
+end
+
+local function assignedCommandForJob(jobName)
+    local jobs = ConfigChat.jobTemplate and ConfigChat.jobTemplate.jobs
+    local data = jobName and jobs and jobs[jobName]
+    if type(data) ~= 'table' or type(data.command) ~= 'string' or data.command == '' then
+        return nil
+    end
+    return data.command:lower()
+end
+
+--- command -> { jobName, ... } so only the assigned job can use it.
+local function collectAssignedCommands()
+    local map = {}
+    local jobs = ConfigChat.jobTemplate and ConfigChat.jobTemplate.jobs or {}
+
+    local function bind(cmd, jobName)
+        if type(cmd) ~= 'string' or cmd == '' then return end
+        cmd = cmd:lower()
+        local list = map[cmd]
+        if not list then
+            list = {}
+            map[cmd] = list
         end
-
-        local template = BuildAnnouncementHtml(jobData, 'FEED • ' .. jobLabel .. ' | {0} | ' .. gradeLabel)
-
-        TriggerClientEvent('chat:addMessage', -1, {
-            template = template,
-            args = { xPlayer.getName(), message, time }
-        })
-
-        if GetResourceState('discord-logs') == 'started' then
-            pcall(function()
-                exports['discord-logs']:LogChatMessage(source, "[" .. jobLabel .. "] " .. message)
-            end)
+        for i = 1, #list do
+            if list[i] == jobName then return end
         end
-    end, false)
+        list[#list + 1] = jobName
+    end
+
+    for jobName, data in pairs(jobs) do
+        if type(data) == 'table' then
+            bind(data.command, jobName)
+            if type(data.aliases) == 'table' then
+                for i = 1, #data.aliases do
+                    bind(data.aliases[i], jobName)
+                end
+            end
+        end
+    end
+
+    return map
+end
+
+local function jobListLabel(jobNames)
+    local pretty = {
+        police = 'Police',
+        sheriff = 'Sheriff',
+        doj = 'DOJ',
+        ambulance = 'EMS',
+        sambulance = 'Sheriff EMS',
+        pambulance = 'Paleto EMS',
+        mechanic = 'Mechanic',
+        uwu = 'UwU',
+        tacoshop = 'Taco Shop',
+        taco = 'Taco',
+        burgershot = 'Burger Shot',
+        ['8ball'] = '8 Ball',
+        weedshop = 'Weed Shop',
+        school = 'School',
+        tattooshop1 = 'Tattoo Shop',
+        tattooshop2 = 'Tattoo Shop',
+        tattooshop3 = 'Tattoo Shop',
+        vu = 'Vanilla Unicorn',
+    }
+    local labels = {}
+    local seen = {}
+    local jobs = ConfigChat.jobTemplate.jobs
+    for i = 1, #jobNames do
+        local name = jobNames[i]
+        local data = jobs[name]
+        local label = (data and data.label) or pretty[name] or name
+        if not seen[label] then
+            seen[label] = true
+            labels[#labels + 1] = label
+        end
+    end
+    return table.concat(labels, ', ')
+end
+
+function GetJobCommandSuggestions()
+    local suggestions = {}
+    local seen = {}
+    local assigned = collectAssignedCommands()
+
+    for cmd, jobNames in pairs(assigned) do
+        if not seen[cmd] then
+            seen[cmd] = true
+            local fee = 0
+            for i = 1, #jobNames do
+                fee = math.max(fee, getJobTemplatePaymentAmount(jobNames[i]))
+            end
+            local help = jobListLabel(jobNames) .. ' announcement'
+            if fee > 0 then
+                help = help .. ' ($' .. fee .. ')'
+            end
+            suggestions[#suggestions + 1] = {
+                name = '/' .. cmd,
+                help = help,
+                params = { { name = 'message', help = 'Your announcement' } },
+            }
+        end
+    end
+
+    table.sort(suggestions, function(a, b) return a.name < b.name end)
+    return suggestions
+end
+
+local function postAssignedJobAnnouncement(source, args, usedCommand, allowedJobs)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer then return end
+
+    local jobName = xPlayer.job and xPlayer.job.name
+    jobName = type(jobName) == 'string' and jobName:lower() or nil
+    local jobLabel = xPlayer.job and xPlayer.job.label or (jobName and jobName:gsub("^%l", string.upper) or "JOB")
+    local message = table.concat(args, " ")
+
+    local allowed = false
+    if jobName then
+        for i = 1, #allowedJobs do
+            if allowedJobs[i] == jobName then
+                allowed = true
+                break
+            end
+        end
+    end
+
+    if not allowed then
+        local mine = assignedCommandForJob(jobName)
+        if mine then
+            chatSystem(source, '#ff3b30', ('/%s is for %s. Your command is /%s.'):format(usedCommand, jobListLabel(allowedJobs), mine))
+        else
+            chatSystem(source, '#ff3b30', ('/%s is for %s only.'):format(usedCommand, jobListLabel(allowedJobs)))
+        end
+        return
+    end
+
+    if message == "" then
+        chatSystem(source, '#e3a71b', 'Please enter a message! Format: /' .. usedCommand .. ' [message]')
+        return
+    end
+
+    local jobData = ResolveJobTemplate(jobName, jobLabel)
+    if not jobData then
+        chatSystem(source, '#ff3b30', 'Your job does not have authorization to use this announcement!')
+        return
+    end
+
+    local fee = getJobTemplatePaymentAmount(jobName)
+    if fee > 0 and not chargeJobTemplatePayment(xPlayer, fee) then
+        chatSystem(source, '#ff3b30', 'Not enough money! Announcement costs $' .. fee .. '.')
+        return
+    end
+
+    local template = BuildAnnouncementHtml(jobData, 'FEED • ' .. jobLabel .. ' | {0}')
+    TriggerClientEvent('chat:addMessage', -1, {
+        template = template,
+        args = { xPlayer.getName(), message, os.date("%H:%M") }
+    })
+
+    if fee > 0 then
+        chatSystem(source, '#22c55e', 'Charged $' .. fee .. ' for this announcement.')
+    end
+
+    if GetResourceState('discord-logs') == 'started' then
+        pcall(function()
+            exports['discord-logs']:LogChatMessage(source, "[" .. jobLabel .. "] " .. message)
+        end)
+    end
+end
+
+-- Assigned job commands only. /wl is not registered.
+if ConfigChat.jobTemplate and ConfigChat.jobTemplate.enabled then
+    local assigned = collectAssignedCommands()
+    for cmd, allowedJobs in pairs(assigned) do
+        RegisterCommand(cmd, function(source, args)
+            postAssignedJobAnnouncement(source, args, cmd, allowedJobs)
+        end, false)
+    end
 end
 
 -- Gang announcement styling is enabled; the slash command is /gang only (kodebykarl-gangsystem).
@@ -187,7 +408,6 @@ if ConfigChat.gangTemplate.enabled and type(ConfigChat.gangTemplate.command) == 
 
         local gangName = nil
         local gangLabel = nil
-        local gradeLabel = nil
         local gangObj = nil
 
         if type(xPlayer.getGang) == 'function' then
@@ -200,7 +420,6 @@ if ConfigChat.gangTemplate.enabled and type(ConfigChat.gangTemplate.command) == 
         if type(gangObj) == 'table' then
             gangName = gangObj.name
             gangLabel = gangObj.label
-            gradeLabel = gangObj.grade_label
         elseif type(gangObj) == 'string' then
             gangName = gangObj
         end
@@ -233,16 +452,8 @@ if ConfigChat.gangTemplate.enabled and type(ConfigChat.gangTemplate.command) == 
         end
 
         gangLabel = gangData.label or gangLabel or gangName:upper()
-        gradeLabel = gradeLabel or ""
 
-        local headerLeft = 'FEED • ' .. gangLabel
-        if gradeLabel ~= "" then
-            headerLeft = headerLeft .. ' | {0} | ' .. gradeLabel
-        else
-            headerLeft = headerLeft .. ' | {0}'
-        end
-
-        local template = BuildAnnouncementHtml(gangData, headerLeft)
+        local template = BuildAnnouncementHtml(gangData, 'FEED • ' .. gangLabel .. ' | {0}')
 
         TriggerClientEvent('chat:addMessage', -1, {
             template = template,

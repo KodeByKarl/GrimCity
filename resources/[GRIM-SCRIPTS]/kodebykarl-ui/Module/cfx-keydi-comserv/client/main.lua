@@ -48,7 +48,7 @@ local function pushHud(action, extra)
             remaining = remaining,
             total = total,
             reason = reason,
-            brand = ConfigComServ.Brand or "PANDORA CITY",
+            brand = ConfigComServ.Brand or "GRIM CITY",
         },
     }
     if extra then

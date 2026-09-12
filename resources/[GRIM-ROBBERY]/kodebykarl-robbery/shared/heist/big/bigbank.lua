@@ -6,7 +6,7 @@ Config.Heist['bigbank'] = {
         require = {
             ['police'] = 0 --12
         },
-        reset = 7200,
+        reset = 500,
         timer = 1000,
         distanceToCancel = 10,
         rewards = {

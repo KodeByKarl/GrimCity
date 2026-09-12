@@ -10,7 +10,6 @@ local inJail = false
 
 local mainBlip
 local PrisonZone
-local CheckOutZone
 
 local prisonModules = {}
 
@@ -29,66 +28,91 @@ function prisonModules.setJailTime(jailTime)
     return (playerState.jailTime == jailTime)
 end
 
--- Create Checkout Location --
-function prisonModules.createCheckoutLocation()
-    if resources.xt_prisonjobs then return end
+local CheckOutZones = {}
 
-    local checkoutInfo = config.CheckOut
+local function tryReleaseFromCheckout()
+    local timeLeft = lib.callback.await('xt-prison:server:checkJailTime', false)
+    if timeLeft and timeLeft <= 0 then
+        prisonModules.exitPrison(true)
+    end
+end
+
+local function checkoutOptions()
+    return {
+        {
+            label = locale('input.check_time'),
+            icon = 'fas fa-hourglass-start',
+            onSelect = function()
+                tryReleaseFromCheckout()
+            end
+        },
+        {
+            label = locale('notify.leave_prison') or 'Leave Prison',
+            icon = 'fas fa-door-open',
+            canInteract = function()
+                return (LocalPlayer.state.jailTime or 0) <= 0
+            end,
+            onSelect = tryReleaseFromCheckout
+        }
+    }
+end
+
+local function addCheckoutZone(id, info)
+    if not info or not info.coords then return end
     if resources.qb_target then
-        CheckOutZone = exports['qb-target']:AddBoxZone("CheckOutZone", checkoutInfo.coords, checkoutInfo.size[1], checkoutInfo.size[2], {
-            name = "CheckOutZone",
-            heading = checkoutInfo.rotation,
+        CheckOutZones[id] = exports['qb-target']:AddBoxZone(id, info.coords, info.size[1], info.size[2], {
+            name = id,
+            heading = info.rotation,
             debugPoly = config.DebugPoly,
-            minZ = checkoutInfo.minZ,
-            maxZ = checkoutInfo.maxZ,
+            minZ = info.minZ,
+            maxZ = info.maxZ,
         }, {
             options = {
                 {
                     type = "client",
-                    event = "checkTime",
                     icon = "fas fa-hourglass-start",
                     label = locale('input.check_time'),
-                    action = function()
-                        local timeLeft = lib.callback.await('xt-prison:server:checkJailTime', false)
-                        if timeLeft <= 0 then
-                            prisonModules.exitPrison(true)
-                        end
-                    end
+                    action = tryReleaseFromCheckout
+                },
+                {
+                    type = "client",
+                    icon = "fas fa-door-open",
+                    label = locale('notify.leave_prison') or 'Leave Prison',
+                    canInteract = function()
+                        return (LocalPlayer.state.jailTime or 0) <= 0
+                    end,
+                    action = tryReleaseFromCheckout
                 },
             },
             distance = 2.5
         })
     else
-        CheckOutZone = exports.ox_target:addBoxZone({
-            coords = checkoutInfo.coords,
-            size = checkoutInfo.size,
-            rotation = checkoutInfo.rotation,
+        CheckOutZones[id] = exports.ox_target:addBoxZone({
+            coords = info.coords,
+            size = info.size,
+            rotation = info.rotation,
             debug = config.DebugPoly,
             drawsprite = true,
-            options = {
-                {
-                    label = locale('input.check_time'),
-                    icon = 'fas fa-hourglass-start',
-                    onSelect = function()
-                        local timeLeft = lib.callback.await('xt-prison:server:checkJailTime', false)
-                        if timeLeft <= 0 then
-                            prisonModules.exitPrison(true)
-                        end
-                    end
-                }
-            }
+            options = checkoutOptions()
         })
     end
 end
 
+-- Create Checkout Location --
+function prisonModules.createCheckoutLocation()
+    addCheckoutZone('CheckOutZone', config.CheckOut)
+    addCheckoutZone('YardCheckOutZone', config.YardCheckOut)
+end
+
 -- Remove Checkout Location --
 function prisonModules.removeCheckoutLocation()
-    if resources.xt_prisonjobs then return end
-
-    if resources.qb_target then
-        exports['qb-target']:RemoveZone("CheckOutZone")
-    else
-        exports.ox_target:removeZone(CheckOutZone)
+    for id, zone in pairs(CheckOutZones) do
+        if resources.qb_target then
+            exports['qb-target']:RemoveZone(id)
+        elseif zone then
+            exports.ox_target:removeZone(zone)
+        end
+        CheckOutZones[id] = nil
     end
 end
 
@@ -134,10 +158,41 @@ end
 
 -- Sets Player's Coords --
 function prisonModules.setPlayerCoords(coords)
-    SetEntityCoords(cache.ped, coords.x, coords.y, coords.z - 0.9, 0, 0, 0, false)
-    SetEntityHeading(cache.ped, coords.w)
-    local dist = #(vec3(coords.x, coords.y, coords.z - 0.9) - GetEntityCoords(cache.ped))
-    return (dist <= 5)
+    local x, y, z = coords.x + 0.0, coords.y + 0.0, coords.z + 0.0
+    local heading = coords.w or coords.h or 0.0
+    RequestCollisionAtCoord(x, y, z)
+    SetEntityCoordsNoOffset(cache.ped, x, y, z, false, false, false)
+    SetEntityHeading(cache.ped, heading)
+    local dist = #(vec3(x, y, z) - GetEntityCoords(cache.ped))
+    return dist <= 8.0
+end
+
+local function waitForCollision(coords, timeoutMs)
+    local x, y, z = coords.x + 0.0, coords.y + 0.0, coords.z + 0.0
+    RequestCollisionAtCoord(x, y, z)
+    local deadline = GetGameTimer() + (timeoutMs or 8000)
+    while not HasCollisionLoadedAroundEntity(cache.ped) and GetGameTimer() < deadline do
+        RequestCollisionAtCoord(x, y, z)
+        Wait(50)
+    end
+    return HasCollisionLoadedAroundEntity(cache.ped)
+end
+
+local function ensureScreenFadeIn(duration)
+    duration = duration or 800
+    if IsScreenFadedOut() or IsScreenFadingOut() then
+        DoScreenFadeIn(duration)
+        local deadline = GetGameTimer() + duration + 1500
+        while not IsScreenFadedIn() and GetGameTimer() < deadline do
+            if IsScreenFadedOut() then
+                DoScreenFadeIn(0)
+            end
+            Wait(25)
+        end
+    end
+    if IsScreenFadedOut() then
+        DoScreenFadeIn(0)
+    end
 end
 
 -- Entering Prison --
@@ -164,37 +219,45 @@ function prisonModules.enterPrison(setTime)
         TriggerServerEvent('xt-prison:server:removeItems')
         local isLifer = lib.callback.await('xt-prison:server:liferCheck', false)
 
-        DoScreenFadeOut(2000)
-        while not IsScreenFadedOut() do Wait(25) end
+        -- Watchdog: never leave the player faded out if teleport / collision hangs.
+        local fadeWatchdog = true
+        CreateThread(function()
+            Wait(12000)
+            if fadeWatchdog and (IsScreenFadedOut() or IsScreenFadingOut()) then
+                ensureScreenFadeIn(0)
+            end
+        end)
+
+        DoScreenFadeOut(1000)
+        local fadeOutDeadline = GetGameTimer() + 2500
+        while not IsScreenFadedOut() and GetGameTimer() < fadeOutDeadline do
+            Wait(25)
+        end
 
         local RandomSpawn = config.Spawns[math.random(1, #config.Spawns)]
-        lib.waitFor(function()
-            if prisonModules.setPlayerCoords(RandomSpawn.coords) then
-                FreezeEntityPosition(cache.ped, true)
-                while not HasCollisionLoadedAroundEntity(cache.ped) do
-                    Wait(0)
-                end
+        FreezeEntityPosition(cache.ped, true)
+        prisonModules.setPlayerCoords(RandomSpawn.coords)
+        waitForCollision(RandomSpawn.coords, 8000)
 
-                if HasCollisionLoadedAroundEntity(cache.ped) then
-                    if config.EnablePrisonOutfits then
-                        prisonModules.applyPrisonUniform()
-                    end
-                    inJail = true
-                    playerState.inJail = true
-                    return true
-                end
-            end
-        end, 'your pc is dogshit', 10000)
+        if config.EnablePrisonOutfits then
+            pcall(prisonModules.applyPrisonUniform)
+        end
+        inJail = true
+        playerState:set('inJail', true, true)
 
         FreezeEntityPosition(cache.ped, false)
 
-        TriggerServerEvent("InteractSound_SV:PlayOnSource", "jail", 0.5)
+        pcall(function()
+            TriggerServerEvent("InteractSound_SV:PlayOnSource", "jail", 0.5)
+        end)
 
-        config.Emote(RandomSpawn.emote)
+        pcall(function()
+            config.Emote(RandomSpawn.emote)
+        end)
         prisonModules.createCheckoutLocation()
 
-        DoScreenFadeIn(2000)
-        while not IsScreenFadedIn() do Wait(25) end
+        fadeWatchdog = false
+        ensureScreenFadeIn(1000)
 
         if config.EnterPrisonAlert.enable and not isLifer then
             CreateThread(function()
@@ -215,9 +278,13 @@ function prisonModules.enterPrison(setTime)
         end
 
         if resources.xt_prisonjobs then
-            exports['xt-prisonjobs']:InitPrisonJob()
+            pcall(function()
+                exports['xt-prisonjobs']:InitPrisonJob()
+            end)
         end
-        exports['xt-prison']:LoadPrisonJob()
+        pcall(function()
+            exports['xt-prison']:LoadPrisonJob()
+        end)
         return true
     end
 
@@ -226,6 +293,9 @@ end
 
 -- Exiting Prison --
 function prisonModules.exitPrison(isUnjailed)
+    if not inJail and not playerState.inJail and (playerState.jailTime or 0) <= 0 then
+        return true
+    end
     if playerState.jailTime > 0 and not isUnjailed then
         lib.notify({ title = (locale('notify.time_left')):format(playerState.jailTime), type = 'error' })
         return false
@@ -233,26 +303,45 @@ function prisonModules.exitPrison(isUnjailed)
         local setJailTime = prisonModules.setJailTime(0)
         if setJailTime then
             inJail = false
-            playerState.inJail = false
-            DoScreenFadeOut(2000)
-            while not IsScreenFadedOut() do Wait(25) end
+            playerState:set('inJail', false, true)
+
+            local fadeWatchdog = true
+            CreateThread(function()
+                Wait(10000)
+                if fadeWatchdog and (IsScreenFadedOut() or IsScreenFadingOut()) then
+                    ensureScreenFadeIn(0)
+                end
+            end)
+
+            DoScreenFadeOut(1000)
+            local fadeOutDeadline = GetGameTimer() + 2500
+            while not IsScreenFadedOut() and GetGameTimer() < fadeOutDeadline do
+                Wait(25)
+            end
 
             if config.EnablePrisonOutfits then
-                config.ResetClothing()
+                pcall(config.ResetClothing)
             end
 
             prisonModules.setPlayerCoords(config.Freedom)
+            waitForCollision(config.Freedom, 6000)
 
-            Wait(500)
-            DoScreenFadeIn(2000)
-            while not IsScreenFadedIn() do Wait(25) end
+            Wait(250)
+            fadeWatchdog = false
+            ensureScreenFadeIn(1000)
 
+            lib.callback.await('xt-prison:server:setJailStatus', false, 0)
+            Wait(150)
             TriggerServerEvent('xt-prison:server:returnItems')
 
             if resources.xt_prisonjobs then
-                exports['xt-prisonjobs']:CleanupPrisonJob()
+                pcall(function()
+                    exports['xt-prisonjobs']:CleanupPrisonJob()
+                end)
             end
-            exports['xt-prison']:UnloadPrisonJob()
+            pcall(function()
+                exports['xt-prison']:UnloadPrisonJob()
+            end)
             return true
         end
 	end
@@ -264,31 +353,61 @@ end
 function prisonModules.timeReductionLoop()
     CreateThread(function()
         while inJail do
+            Wait(60000)
+            if not inJail then
+                break
+            end
             if playerState.jailTime > 0 then
                 local newTime = (playerState.jailTime - 1)
                 prisonModules.setJailTime(newTime)
-            elseif playerState.jailTime <= 0 then
+                TriggerServerEvent('xt-prison:server:persistJailTime')
+            end
+
+            if (playerState.jailTime or 0) <= 0 then
                 lib.notify({
                     title = locale('notify.checkout'),
                     icon = 'fas fa-unlock',
                     type = 'success'
                 })
+                local timeLeft = lib.callback.await('xt-prison:server:checkJailTime', false)
+                if timeLeft and timeLeft <= 0 then
+                    prisonModules.exitPrison(true)
+                end
                 break
             end
-            Wait(60000)
         end
     end)
 end
 
 function prisonModules.applyPrisonUniform()
-    local outifitInfo = IsPedModel(cache.ped, 'mp_m_freemode_01') and config.PrisonOufits.male or config.PrisonOufits.female
-    SetPedComponentVariation(cache.ped, 1, outifitInfo.mask.item, outifitInfo.mask.texture)                 -- Mask
-    SetPedComponentVariation(cache.ped, 3, outifitInfo.arms.item, outifitInfo.arms.texture)                 -- Arms
-    SetPedComponentVariation(cache.ped, 4, outifitInfo.pants.item, outifitInfo.pants.texture)               -- Pants
-    SetPedComponentVariation(cache.ped, 6, outifitInfo.shoes.item, outifitInfo.shoes.texture)               -- Shoes
-    SetPedComponentVariation(cache.ped, 7, outifitInfo.accessories.item, outifitInfo.accessories.texture)   -- Accessory
-    SetPedComponentVariation(cache.ped, 8, outifitInfo.shirt.item, outifitInfo.shirt.texture)               -- Shirt
-    SetPedComponentVariation(cache.ped, 11, outifitInfo.jacket.item, outifitInfo.jacket.texture)            -- Jacket
+    local isMale = IsPedModel(cache.ped, `mp_m_freemode_01`)
+    local outifitInfo = isMale and config.PrisonOufits.male or config.PrisonOufits.female
+    if not outifitInfo then return end
+
+    local function setComponent(slot, drawable, texture)
+        drawable = tonumber(drawable) or 0
+        texture = tonumber(texture) or 0
+        local drawCount = GetNumberOfPedDrawableVariations(cache.ped, slot)
+        if drawCount <= 0 then return end
+        if drawable < 0 or drawable >= drawCount then
+            drawable = 0
+        end
+        local texCount = GetNumberOfPedTextureVariations(cache.ped, slot, drawable)
+        if texCount <= 0 then
+            texture = 0
+        elseif texture < 0 or texture >= texCount then
+            texture = math.max(0, texCount - 1)
+        end
+        SetPedComponentVariation(cache.ped, slot, drawable, texture, 0)
+    end
+
+    setComponent(1, outifitInfo.mask.item, outifitInfo.mask.texture)
+    setComponent(3, outifitInfo.arms.item, outifitInfo.arms.texture)
+    setComponent(4, outifitInfo.pants.item, outifitInfo.pants.texture)
+    setComponent(6, outifitInfo.shoes.item, outifitInfo.shoes.texture)
+    setComponent(7, outifitInfo.accessories.item, outifitInfo.accessories.texture)
+    setComponent(8, outifitInfo.shirt.item, outifitInfo.shirt.texture)
+    setComponent(11, outifitInfo.jacket.item, outifitInfo.jacket.texture)
 end
 
 return prisonModules

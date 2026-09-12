@@ -27,9 +27,9 @@ ConfigMarket = {
     -- Keep coords here so the server can verify the seller is at the stall.
     Locations = {
         {
-            coords = vec4(342.9301, -1298.0554, 32.55, 154.4067),
+            coords = vec4(162.0263, 6636.6411, 31.5562, 134.3263),
             ped = 'a_m_m_business_01',
-            scenario = 'WORLD_HUMAN_CLIPBOARD',
+            scenario = false,
             blip = {
                 label = 'Sell Market',
                 sprite = 78,

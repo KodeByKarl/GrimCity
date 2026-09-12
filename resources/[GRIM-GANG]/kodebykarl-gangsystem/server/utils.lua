@@ -42,7 +42,7 @@ function Gang.RequireTurfRegion(src)
     if GangRegion.Allowed(src) then
         return true
     end
-    Gang.Notify(src, 'Gang bases are only available on Region 3 or Region 4.', 'error')
+    Gang.Notify(src, 'Gang bases are only available on Region 1. Open Control Center (F5) → Regions.', 'error')
     return false
 end
 

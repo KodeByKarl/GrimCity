@@ -24,8 +24,18 @@ lib.callback.register("jg-advancedgarages:server:exit-interior", function(player
             SetPlayerRoutingBucket(playerId, interiorData.originalBucket)
         end
     else
-        -- Default to main routing bucket if no data found
-        SetPlayerRoutingBucket(playerId, 0)
+        -- Return to the player's region bucket (bucket 0 is Region 2, not "world")
+        if GetResourceState('kodebykarl-ui') == 'started' then
+            local restored = false
+            pcall(function()
+                restored = exports['kodebykarl-ui']:RestorePlayerBucket(playerId) == true
+            end)
+            if not restored then
+                SetPlayerRoutingBucket(playerId, 0)
+            end
+        else
+            SetPlayerRoutingBucket(playerId, 0)
+        end
     end
     
     -- Clean up stored data

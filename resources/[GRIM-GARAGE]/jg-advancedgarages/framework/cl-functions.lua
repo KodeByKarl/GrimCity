@@ -348,6 +348,27 @@ function Framework.Client.VehicleSetFuel(vehicle, fuel)
   end
 end
 
+--- Carlock exports live on kodebykarl-ui. `provide 'cfx-keydi-ui'` makes GetResourceState
+--- report started, but exports['cfx-keydi-ui'] does not resolve to the providing resource.
+local function carlockKey(give, plate)
+  local ok = false
+  if GetResourceState("kodebykarl-ui") == "started" then
+    ok = pcall(function()
+      if give then
+        exports["kodebykarl-ui"]:GiveKey(plate)
+      else
+        exports["kodebykarl-ui"]:RemoveKey(plate)
+      end
+    end)
+  end
+  if ok then return end
+  if give then
+    TriggerServerEvent("cfx-keydi-carlock:server:giveKey", plate)
+  else
+    TriggerServerEvent("cfx-keydi-carlock:server:removeKey", plate)
+  end
+end
+
 ---@param plate string
 ---@param vehicleEntity integer
 ---@param origin "personal" | "job" | "gang"
@@ -375,9 +396,7 @@ function Framework.Client.VehicleGiveKeys(plate, vehicleEntity, origin)
   elseif Config.VehicleKeys == "wasabi_carlock" then
     exports.wasabi_carlock:GiveKey(plate)
   elseif Config.VehicleKeys == "cfx-keydi-carlock" then
-    if GetResourceState("cfx-keydi-ui") == "started" then
-      exports["cfx-keydi-ui"]:GiveKey(plate)
-    end
+    carlockKey(true, plate)
   elseif Config.VehicleKeys == "cd_garage" then
     TriggerEvent("cd_garage:AddKeys", plate)
   elseif Config.VehicleKeys == "okokGarage" then
@@ -418,9 +437,7 @@ function Framework.Client.VehicleRemoveKeys(plate, vehicleEntity, origin)
   elseif Config.VehicleKeys == "wasabi_carlock" then
     exports.wasabi_carlock:RemoveKey(plate)
   elseif Config.VehicleKeys == "cfx-keydi-carlock" then
-    if GetResourceState("cfx-keydi-ui") == "started" then
-      exports["cfx-keydi-ui"]:RemoveKey(plate)
-    end
+    carlockKey(false, plate)
   elseif Config.VehicleKeys == "t1ger_keys" then
     TriggerServerEvent("t1ger_keys:updateOwnedKeys", plate, false)
   elseif Config.VehicleKeys == "MrNewbVehicleKeys" then

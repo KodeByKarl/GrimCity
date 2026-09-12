@@ -158,6 +158,14 @@ local function handleTrapHouseKill(victimSrc, killerSrc, deathData)
     local xKiller = ESX.GetPlayerFromId(killerSrc)
     if not xVictim or not xKiller then return end
 
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, allowed = pcall(function()
+            return exports['kodebykarl-ui']:PlayerHasFunction(killerSrc, 'traphouse')
+                and exports['kodebykarl-ui']:PlayerHasFunction(victimSrc, 'traphouse')
+        end)
+        if not ok or not allowed then return end
+    end
+
     -- Verify Killer Ped & Coords on Server
     local killerPed = GetPlayerPed(killerSrc)
     if not DoesEntityExist(killerPed) then return end

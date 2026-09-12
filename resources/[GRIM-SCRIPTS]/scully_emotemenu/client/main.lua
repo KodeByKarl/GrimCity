@@ -509,6 +509,11 @@ function playEmote(data, variation)
         animationName = animationName[randomIndex]
     end
 
+    if type(dictionaryName) ~= 'string' or not DoesAnimDictExist(dictionaryName) then
+        notify('error', lang.not_valid_emote)
+        return
+    end
+
     local isValid = lib.requestAnimDict(dictionaryName, 10000)
 
     if not isValid then
@@ -565,6 +570,11 @@ function playEmote(data, variation)
         local secondaryEmote = data.Options.SecondaryEmote
 
         if secondaryEmote then
+            if type(secondaryEmote.Dictionary) ~= 'string' or not DoesAnimDictExist(secondaryEmote.Dictionary) then
+                notify('error', lang.not_valid_emote)
+                return
+            end
+
             local isSecondaryValid = lib.requestAnimDict(secondaryEmote.Dictionary, 10000)
 
             if not isSecondaryValid then
@@ -676,6 +686,11 @@ function initCloneEmote(data)
         animationName = animationName[randomIndex]
     end
 
+    if type(dictionaryName) ~= 'string' or not DoesAnimDictExist(dictionaryName) then
+        notify('error', lang.not_valid_emote)
+        return
+    end
+
     local isValid = lib.requestAnimDict(dictionaryName, 10000)
 
     if not isValid then
@@ -708,6 +723,11 @@ function initCloneEmote(data)
         local secondaryEmote = data.Options.SecondaryEmote
 
         if secondaryEmote then
+            if type(secondaryEmote.Dictionary) ~= 'string' or not DoesAnimDictExist(secondaryEmote.Dictionary) then
+                notify('error', lang.not_valid_emote)
+                return
+            end
+
             local isSecondaryValid = lib.requestAnimDict(secondaryEmote.Dictionary, 10000)
 
             if not isSecondaryValid then
@@ -1027,9 +1047,20 @@ function removeUnsupportedEmotes()
         if AnimationList[checkMenus[i]] then
             AnimationList[checkMenus[i]] = removeFromTable(AnimationList[checkMenus[i]], function(_table, _index)
                 local animation, doesExist = _table[_index], true
+                local dictionary = animation.Dictionary
+
+                if type(dictionary) == 'table' then
+                    for dictIndex = 1, #dictionary do
+                        if not DoesAnimDictExist(dictionary[dictIndex]) then
+                            doesExist = false
+                            break
+                        end
+                    end
+                elseif dictionary and not DoesAnimDictExist(dictionary) then
+                    doesExist = false
+                end
 
                 if gameBuild < 2699 then
-                    if animation.Dictionary and not DoesAnimDictExist(animation.Dictionary) then doesExist = false end
                     if animation.Options and animation.Options.Props then
                         local props = animation.Options.Props
                         local propCount = #props
@@ -2022,6 +2053,11 @@ RegisterNetEvent('scully_emotemenu:synchronizedEmoteRequest', function(sender, s
 end)
 
 RegisterNetEvent('scully_emotemenu:targetStartSynchronizedEmote', function(sender, senderData, targetData)
+    if type(targetData.Dictionary) ~= 'string' or not DoesAnimDictExist(targetData.Dictionary) then
+        notify('error', lang.not_valid_emote)
+        return
+    end
+
     local isValid = lib.requestAnimDict(targetData.Dictionary, 10000)
 
     if not isValid then
@@ -2048,6 +2084,11 @@ RegisterNetEvent('scully_emotemenu:targetStartSynchronizedEmote', function(sende
 end)
 
 RegisterNetEvent('scully_emotemenu:senderStartSynchronizedEmote', function(target, senderData)
+    if type(senderData.Dictionary) ~= 'string' or not DoesAnimDictExist(senderData.Dictionary) then
+        notify('error', lang.not_valid_emote)
+        return
+    end
+
     local isValid = lib.requestAnimDict(senderData.Dictionary, 10000)
 
     if not isValid then

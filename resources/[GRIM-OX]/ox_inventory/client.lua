@@ -201,7 +201,7 @@ function client.openInventory(inv, data)
             return lib.notify({ id = 'cannot_perform', type = 'error', description = locale('cannot_perform') })
         end
 
-        left, right, accessError = lib.callback.await('ox_inventory:openShop', 200, data)
+        left, right, accessError = lib.callback.await('ox_inventory:openShop', false, data)
     elseif inv == 'crafting' then
         if cache.vehicle then
             return lib.notify({ id = 'cannot_perform', type = 'error', description = locale('cannot_perform') })
@@ -237,8 +237,17 @@ function client.openInventory(inv, data)
         end
     elseif invOpen ~= nil then
         if inv == 'policeevidence' then
+            local prefix = 'pd'
+            local title = locale('police_evidence') or 'Police Evidence Locker'
+
+            if type(data) == 'table' then
+                prefix = data.prefix or data.department or prefix
+                title = data.label or title
+                data = data.locker or data.id
+            end
+
             if not data then
-                local input = lib.inputDialog(locale('police_evidence') or 'Police Evidence Locker', {
+                local input = lib.inputDialog(title, {
                     { label = 'Evidence Locker Code', description = 'Enter case code or locker number', type = 'input', required = true, icon = 'lock' }
                 })
 
@@ -246,6 +255,8 @@ function client.openInventory(inv, data)
 
                 data = input[1]
             end
+
+            data = { locker = data, prefix = prefix }
         end
 
         left, right, accessError = lib.callback.await('ox_inventory:openInventory', false, inv, data)

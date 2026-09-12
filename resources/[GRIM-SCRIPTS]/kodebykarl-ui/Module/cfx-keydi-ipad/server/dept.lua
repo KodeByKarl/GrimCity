@@ -138,7 +138,7 @@ local function getLedger(cfg)
             action = row.action,
             amount = tonumber(row.amount) or 0,
             note = row.note or '',
-            createdAt = row.created_at,
+            createdAt = row.created_at and tostring(row.created_at) or nil,
         }
     end
     return out
@@ -270,6 +270,22 @@ local function EnsureTables()
             KEY `idx_dept` (`department`, `id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `grim_mdt_cases` (
+            `id` INT NOT NULL AUTO_INCREMENT,
+            `department` VARCHAR(32) NOT NULL,
+            `suspect_name` VARCHAR(80) NOT NULL,
+            `suspect_identifier` VARCHAR(80) DEFAULT NULL,
+            `charges` VARCHAR(255) NOT NULL,
+            `notes` VARCHAR(500) DEFAULT NULL,
+            `officer_name` VARCHAR(80) NOT NULL,
+            `officer_identifier` VARCHAR(80) NOT NULL,
+            `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_dept` (`department`, `id`),
+            KEY `idx_suspect` (`suspect_name`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
 end
 
 CreateThread(function()
@@ -294,7 +310,7 @@ local function listAnnouncements(dept, limit)
             body = row.body,
             author = row.author_name,
             priority = row.priority == 1 or row.priority == true,
-            createdAt = row.created_at,
+            createdAt = row.created_at and tostring(row.created_at) or nil,
         }
     end
     return out
@@ -317,7 +333,7 @@ local function listBolos(dept, limit)
             plate = row.plate,
             description = row.description,
             author = row.author_name,
-            createdAt = row.created_at,
+            createdAt = row.created_at and tostring(row.created_at) or nil,
         }
     end
     return out
@@ -541,6 +557,157 @@ lib.callback.register('cfx-keydi-ipad:dept:announce', function(source, data)
     return { ok = true, announcements = listAnnouncements(dept, 30) }
 end)
 
+local function likeQuery(query)
+    if type(query) ~= 'string' then return nil end
+    local q = query:gsub('^%s+', ''):gsub('%s+$', '')
+    if q == '' then return nil end
+    q = q:gsub('[%%_]', '')
+    if #q < 2 then return nil end
+    return '%' .. q:sub(1, 60) .. '%'
+end
+
+local function listMdtCases(dept, query, limit)
+    limit = math.min(math.max(tonumber(limit) or 40, 1), 80)
+    local like = likeQuery(query)
+    local okRows, rowsOrErr = pcall(function()
+        if like then
+            return MySQL.query.await([[
+                SELECT id, suspect_name, suspect_identifier, charges, notes, officer_name, created_at
+                FROM grim_mdt_cases
+                WHERE department = ?
+                  AND (suspect_name LIKE ? OR charges LIKE ? OR notes LIKE ? OR officer_name LIKE ?)
+                ORDER BY id DESC
+                LIMIT ?
+            ]], { dept, like, like, like, like, limit }) or {}
+        end
+        return MySQL.query.await([[
+            SELECT id, suspect_name, suspect_identifier, charges, notes, officer_name, created_at
+            FROM grim_mdt_cases
+            WHERE department = ?
+            ORDER BY id DESC
+            LIMIT ?
+        ]], { dept, limit }) or {}
+    end)
+    local rows = (okRows and type(rowsOrErr) == 'table') and rowsOrErr or {}
+
+    local out = {}
+    for i = 1, #rows do
+        local row = rows[i]
+        out[#out + 1] = {
+            id = tonumber(row.id),
+            source = 'mdt',
+            suspectName = row.suspect_name,
+            identifier = row.suspect_identifier,
+            charges = row.charges,
+            notes = row.notes,
+            officerName = row.officer_name,
+            createdAt = row.created_at and tostring(row.created_at) or nil,
+        }
+    end
+
+    local needle = like and query:gsub('^%s+', ''):gsub('%s+$', ''):lower() or nil
+    local ok, docs = pcall(function()
+        return MySQL.query.await([[
+            SELECT id, data FROM k5_documents WHERE isCopy = 0 ORDER BY id DESC LIMIT 60
+        ]])
+    end)
+    if ok and type(docs) == 'table' then
+        for i = 1, #docs do
+            local decoded = docs[i].data
+            local parsed
+            if type(decoded) == 'string' and decoded ~= '' then
+                local pok, val = pcall(json.decode, decoded)
+                if pok and type(val) == 'table' then parsed = val end
+            elseif type(decoded) == 'table' then
+                parsed = decoded
+            end
+            if type(parsed) == 'table' then
+                local title = parsed.documentName or parsed.name or parsed.type or 'Report'
+                local suspect, charges, location
+                if type(parsed.fields) == 'table' then
+                    for f = 1, #parsed.fields do
+                        local field = parsed.fields[f]
+                        if type(field) == 'table' then
+                            local fname = tostring(field.name or ''):lower()
+                            local fval = tostring(field.value or '')
+                            if fname:find('suspect', 1, true) or fname:find('driver', 1, true) then
+                                suspect = fval
+                            elseif fname:find('charge', 1, true) or fname:find('violation', 1, true) then
+                                charges = fval
+                            elseif fname:find('location', 1, true) then
+                                location = fval
+                            end
+                        end
+                    end
+                end
+                local hay = table.concat({
+                    tostring(title), tostring(suspect or ''), tostring(charges or ''), tostring(location or '')
+                }, ' '):lower()
+                if not needle or hay:find(needle, 1, true) then
+                    out[#out + 1] = {
+                        id = 'doc-' .. tostring(docs[i].id),
+                        source = 'document',
+                        suspectName = (suspect and suspect ~= '') and suspect or 'Unknown',
+                        charges = (charges and charges ~= '') and charges or title,
+                        notes = location,
+                        officerName = title,
+                        createdAt = nil,
+                    }
+                end
+            end
+        end
+    end
+
+    return out
+end
+
+local function listMdtFines(query, limit)
+    limit = math.min(math.max(tonumber(limit) or 40, 1), 80)
+    local like = likeQuery(query)
+    local ok, rows = pcall(function()
+        if like then
+            return MySQL.query.await([[
+                SELECT id, reference, title, description, total, status, sender_name, sender_job,
+                       receiver_name, receiver_identifier, created_at
+                FROM keydi_invoices
+                WHERE sender_job IN ('police', 'sheriff', 'doj')
+                  AND (receiver_name LIKE ? OR title LIKE ? OR reference LIKE ? OR description LIKE ?)
+                ORDER BY id DESC
+                LIMIT ?
+            ]], { like, like, like, like, limit })
+        end
+        return MySQL.query.await([[
+            SELECT id, reference, title, description, total, status, sender_name, sender_job,
+                   receiver_name, receiver_identifier, created_at
+            FROM keydi_invoices
+            WHERE sender_job IN ('police', 'sheriff', 'doj')
+            ORDER BY id DESC
+            LIMIT ?
+        ]], { limit })
+    end)
+    if not ok or type(rows) ~= 'table' then
+        return {}
+    end
+
+    local out = {}
+    for i = 1, #rows do
+        local row = rows[i]
+        out[#out + 1] = {
+            id = tonumber(row.id),
+            reference = row.reference,
+            title = row.title,
+            description = row.description,
+            total = tonumber(row.total) or 0,
+            status = row.status,
+            officerName = row.sender_name,
+            citizenName = row.receiver_name,
+            identifier = row.receiver_identifier,
+            createdAt = row.created_at and tostring(row.created_at) or nil,
+        }
+    end
+    return out
+end
+
 ------------------------------------------------------------
 -- MDT (police / sheriff)
 ------------------------------------------------------------
@@ -556,6 +723,8 @@ lib.callback.register('cfx-keydi-ipad:mdt:dashboard', function(source, data)
     local units = onlineUnits(cfg)
     local announcements = listAnnouncements(dept, 40)
     local bolos = listBolos(dept, 40)
+    local cases = listMdtCases(dept, nil, 40)
+    local fines = listMdtFines(nil, 40)
 
     return {
         ok = true,
@@ -564,6 +733,8 @@ lib.callback.register('cfx-keydi-ipad:mdt:dashboard', function(source, data)
         units = units,
         announcements = announcements,
         bolos = bolos,
+        cases = cases,
+        fines = fines,
         onlineCount = #units,
         canAnnounce = isDeptBoss(xPlayer, dept),
     }
@@ -610,6 +781,51 @@ lib.callback.register('cfx-keydi-ipad:mdt:removeBolo', function(source, data)
 
     MySQL.update.await('DELETE FROM grim_ipad_dept_bolos WHERE id = ? AND department = ?', { id, dept })
     return { ok = true, bolos = listBolos(dept, 40) }
+end)
+
+lib.callback.register('cfx-keydi-ipad:mdt:search', function(source, data)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    data = type(data) == 'table' and data or {}
+    local dept = data.department
+    local cfg = deptConfig(dept)
+    if not cfg or not cfg.mdt or not canAccessMdt(xPlayer, dept) then
+        return { ok = false, error = 'denied' }
+    end
+    local query = type(data.query) == 'string' and data.query or ''
+    return {
+        ok = true,
+        cases = listMdtCases(dept, query, 40),
+        fines = listMdtFines(query, 40),
+    }
+end)
+
+lib.callback.register('cfx-keydi-ipad:mdt:addCase', function(source, data)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    data = type(data) == 'table' and data or {}
+    local dept = data.department
+    local cfg = deptConfig(dept)
+    if not cfg or not cfg.mdt or not canAccessMdt(xPlayer, dept) then
+        return { ok = false, error = 'denied' }
+    end
+
+    local suspect = type(data.suspectName) == 'string' and data.suspectName:gsub('^%s+', ''):gsub('%s+$', '') or ''
+    local charges = type(data.charges) == 'string' and data.charges:gsub('^%s+', ''):gsub('%s+$', '') or ''
+    local notes = type(data.notes) == 'string' and data.notes:gsub('^%s+', ''):gsub('%s+$', '') or ''
+    if #suspect < 2 or #charges < 2 then
+        return { ok = false, error = 'invalid' }
+    end
+    suspect = suspect:sub(1, 80)
+    charges = charges:sub(1, 255)
+    notes = notes:sub(1, 500)
+
+    MySQL.insert.await(
+        [[INSERT INTO grim_mdt_cases
+            (department, suspect_name, charges, notes, officer_name, officer_identifier)
+          VALUES (?, ?, ?, ?, ?, ?)]],
+        { dept, suspect, charges, notes, playerDisplayName(xPlayer), xPlayer.identifier }
+    )
+
+    return { ok = true, cases = listMdtCases(dept, nil, 40) }
 end)
 
 -- Session helpers for economy.lua (optional export)

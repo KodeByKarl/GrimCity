@@ -190,6 +190,8 @@ lib.callback.register("jg-dealerships:server:start-test-drive", function(source,
 
     })
 
+    FgDealershipSession(source, 'testdrive', true, 1800000)
+
     return true, vehicleNetId
 
 end)
@@ -251,6 +253,8 @@ lib.callback.register("jg-dealerships:server:finish-test-drive", function(source
     end
 
     testDriveSessions[identifier] = nil
+
+    FgDealershipSession(source, 'testdrive', false)
 
     return session
 
@@ -410,6 +414,10 @@ lib.callback.register("jg-dealerships:server:start-direct-test-drive", function(
 
     })
 
+    FgDealershipSession(source, 'testdrive', true, 1800000)
+
+    FgDealershipSession(customerPlayerId, 'testdrive', true, 1800000)
+
     return true, spawnCoords, vehicleNetId, not Config.SpawnVehiclesWithServerSetter, sessionId, plate
 
 end)
@@ -477,6 +485,10 @@ lib.callback.register("jg-dealerships:server:cancel-direct-test-drive", function
     DeleteTestDriveVehicle(session)
 
     TriggerClientEvent("jg-dealerships:client:direct-test-drive-ended", session.customerPlayerId, plate)
+
+    FgDealershipSession(session.sellerPlayerId, 'testdrive', false)
+
+    FgDealershipSession(session.customerPlayerId, 'testdrive', false)
 
     directTestDriveSessions[sessionId] = nil
 
@@ -606,6 +618,10 @@ lib.callback.register("jg-dealerships:server:end-test-drive-remote", function(so
 
     TriggerClientEvent("jg-dealerships:client:direct-test-drive-ended-remote", session.customerPlayerId, plate, false)
 
+    FgDealershipSession(session.sellerPlayerId, 'testdrive', false)
+
+    FgDealershipSession(session.customerPlayerId, 'testdrive', false)
+
     directTestDriveSessions[sessionId] = nil
 
     return true
@@ -725,6 +741,17 @@ end)
 RegisterNetEvent("jg-dealerships:server:exit-bucket", function()
 
     local src = source
+
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local restored = false
+        pcall(function()
+            restored = exports['kodebykarl-ui']:RestorePlayerBucket(src) == true
+        end)
+        if restored then
+            print(string.format("Restart: restored player %s to region bucket", src))
+            return
+        end
+    end
 
     SetPlayerRoutingBucket(src, 0)
 

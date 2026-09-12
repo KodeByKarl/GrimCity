@@ -191,6 +191,22 @@ end
 
 RegisterNetEvent('kodebykarl-airdropv2:pickupAirdrop', function(id)
     local src = source
+    if GetResourceState('kodebykarl-ui') == 'started' then
+        local ok, allowed = pcall(function()
+            return exports['kodebykarl-ui']:PlayerHasFunction(src, 'illegal')
+        end)
+        if not ok or not allowed then
+            local msg = 'Airdrops can only be looted on Region 1. Open Control Center (F5) → Regions.'
+            local mok, text = pcall(function()
+                return exports['kodebykarl-ui']:WrongServerMessage('illegal')
+            end)
+            if mok and type(text) == 'string' and text ~= '' then
+                msg = text
+            end
+            notify(src, msg, 'error')
+            return
+        end
+    end
     local airdrop = GetAirdrop(id)
     if not airdrop then return end
 

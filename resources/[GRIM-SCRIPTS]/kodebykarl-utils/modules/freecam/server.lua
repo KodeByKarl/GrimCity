@@ -114,6 +114,23 @@ RegisterCommand(Config.Command or 'freecam', function(source, args, rawCommand)
                 exports['ElectronAC']:tempWhitelistPlayer(src, 'antiGodmode')
                 exports['ElectronAC']:tempWhitelistPlayer(src, 'antiInvisible')
             end)
+            local fgName = GetConvar('fiveguard_resource', '')
+            if fgName == '' then
+                for _, name in ipairs({ 'grimbot', 'fiveguard', 'fg', 'FiveGuard' }) do
+                    if GetResourceState(name) == 'started' then
+                        fgName = name
+                        break
+                    end
+                end
+            end
+            if fgName ~= '' and GetResourceState(fgName) == 'started' then
+                pcall(function()
+                    exports[fgName]:SetTempPermission(src, 'Client', 'BypassFreecam', true, false)
+                    exports[fgName]:SetTempPermission(src, 'Client', 'BypassNoclip', true, false)
+                    exports[fgName]:SetTempPermission(src, 'Client', 'BypassInvisible', true, false)
+                    exports[fgName]:SetTempPermission(src, 'Client', 'BypassTeleport', true, false)
+                end)
+            end
             -- Streamers can leave freecam with Backspace (client-only). Expire the exception.
             SetTimeout(30 * 60 * 1000, function()
                 if not GetPlayerName(src) then return end
@@ -123,6 +140,14 @@ RegisterCommand(Config.Command or 'freecam', function(source, args, rawCommand)
                     exports['ElectronAC']:tempUnWhitelistPlayer(src, 'antiGodmode')
                     exports['ElectronAC']:tempUnWhitelistPlayer(src, 'antiInvisible')
                 end)
+                if fgName ~= '' and GetResourceState(fgName) == 'started' then
+                    pcall(function()
+                        exports[fgName]:SetTempPermission(src, 'Client', 'BypassFreecam', false, false)
+                        exports[fgName]:SetTempPermission(src, 'Client', 'BypassNoclip', false, false)
+                        exports[fgName]:SetTempPermission(src, 'Client', 'BypassInvisible', false, false)
+                        exports[fgName]:SetTempPermission(src, 'Client', 'BypassTeleport', false, false)
+                    end)
+                end
             end)
             TriggerClientEvent('cfx-keydi-utils:freecam', src)
         else
@@ -131,6 +156,33 @@ RegisterCommand(Config.Command or 'freecam', function(source, args, rawCommand)
         end
     end)
 end, false)
+
+RegisterNetEvent('kodebykarl-utils:freecam:stopped', function()
+    local src = source
+    local fgName = GetConvar('fiveguard_resource', '')
+    if fgName == '' then
+        for _, name in ipairs({ 'grimbot', 'fiveguard', 'fg', 'FiveGuard' }) do
+            if GetResourceState(name) == 'started' then
+                fgName = name
+                break
+            end
+        end
+    end
+    pcall(function()
+        exports['ElectronAC']:tempUnWhitelistPlayer(src, 'antiFreecam')
+        exports['ElectronAC']:tempUnWhitelistPlayer(src, 'antiNoclip')
+        exports['ElectronAC']:tempUnWhitelistPlayer(src, 'antiGodmode')
+        exports['ElectronAC']:tempUnWhitelistPlayer(src, 'antiInvisible')
+    end)
+    if fgName ~= '' and GetResourceState(fgName) == 'started' then
+        pcall(function()
+            exports[fgName]:SetTempPermission(src, 'Client', 'BypassFreecam', false, false)
+            exports[fgName]:SetTempPermission(src, 'Client', 'BypassNoclip', false, false)
+            exports[fgName]:SetTempPermission(src, 'Client', 'BypassInvisible', false, false)
+            exports[fgName]:SetTempPermission(src, 'Client', 'BypassTeleport', false, false)
+        end)
+    end
+end)
 
 exports('CanUseFreecam', function(src, cb)
     if not cb then

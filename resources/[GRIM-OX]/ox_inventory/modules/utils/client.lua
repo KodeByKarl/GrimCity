@@ -209,7 +209,10 @@ function Utils.nearbyMarker(point)
         if IsControlJustReleased(0, 38) then
             CreateThread(function()
                 if point.inv == 'policeevidence' then
-                    client.openInventory('policeevidence')
+                    client.openInventory('policeevidence', {
+                        prefix = point.evidencePrefix or 'pd',
+                        label = point.evidenceLabel,
+                    })
                 elseif point.inv == 'crafting' then
                     client.openInventory('crafting', { id = point.benchid, index = point.index })
                 else

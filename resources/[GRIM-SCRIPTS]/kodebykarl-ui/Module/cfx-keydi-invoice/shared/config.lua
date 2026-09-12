@@ -20,9 +20,10 @@ Config.Invoice = {
     ScreenshotEnabled = true,
 
     -- Jobs that can issue society (job) invoices. label = Invoice Type shown on the bill.
+    -- forceSociety: always job invoice; paid funds go to that job's society account (never the officer).
     JobInvoices = {
-        police = { label = "Law Enforcement", minGrade = 0 },
-        sheriff = { label = "Law Enforcement", minGrade = 0 },
+        police = { label = "Law Enforcement", minGrade = 0, forceSociety = true },
+        sheriff = { label = "Law Enforcement", minGrade = 0, forceSociety = true },
         ambulance = { label = "Emergency Medical", minGrade = 0 },
         sambulance = { label = "Emergency Medical", minGrade = 0 },
         pambulance = { label = "Emergency Medical", minGrade = 0 },

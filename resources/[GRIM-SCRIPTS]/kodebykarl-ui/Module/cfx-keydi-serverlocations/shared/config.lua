@@ -5,27 +5,30 @@
     `connect` command). Players keep the same character/inventory.
     Players only see others in the SAME region (bucket isolation).
 
-    Region 1 = All Farm (autofarm, raven, weed, orange)
-    Region 2 = School (city / school RP — default for new players)
-    Region 3 = Turf War
-    Region 4 = Turf War
+    Region 1 = MAIN world (bucket 0) — grinding + illegal. Everyone here sees each other.
+    Region 2 = School only + school war
+    Region 3 = TrapHouse instance A — no safezone
+    Region 4 = TrapHouse instance B — no safezone
 ]]
 
 ConfigServerLocations = {}
 
 ConfigServerLocations.Debug = false
-ConfigServerLocations.DefaultId = "region2"
+-- Default world is Region 1 so hospital / appearance / "reset to bucket 0" stay together.
+ConfigServerLocations.DefaultId = "region1"
 -- Stay at current coords. Switching only changes routing bucket / functions.
 ConfigServerLocations.TeleportOnSwitch = false
 ConfigServerLocations.SwitchCooldown = 8 -- seconds between switches
 ConfigServerLocations.FadeOutMs = 400
 ConfigServerLocations.FadeInMs = 700
 
--- Must be inside a safezone to switch (jail / arena still always locked)
+-- Must be inside a safezone to switch (jail / arena / combat / instances still always locked)
 ConfigServerLocations.RequireSafezone = true
 ConfigServerLocations.LockInJail = true
 ConfigServerLocations.LockInArena = true
 ConfigServerLocations.LockInPvp = true
+ConfigServerLocations.LockInCombat = true
+ConfigServerLocations.LockInInstance = true
 
 ConfigServerLocations.WrongServerNotify = "This is only available on %s. Open Control Center (F5) → Regions to switch."
 
@@ -41,13 +44,17 @@ ConfigServerLocations.LegacyIdMap = {
 ConfigServerLocations.PublicServers = {
     {
         id = "region1",
-        name = "Region 1 · All Farm",
-        tag = "FARM REALM",
-        type = "farm",
-        description = "All farms available here — autofarm, hunting, weed, and orange picking.",
-        bucket = 1,
+        name = "Region 1 · Main",
+        tag = "MAIN REALM",
+        type = "main",
+        description = "Main world — all grinding, city jobs, housing, house robbery, turf war, weed farm, gang bases, and illegal. Everyone here sees each other.",
+        bucket = 0,
         spawn = vec4(2004.3286, 4902.1523, 42.7468, 58.4939),
-        functions = { "grind", "autofarm", "raven", "weedfarm", "job_orange" },
+        functions = {
+            "main", "jobs", "housing",
+            "grind", "autofarm", "raven", "weedfarm", "job_orange",
+            "illegal", "turfwar", "gangbase", "safezone",
+        },
         status = "ONLINE",
     },
     {
@@ -55,32 +62,32 @@ ConfigServerLocations.PublicServers = {
         name = "Region 2 · School",
         tag = "SCHOOL REALM",
         type = "school",
-        description = "School / city RP. Jobs, housing, and social roleplay.",
-        bucket = 0,
+        description = "School only — campus RP and school war. No farming, illegal, or traphouse.",
+        bucket = 1,
         spawn = vec4(222.2027, -864.0162, 30.2922, 1.0),
-        functions = { "main", "jobs", "housing", "school" },
+        functions = { "school", "schoolwar", "safezone" },
         status = "ONLINE",
     },
     {
         id = "region3",
-        name = "Region 3 · Turf War",
-        tag = "TURF REALM",
-        type = "turfwar",
-        description = "Turf War instance. Gang wars only work here and on Region 4.",
+        name = "Region 3 · TrapHouse",
+        tag = "TRAP REALM",
+        type = "traphouse",
+        description = "TrapHouse redzone instance. Isolated from Region 1. No safezones.",
         bucket = 2,
-        spawn = vec4(-2248.41, 269.54, 174.60, 0.0),
-        functions = { "turfwar" },
+        spawn = vec4(1204.89, -557.81, 69.62, 0.0),
+        functions = { "traphouse" },
         status = "ONLINE",
     },
     {
         id = "region4",
-        name = "Region 4 · Turf War",
-        tag = "TURF REALM",
-        type = "turfwar",
-        description = "Second Turf War instance. Isolated from Region 3 players.",
+        name = "Region 4 · TrapHouse",
+        tag = "TRAP REALM",
+        type = "traphouse",
+        description = "Second TrapHouse instance. Isolated from Region 3. No safezones.",
         bucket = 3,
-        spawn = vec4(2506.01, -383.29, 94.12, 0.0),
-        functions = { "turfwar" },
+        spawn = vec4(-1116.84, 304.53, 66.52, 0.0),
+        functions = { "traphouse" },
         status = "ONLINE",
     },
 }
@@ -96,7 +103,7 @@ ConfigServerLocations.SideJobServers = {
         bucket = 12,
         spawn = vec4(281.1007, 6530.7979, 30.1681, 87.7354),
         description = "Pick oranges in a dedicated orchard instance.",
-        functions = { "grind", "autofarm", "job_orange" },
+        functions = { "grind", "autofarm", "job_orange", "safezone" },
     },
 }
 
@@ -207,4 +214,26 @@ function ConfigServerLocations.WrongServerMessage(fn)
     local loc = ConfigServerLocations.FindLocationForFunction(fn)
     local name = loc and loc.name or "the correct Region"
     return (ConfigServerLocations.WrongServerNotify):format(name)
+end
+
+--- TrapHouse regions have no safezones, so players must still be able to leave via F5
+--- (combat / jail / death locks still apply).
+function ConfigServerLocations.RequiresSafezoneToSwitch(src)
+    if ConfigServerLocations.RequireSafezone == false then
+        return false
+    end
+
+    local id
+    if IsDuplicityVersion() then
+        src = tonumber(src)
+        if not src or src < 1 then return true end
+        local state = Player(src).state
+        id = ConfigServerLocations.NormalizeId((state and state.grimServerId) or ConfigServerLocations.DefaultId)
+    else
+        id = ConfigServerLocations.GetClientCurrentId()
+    end
+
+    local loc = ConfigServerLocations.GetById(id)
+    if not loc then return true end
+    return ConfigServerLocations.HasFunction(loc, "safezone")
 end

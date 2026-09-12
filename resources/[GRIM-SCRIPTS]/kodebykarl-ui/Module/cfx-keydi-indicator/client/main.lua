@@ -47,6 +47,7 @@ end)
 -- Initialize settings on load
 CreateThread(function()
     LoadSettings()
+    RequestNamedPtfxAsset("core")
 end)
 
 -- Global function to allow opening config from other client scripts in the same resource
@@ -139,6 +140,12 @@ local function ResolveZone(bonehash)
     if DeathScreenBones and DeathScreenBones.ZoneFromBone then
         return DeathScreenBones.ZoneFromBone(bonehash)
     end
+    bonehash = tonumber(bonehash) or -1
+    if bonehash == 31086 or bonehash == 12844 or bonehash == 65068
+        or bonehash == 39317 or bonehash == 97 or bonehash == 98 or bonehash == 99
+        or (bonehash >= 98 and bonehash <= 123) then
+        return "head"
+    end
     return "torso"
 end
 
@@ -156,8 +163,11 @@ local function ReadDamageBone(ped)
     local found, bone = GetPedLastDamageBone(ped)
     local bonehash = (found and tonumber(bone)) or -1
     local zone = ResolveZone(bonehash)
-    pcall(function()
-        ClearPedLastDamageBone(ped)
+    -- Delay clear so deathscreen / helmet / other hit readers can still use this bone
+    SetTimeout(400, function()
+        if DoesEntityExist(ped) then
+            pcall(ClearPedLastDamageBone, ped)
+        end
     end)
     if ConfigIndicator.Debug then
         local id = DeathScreenBones and DeathScreenBones.NormalizeBoneId(bonehash) or bonehash
@@ -266,7 +276,7 @@ AddEventHandler('gameEventTriggered', function(eventName, data)
 
                     -- Trigger server event to relay the hit info to the attacker
                     if hit.health > 0 or hit.armor > 0 or fatallyInjured then
-                        local bonehash = select(1, ReadDamageBone(playerPed))
+                        local bonehash = ReadDamageBone(playerPed)
                         TriggerServerEvent('cfx-keydi-indicator:server:registerHit', attackerServerId, hit, fatallyInjured, bonehash)
                     end
                 end

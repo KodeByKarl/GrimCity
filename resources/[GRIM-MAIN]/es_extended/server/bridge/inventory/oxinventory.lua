@@ -32,5 +32,11 @@ function setPlayerInventory(playerId, xPlayer, inventory, isNew)
                 exports.ox_inventory:AddItem(playerId, name, account)
             end
         end
+
+        -- Starter pack: given once when the character is first created
+        pcall(function()
+            exports.ox_inventory:AddItem(playerId, 'stash_car', 1)
+            exports.ox_inventory:AddItem(playerId, 'food_drinks_box', 1)
+        end)
     end
 end

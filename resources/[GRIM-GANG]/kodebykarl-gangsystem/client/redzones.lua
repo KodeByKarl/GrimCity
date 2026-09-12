@@ -1,6 +1,6 @@
 --[[
-  Gang map blips (named base + redzone radius) — ONLY visible on Region 3 / 4
-  (turfwar function). Leaving to Region 1 / 2 removes them.
+  Gang map blips (named base + redzone radius) — Region 1 only (gangbase).
+  TrapHouse is Region 3 / 4. Leaving Region 1 removes these blips.
 ]]
 
 local redzoneBlips = {}

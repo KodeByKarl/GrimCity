@@ -49,11 +49,19 @@ else
 	Vars.stlUnlocked = false
 	-- North of this Y = Sandy / Paleto / Grapeseed (Blaine). City is south.
 	Vars.BlaineMinY = 1425.0
+	-- North of this Y = Paleto / Chiliad. Sandy + Grapeseed stay on Sandy Hospital.
+	Vars.PaletoMinY = 5000.0
 
 	function Vars.IsBlaineCoords(coords)
 		if not coords then return false end
 		local y = coords.y or coords[2]
 		return type(y) == 'number' and y >= Vars.BlaineMinY
+	end
+
+	function Vars.IsPaletoCoords(coords)
+		if not coords then return false end
+		local y = coords.y or coords[2]
+		return type(y) == 'number' and y >= Vars.PaletoMinY
 	end
 
 	function Vars.CheckInRedZone(coords)
@@ -95,6 +103,29 @@ else
 			return Vars.IsBlaineCoords(GetEntityCoords(ped))
 		end
 		return false
+	end
+
+	function Vars.DiedInPaleto()
+		if Vars.deathCoords then
+			return Vars.IsPaletoCoords(Vars.deathCoords)
+		end
+		local ped = (cache and cache.ped) or PlayerPedId()
+		if ped and ped ~= 0 then
+			return Vars.IsPaletoCoords(GetEntityCoords(ped))
+		end
+		return false
+	end
+
+	-- STL hospital for this death: city / Sandy / Paleto.
+	-- City default is Integrity Way; death UI still lists Carson Ave + hospitals.
+	function Vars.SelectStlZone()
+		if Vars.DiedInPaleto() then
+			return 'paleto_hospital'
+		end
+		if Vars.DiedInBlaine() then
+			return 'sandy_hospital'
+		end
+		return 'integrity_way'
 	end
 
 	Vars.IsDispatched = false

@@ -118,6 +118,8 @@ local function SpawnConfiguredPed(k)
 	if v.scenario then
 		SetPedCanPlayAmbientAnims(spawnedped, true)
 		TaskStartScenarioInPlace(spawnedped, v.scenario, 0, true)
+		-- Scenario can spin the ped; keep configured heading.
+		SetEntityHeading(spawnedped, v.coords.w or 0.0)
 	end
 
 	if v.pedrelations then

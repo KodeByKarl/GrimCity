@@ -3,9 +3,11 @@ import { cn } from "@/lib/utils";
 import {
   BatteryFull,
   ClipboardList,
+  FileText,
   Loader2,
   Plus,
   Radio,
+  Receipt,
   Search,
   Signal,
   Siren,
@@ -17,7 +19,7 @@ import type { IpadPlayerData } from "./Ipad";
 import { fetchNui } from "@/lib/nui";
 import type { DeptId } from "./DeptBossApp";
 
-type TabId = "home" | "announce" | "units" | "bolos";
+type TabId = "home" | "announce" | "units" | "bolos" | "cases" | "fines";
 
 type Unit = {
   serverId: number;
@@ -33,7 +35,7 @@ type Announcement = {
   body: string;
   author: string;
   priority?: boolean;
-  createdAt?: string;
+  createdAt?: string | number;
 };
 
 type Bolo = {
@@ -41,7 +43,31 @@ type Bolo = {
   plate: string;
   description: string;
   author: string;
-  createdAt?: string;
+  createdAt?: string | number;
+};
+
+type CaseRecord = {
+  id: number | string;
+  source?: string;
+  suspectName: string;
+  identifier?: string | null;
+  charges: string;
+  notes?: string | null;
+  officerName?: string;
+  createdAt?: string | number;
+};
+
+type FineRecord = {
+  id: number;
+  reference?: string;
+  title: string;
+  description?: string | null;
+  total: number;
+  status?: string;
+  officerName?: string;
+  citizenName?: string;
+  identifier?: string | null;
+  createdAt?: string | number;
 };
 
 type Dashboard = {
@@ -51,6 +77,8 @@ type Dashboard = {
   units?: Unit[];
   announcements?: Announcement[];
   bolos?: Bolo[];
+  cases?: CaseRecord[];
+  fines?: FineRecord[];
   onlineCount?: number;
   canAnnounce?: boolean;
 };
@@ -60,6 +88,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "announce", label: "Announce" },
   { id: "units", label: "Units" },
   { id: "bolos", label: "BOLOs" },
+  { id: "cases", label: "Cases" },
+  { id: "fines", label: "Fines" },
 ];
 
 const THEME: Record<"police" | "sheriff", { accent: string; header: string }> = {
@@ -86,9 +116,20 @@ function StatusBar() {
   );
 }
 
-function formatWhen(value?: string) {
-  if (!value) return "";
-  const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+function formatWhen(value?: string | number | null) {
+  if (value == null || value === "") return "";
+  let d: Date;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    d = new Date(value < 1e12 ? value * 1000 : value);
+  } else {
+    const s = String(value);
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const n = Number(s);
+      d = new Date(n < 1e12 ? n * 1000 : n);
+    } else {
+      d = new Date(s.includes("T") ? s : s.replace(" ", "T"));
+    }
+  }
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
@@ -107,6 +148,10 @@ export default function LeoMdtApp({
   const [query, setQuery] = useState("");
   const [plate, setPlate] = useState("");
   const [desc, setDesc] = useState("");
+  const [recordQuery, setRecordQuery] = useState("");
+  const [suspectName, setSuspectName] = useState("");
+  const [charges, setCharges] = useState("");
+  const [caseNotes, setCaseNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -134,11 +179,8 @@ export default function LeoMdtApp({
     const list = dash?.announcements || [];
     const q = query.trim().toLowerCase();
     if (!q || tab !== "announce") return list;
-    return list.filter(
-      (a) =>
-        a.title.toLowerCase().includes(q) ||
-        a.body.toLowerCase().includes(q) ||
-        a.author.toLowerCase().includes(q),
+    return list.filter((a) =>
+      [a.title, a.body, a.author].some((field) => String(field || "").toLowerCase().includes(q)),
     );
   }, [dash?.announcements, query, tab]);
 
@@ -176,6 +218,44 @@ export default function LeoMdtApp({
     flash("BOLO cleared.");
   };
 
+  const searchRecords = async () => {
+    if (busy) return;
+    setBusy(true);
+    const result = await fetchNui<{ ok: boolean; cases?: CaseRecord[]; fines?: FineRecord[] }>(
+      "cfx-keydi-ipad:mdt:search",
+      { department, query: recordQuery },
+    );
+    setBusy(false);
+    if (!result?.ok) {
+      flash("Search failed.");
+      return;
+    }
+    setDash((prev) =>
+      prev ? { ...prev, cases: result.cases || [], fines: result.fines || [] } : prev,
+    );
+  };
+
+  const addCase = async () => {
+    if (!suspectName.trim() || !charges.trim() || busy) return;
+    setBusy(true);
+    const result = await fetchNui<{ ok: boolean; cases?: CaseRecord[] }>("cfx-keydi-ipad:mdt:addCase", {
+      department,
+      suspectName,
+      charges,
+      notes: caseNotes,
+    });
+    setBusy(false);
+    if (!result?.ok) {
+      flash("Could not file case.");
+      return;
+    }
+    setDash((prev) => (prev ? { ...prev, cases: result.cases } : prev));
+    setSuspectName("");
+    setCharges("");
+    setCaseNotes("");
+    flash("Case filed.");
+  };
+
   const latest = dash?.announcements?.[0];
 
   return (
@@ -187,7 +267,7 @@ export default function LeoMdtApp({
           <div>
             <p className="text-[17px] font-bold text-white">{dash?.label || "MDT"}</p>
             <p className="text-[11px] text-white/50">
-              Live units & BOLOs · {player?.firstName || "Officer"}
+              Cases, fines, units & BOLOs · {player?.firstName || "Officer"}
             </p>
           </div>
         </div>
@@ -226,6 +306,14 @@ export default function LeoMdtApp({
               <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
                 <p className="text-[9px] font-black uppercase tracking-wider text-white/45">Active BOLOs</p>
                 <p className="mt-1 text-[24px] font-black text-white">{dash?.bolos?.length || 0}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                <p className="text-[9px] font-black uppercase tracking-wider text-white/45">Cases</p>
+                <p className="mt-1 text-[24px] font-black text-white">{dash?.cases?.length || 0}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                <p className="text-[9px] font-black uppercase tracking-wider text-white/45">Fines</p>
+                <p className="mt-1 text-[24px] font-black text-white">{dash?.fines?.length || 0}</p>
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/25 p-3.5">
@@ -352,6 +440,134 @@ export default function LeoMdtApp({
                 </p>
               </div>
             ))}
+          </div>
+        ) : null}
+
+        {tab === "cases" ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+              <Search className="h-4 w-4 text-white/40" />
+              <input
+                value={recordQuery}
+                onChange={(e) => setRecordQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void searchRecords();
+                }}
+                placeholder="Search suspect, charges, officer…"
+                className="w-full bg-transparent text-[13px] text-white outline-none placeholder:text-white/35"
+              />
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void searchRecords()}
+                className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold text-white/80"
+                style={{ backgroundColor: theme.accent }}
+              >
+                Search
+              </button>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+              <input
+                value={suspectName}
+                onChange={(e) => setSuspectName(e.target.value.slice(0, 80))}
+                placeholder="Suspect name"
+                className="mb-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-white outline-none"
+              />
+              <input
+                value={charges}
+                onChange={(e) => setCharges(e.target.value.slice(0, 255))}
+                placeholder="Charges"
+                className="mb-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-white outline-none"
+              />
+              <textarea
+                value={caseNotes}
+                onChange={(e) => setCaseNotes(e.target.value.slice(0, 500))}
+                placeholder="Notes (optional)"
+                rows={2}
+                className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-white outline-none"
+              />
+              <button
+                type="button"
+                disabled={busy || !suspectName.trim() || !charges.trim()}
+                onClick={() => void addCase()}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-bold text-white disabled:opacity-40"
+                style={{ backgroundColor: theme.accent }}
+              >
+                <Plus className="h-4 w-4" /> File case
+              </button>
+            </div>
+            {(dash?.cases || []).length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <FileText className="mx-auto mb-2 h-7 w-7 text-white/25" />
+                <p className="text-[12px] text-white/40">No cases on file.</p>
+              </div>
+            ) : (
+              (dash?.cases || []).map((c) => (
+                <div key={String(c.id)} className="rounded-2xl border border-white/10 bg-black/25 px-3.5 py-3">
+                  <p className="text-[14px] font-semibold text-white">{c.suspectName}</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-white/70">{c.charges}</p>
+                  {c.notes ? <p className="mt-1 text-[11px] text-white/45">{c.notes}</p> : null}
+                  <p className="mt-2 text-[10px] text-white/40">
+                    {c.officerName || "Officer"} · {formatWhen(c.createdAt) || "record"}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        ) : null}
+
+        {tab === "fines" ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+              <Search className="h-4 w-4 text-white/40" />
+              <input
+                value={recordQuery}
+                onChange={(e) => setRecordQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void searchRecords();
+                }}
+                placeholder="Search citizen, reference, title…"
+                className="w-full bg-transparent text-[13px] text-white outline-none placeholder:text-white/35"
+              />
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void searchRecords()}
+                className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold text-white/80"
+                style={{ backgroundColor: theme.accent }}
+              >
+                Search
+              </button>
+            </div>
+            {(dash?.fines || []).length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <Receipt className="mx-auto mb-2 h-7 w-7 text-white/25" />
+                <p className="text-[12px] text-white/40">No LEO fines on file. Issue them from /billing.</p>
+              </div>
+            ) : (
+              (dash?.fines || []).map((f) => (
+                <div key={f.id} className="rounded-2xl border border-white/10 bg-black/25 px-3.5 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[14px] font-semibold text-white">{f.citizenName || "Citizen"}</p>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                        f.status === "paid" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300",
+                      )}
+                    >
+                      {f.status || "unpaid"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[12px] text-white/70">{f.title}</p>
+                  {f.description ? <p className="mt-0.5 text-[11px] text-white/45">{f.description}</p> : null}
+                  <p className="mt-2 text-[12px] font-bold text-white">${Number(f.total || 0).toLocaleString()}</p>
+                  <p className="mt-1 text-[10px] text-white/40">
+                    {f.reference ? `${f.reference} · ` : ""}
+                    {f.officerName || "Officer"} · {formatWhen(f.createdAt)}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         ) : null}
       </div>

@@ -262,27 +262,25 @@ AddEventHandler('onClientResourceStop', function()
 end)
 
 -- ============================================
--- 3D Text Display (/me command functionality)
+-- Grim City 3D /me (NUI overlay above the ped)
 -- ============================================
 local meConfig = ConfigChat.Me3D or {}
-local meLanguage = ConfigChat.Me3DLanguage or 'en'
+local meLanguage = ConfigChat.Me3DLanguage or meConfig.language or 'en'
 local meLang = ConfigChat.Me3DLanguages and ConfigChat.Me3DLanguages[meLanguage] or {}
 local peds = {}
+local nuiDirty = false
 
-local function draw3dText(coords, text)
+local function drawNative3dText(coords, text)
     local camCoords = GetGameplayCamCoord()
     local dist = #(coords - camCoords)
-    
     local scale = 200 / (GetGameplayCamFov() * dist)
-    local meColor = meConfig.color or {}
 
-    SetTextColour(meColor.r or 230, meColor.g or 230, meColor.b or 230, meColor.a or 255)
-    SetTextScale(0.0, (meConfig.scale or 0.5) * scale)
-    SetTextFont(meConfig.font or 0)
+    SetTextColour(230, 230, 230, 255)
+    SetTextScale(0.0, 0.42 * scale)
+    SetTextFont(4)
     SetTextDropshadow(0, 0, 0, 0, 55)
     SetTextDropShadow()
     SetTextCentre(true)
-
     BeginTextCommandDisplayText("STRING")
     AddTextComponentSubstringPlayerName(text)
     SetDrawOrigin(coords, 0)
@@ -290,22 +288,25 @@ local function draw3dText(coords, text)
     ClearDrawOrigin()
 end
 
-local function displayText(ped, text)
+local function displayText(ped, text, serverId)
     local playerPed = PlayerPedId()
     local playerPos = GetEntityCoords(playerPed)
     local targetPos = GetEntityCoords(ped)
     local dist = #(playerPos - targetPos)
     local los = HasEntityClearLosToEntity(playerPed, ped, 17)
 
-    if dist <= (meConfig.dist or 250) and los then
+    if dist <= (meConfig.dist or 22.0) and los then
         peds[ped] = {
-            time = GetGameTimer() + (meConfig.time or 5000),
-            text = text
+            time = GetGameTimer() + (meConfig.time or 5500),
+            text = text,
+            serverId = serverId,
         }
+        nuiDirty = true
     end
 end
 
 local function onShareDisplay(text, target)
+    if not meConfig.enabled then return end
     if not text or not target then return end
 
     local player = GetPlayerFromServerId(target)
@@ -313,28 +314,81 @@ local function onShareDisplay(text, target)
     if player ~= -1 or target == serverId then
         local ped = GetPlayerPed(player)
         if DoesEntityExist(ped) then
-            displayText(ped, text)
+            displayText(ped, text, target)
         end
     end
 end
 
-AddStateBagChangeHandler("SlashMe", 'global', function(bagName, key, value)
+AddStateBagChangeHandler("SlashMe", 'global', function(_, _, value)
     if type(value) == 'table' then
         onShareDisplay(value.text, value.target)
     end
 end)
 
+RegisterNetEvent('cfx-keydi-chat:me3d', function(target, text)
+    onShareDisplay(text, target)
+end)
+
 CreateThread(function()
+    local lastPayload = ''
     while true do
-        local sleep = (next(peds) == nil) and 500 or 50
-        Wait(sleep)
-        local now = GetGameTimer()
-        for ped, data in pairs(peds) do
-            if not DoesEntityExist(ped) or now > data.time then
-                peds[ped] = nil
-            else
-                local pos = GetOffsetFromEntityInWorldCoords(ped, 0.0, 0.0, 1.0)
-                draw3dText(pos, data.text)
+        if next(peds) == nil then
+            if nuiDirty then
+                SendNUIMessage({ action = 'me3d:sync', bubbles = {} })
+                lastPayload = ''
+                nuiDirty = false
+            end
+            Wait(400)
+        else
+            Wait(0)
+            local now = GetGameTimer()
+            local myPed = PlayerPedId()
+            local myPos = GetEntityCoords(myPed)
+            local maxDist = meConfig.dist or 22.0
+            local fadeStart = meConfig.fadeStart or 14.0
+            local headOffset = meConfig.headOffset or 1.08
+            local bubbles = {}
+
+            for ped, data in pairs(peds) do
+                if not DoesEntityExist(ped) or now > data.time then
+                    peds[ped] = nil
+                    nuiDirty = true
+                else
+                    local coords = GetOffsetFromEntityInWorldCoords(ped, 0.0, 0.0, headOffset)
+                    local dist = #(myPos - coords)
+                    if dist > maxDist or not HasEntityClearLosToEntity(myPed, ped, 17) then
+                        goto continue
+                    end
+
+                    local opacity = 1.0
+                    if dist > fadeStart then
+                        opacity = 1.0 - ((dist - fadeStart) / math.max(0.01, maxDist - fadeStart))
+                    end
+
+                    local onScreen, sx, sy = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
+                    if onScreen and sx and sy then
+                        local scale = math.max(0.78, math.min(1.12, 9.5 / math.max(dist, 2.0)))
+                        bubbles[#bubbles + 1] = {
+                            id = ('me-%s'):format(data.serverId or ped),
+                            text = data.text,
+                            x = sx,
+                            y = sy,
+                            scale = scale,
+                            opacity = math.max(0.0, math.min(1.0, opacity)),
+                        }
+                    end
+
+                    if meConfig.useNativeFallback then
+                        drawNative3dText(coords, data.text)
+                    end
+                    ::continue::
+                end
+            end
+
+            local encoded = json.encode(bubbles)
+            if encoded ~= lastPayload then
+                lastPayload = encoded
+                SendNUIMessage({ action = 'me3d:sync', bubbles = bubbles })
             end
         end
     end

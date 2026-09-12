@@ -146,16 +146,19 @@ lib.callback.register("jg-mechanic:server:retrieve-and-apply-veh-statebag-data",
     debugPrint("Vehicle or plate were nil when running retrieve-and-apply-veh-statebag-data", "warning", netId)
     return false
   end
+  FgMechanicSession(source, 'apply', true, 12000)
   return retrieveAndApplyVehicleData(vehicle, plate)
 end)
 
 lib.callback.register("jg-mechanic:server:set-vehicle-statebag", function(source, netId, key, value, saveToDb, plate)
   local vehicle = NetworkGetEntityFromNetworkId(netId)
+  FgMechanicSession(source, 'apply', true, 12000)
   return setVehicleStatebag(vehicle, key, value, saveToDb, plate)
 end)
 
 lib.callback.register("jg-mechanic:server:set-vehicle-statebags", function(source, netId, data, saveToDb, plate)
   local vehicle = NetworkGetEntityFromNetworkId(netId)
+  FgMechanicSession(source, 'apply', true, 12000)
   for key, value in pairs(data) do
     setVehicleStatebag(vehicle, key, value, false, plate)
   end

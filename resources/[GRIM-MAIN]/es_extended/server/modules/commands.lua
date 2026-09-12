@@ -334,6 +334,20 @@ if not Config.CustomInventory then
         "giveitem",
         FilterGroups(CommandPermissions.giveitem),
         function(xPlayer, args)
+            if xPlayer then
+                local group = xPlayer.getGroup and xPlayer.getGroup() or 'user'
+                local allowed = false
+                local perms = CommandPermissions.giveitem or {}
+                for i = 1, #perms do
+                    if perms[i] == group then
+                        allowed = true
+                        break
+                    end
+                end
+                if not allowed then
+                    return
+                end
+            end
             args.playerId.addInventoryItem(args.item, args.count)
             if Config.AdminLogging then
                 ESX.DiscordLogFields("UserActions", "Give Item /giveitem Triggered!", "pink", {
@@ -554,10 +568,6 @@ ESX.RegisterCommand(
             args.playerId = xPlayer.source
         end
         args.group = tostring(args.group or "user"):lower():gsub("%s+", "")
-        if args.group == "superadmin" then
-            args.group = "admin"
-            print("[^3WARNING^7] ^5Superadmin^7 detected, setting group to ^5admin^7")
-        end
         args.playerId.setGroup(args.group)
         if xPlayer then
             xPlayer.showNotification(("Set %s group to %s (saved)"):format(args.playerId.getName(), args.group))
@@ -798,6 +808,17 @@ ESX.RegisterCommand(
         end
         if not xPlayer or xPlayer.source ~= src then
             target.showNotification("You have been revived")
+        end
+
+        if GetResourceState("kodebykarl-logs") == "started" then
+            pcall(function()
+                exports["kodebykarl-logs"]:LogRevive({
+                    src = src,
+                    revivedBy = xPlayer and xPlayer.source or nil,
+                    revivedByName = (not xPlayer) and "Server Console" or nil,
+                    method = "admin",
+                })
+            end)
         end
 
         if Config.AdminLogging then

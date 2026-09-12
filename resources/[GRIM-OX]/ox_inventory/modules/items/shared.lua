@@ -115,6 +115,15 @@ for k, v in pairs(lib.load('data.items') or {}) do
     end
 end
 
+for k, v in pairs(lib.load('data.project_car_items') or {}) do
+	v.name = k
+	local success, response = pcall(newItem, v)
+
+    if not success then
+        warn(('An error occurred while creating item "%s" callback!\n^1SCRIPT ERROR: %s^0'):format(k, response))
+    end
+end
+
 ItemList.cash = ItemList.money
 
 return ItemList

@@ -3,10 +3,25 @@ return {
 		name = 'Shop',
 		blip = {
 			id = 59, colour = 69, scale = 0.8
-		}, inventory = {
+		}, 		inventory = {
 			{ name = 'burger', price = 10 },
 			{ name = 'water', price = 10 },
 			{ name = 'cola', price = 10 },
+			{ name = 'sugar', price = 250 },
+			{ name = 'dough', price = 250 },
+			{ name = 'butter', price = 250 },
+			{ name = 'flour', price = 250 },
+			{ name = 'cream', price = 250 },
+			{ name = 'milk', price = 250 },
+			{ name = 'radio', price = 1000 },
+			{ name = 'bun', price = 150 },
+			{ name = 'burger_patty', price = 450 },
+			{ name = 'lettuce', price = 180 },
+			{ name = 'tomato', price = 180 },
+			{ name = 'soy_sauce', price = 150 },
+			{ name = 'cheese', price = 150 },
+			{ name = 'raw_meat', price = 500 },
+			{ name = 'rice', price = 450 },
 		}, locations = {
 			vec3(25.7, -1347.3, 29.49),
 		}, targets = {
@@ -16,43 +31,44 @@ return {
 
 	PoliceArmoury = {
 		name = 'Police Armoury',
-		groups = shared.police,
+		groups = { ['police'] = 0 },
 		inventory = {
 			{ name = 'police_vitamins', price = 2, currency = 'grimpolicecoin' },
 			{ name = 'police_drink', price = 2, currency = 'grimpolicecoin' },
 			{ name = 'police_vest', price = 5, currency = 'grimpolicecoin' },
-			{ name = 'armour', price = 5, currency = 'grimpolicecoin' },
+			{ name = 'riot_shield', price = 8, currency = 'grimpolicecoin' },
 			{ name = 'WEAPON_FLASHLIGHT', price = 1, currency = 'grimpolicecoin' },
 			{ name = 'WEAPON_NIGHTSTICK', price = 1, currency = 'grimpolicecoin' },
 			{ name = 'WEAPON_STUNGUN', price = 5, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_BZGAS', price = 3, currency = 'grimpolicecoin' },
-			{ name = 'WEAPON_HEAVYPISTOL', price = 15, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_PISTOL_MK2', price = 18, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_SMG', price = 25, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_SMG_MK2', price = 30, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_COMBATPDW', price = 28, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_HEAVYPISTOL', price = 250, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_PISTOL_MK2', price = 250, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SMG', price = 500, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SMG_MK2', price = 500, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_COMBATPDW', price = 500, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_PUMPSHOTGUN', price = 25, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
 			{ name = 'WEAPON_PUMPSHOTGUN_MK2', price = 30, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_SPECIALCARBINE', price = 40, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_SPECIALCARBINE_MK2', price = 45, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
-			{ name = 'WEAPON_CARBINERIFLE_MK2', price = 45, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SPECIALCARBINE', price = 500, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_SPECIALCARBINE_MK2', price = 500, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
+			{ name = 'WEAPON_CARBINERIFLE_MK2', price = 500, currency = 'grimpolicecoin', metadata = { registered = true, serial = 'POL' } },
 			{ name = 'pd_ammo_box_9', price = 10, currency = 'grimpolicecoin' },
 			{ name = 'pd_ammo_box_rifle', price = 15, currency = 'grimpolicecoin' },
 			{ name = 'pd_ammo_box_rifle2', price = 15, currency = 'grimpolicecoin' },
 			{ name = 'pd_ammo_box_shotgun', price = 12, currency = 'grimpolicecoin' },
-			{ name = 'at_flashlight', price = 3, currency = 'grimpolicecoin' },
-			{ name = 'at_suppressor_light', price = 8, currency = 'grimpolicecoin' },
-			{ name = 'at_suppressor_heavy', price = 10, currency = 'grimpolicecoin' },
+			{ name = 'pd_ammo_box_45', price = 10, currency = 'grimpolicecoin' },
+			{ name = 'at_flashlight', price = 5, currency = 'grimpolicecoin' },
+			{ name = 'at_suppressor_light', price = 5, currency = 'grimpolicecoin' },
+			{ name = 'at_suppressor_heavy', price = 5, currency = 'grimpolicecoin' },
 			{ name = 'at_grip', price = 5, currency = 'grimpolicecoin' },
 			{ name = 'at_barrel', price = 5, currency = 'grimpolicecoin' },
 			{ name = 'at_clip_extended_pistol', price = 5, currency = 'grimpolicecoin' },
-			{ name = 'at_clip_extended_smg', price = 6, currency = 'grimpolicecoin' },
-			{ name = 'at_clip_extended_shotgun', price = 6, currency = 'grimpolicecoin' },
-			{ name = 'at_clip_extended_rifle', price = 7, currency = 'grimpolicecoin' }
+			{ name = 'at_clip_extended_smg', price = 5, currency = 'grimpolicecoin' },
+			{ name = 'at_clip_extended_shotgun', price = 5, currency = 'grimpolicecoin' },
+			{ name = 'at_clip_extended_rifle', price = 5, currency = 'grimpolicecoin' }
 		}, locations = {
-			vec3(13.0845, -424.3956, 33.5622)
+			vec3(71.5360, -390.2930, 41.6247)
 		}, targets = {
-			{ loc = vec3(13.0845, -424.3956, 33.5622), length = 0.5, width = 3.0, heading = 270.0, minZ = 30.5, maxZ = 32.0, distance = 6 }
+			{ loc = vec3(71.5360, -390.2930, 41.6247), length = 1.0, width = 2.0, heading = 249.4090, minZ = 40.6, maxZ = 43.1, distance = 2.5 }
 		}
 	},
 
@@ -68,16 +84,16 @@ return {
 			{ name = 'WEAPON_NIGHTSTICK', price = 1, currency = 'sheriff_coin' },
 			{ name = 'WEAPON_STUNGUN', price = 5, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
 			{ name = 'WEAPON_BZGAS', price = 3, currency = 'sheriff_coin' },
-			{ name = 'WEAPON_HEAVYPISTOL', price = 15, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_PISTOL_MK2', price = 18, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_SMG', price = 25, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_SMG_MK2', price = 30, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_COMBATPDW', price = 28, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_HEAVYPISTOL', price = 250, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_PISTOL_MK2', price = 250, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_SMG', price = 500, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_SMG_MK2', price = 500, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_COMBATPDW', price = 500, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
 			{ name = 'WEAPON_PUMPSHOTGUN', price = 25, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
 			{ name = 'WEAPON_PUMPSHOTGUN_MK2', price = 30, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_SPECIALCARBINE', price = 40, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_SPECIALCARBINE_MK2', price = 45, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
-			{ name = 'WEAPON_CARBINERIFLE_MK2', price = 45, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_SPECIALCARBINE', price = 500, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_SPECIALCARBINE_MK2', price = 500, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
+			{ name = 'WEAPON_CARBINERIFLE_MK2', price = 500, currency = 'sheriff_coin', metadata = { registered = true, serial = 'BCSO' } },
 			{ name = 'sheriff_ammo_box_9', price = 10, currency = 'sheriff_coin' },
 			{ name = 'sheriff_ammo_box_rifle', price = 15, currency = 'sheriff_coin' },
 			{ name = 'sheriff_ammo_box_rifle2', price = 15, currency = 'sheriff_coin' },
@@ -99,21 +115,48 @@ return {
 	},
 
 	Medicine = {
-		name = 'Medicine Cabinet',
+		name = 'EMS Shop',
 		groups = {
 			['ambulance'] = 0,
 			['pambulance'] = 0,
 			['sambulance'] = 0,
 		},
-		blip = {
-			id = 403, colour = 69, scale = 0.8
-		}, inventory = {
-			{ name = 'medikit', price = 26 },
-			{ name = 'bandage', price = 5 }
+		inventory = {
+			{ name = 'ems_medikit', price = 15, currency = 'grimemscoin' },
+			{ name = 'bandage', price = 10, currency = 'grimemscoin' },
+			{ name = 'gauze', price = 10, currency = 'grimemscoin' },
 		}, locations = {
-			vec3(-1040.5308, -1355.7512, 5.9474)
+			vec3(-1048.1884, -1371.6355, 5.9474)
+		}, targets = {
+			{ loc = vec3(-1048.1884, -1371.6355, 5.9474), length = 1.0, width = 1.5, heading = 182.1223, minZ = 4.9, maxZ = 7.5, distance = 2.5 }
+		}
+	},
+
+	WeedFarmShop = {
+		name = 'Weed Farm Shop',
+		inventory = {
+			{ name = 'rolling_paper', price = 250 },
+			{ name = 'paper_bags', price = 500 },
+			{ name = 'zipper_bag', price = 250 },
+			{ name = 'illegal_phone', price = 1500 },
+		}, locations = {
+			vec3(2224.7139, 5604.8462, 54.9226)
 		}, targets = {
 
+		}
+	},
+
+	YouTool = {
+		name = 'YouTool',
+		blip = {
+			id = 402, colour = 69, scale = 0.8
+		}, inventory = {
+			{ name = 'weapon_battleaxe', price = 250 },
+			{ name = 'trowel', price = 1500 },
+		}, locations = {
+			vec3(153.3959, 6645.4497, 31.5720)
+		}, targets = {
+			{ loc = vec3(153.3959, 6645.4497, 31.5720), length = 1.0, width = 1.5, heading = 141.7415, minZ = 30.57, maxZ = 33.57, distance = 2.5 }
 		}
 	},
 

@@ -47,48 +47,48 @@ export interface SideJobServer {
 const DEFAULT_PUBLIC_SERVERS: ServerRealm[] = [
   {
     id: "region1",
-    name: "Region 1 · All Farm",
-    tag: "FARM REALM",
-    description: "All farms available here — autofarm, hunting, weed, and orange picking.",
-    onlinePlayers: 0,
-    maxPlayers: 0,
-    ping: "16 ms",
-    status: "ONLINE",
-    functions: ["grind", "autofarm", "raven", "weedfarm", "job_orange"],
-  },
-  {
-    id: "region2",
-    name: "Region 2 · School",
-    tag: "SCHOOL REALM",
-    description: "School / city RP. Jobs, housing, and social roleplay.",
+    name: "Region 1 · Main",
+    tag: "MAIN REALM",
+    description: "Main world — all grinding, city jobs, housing, house robbery, turf war, weed farm, gang bases, and illegal. Everyone here sees each other.",
     onlinePlayers: 0,
     maxPlayers: 0,
     ping: "16 ms",
     status: "ONLINE",
     isCurrent: true,
-    functions: ["main", "jobs", "housing", "school"],
+    functions: ["main", "jobs", "housing", "grind", "autofarm", "raven", "weedfarm", "illegal", "turfwar", "gangbase", "safezone"],
+  },
+  {
+    id: "region2",
+    name: "Region 2 · School",
+    tag: "SCHOOL REALM",
+    description: "School only — campus RP and school war. No farming, illegal, or traphouse.",
+    onlinePlayers: 0,
+    maxPlayers: 0,
+    ping: "16 ms",
+    status: "ONLINE",
+    functions: ["school", "schoolwar", "safezone"],
   },
   {
     id: "region3",
-    name: "Region 3 · Turf War",
-    tag: "TURF REALM",
-    description: "Turf War instance. Gang wars only work here and on Region 4.",
+    name: "Region 3 · TrapHouse",
+    tag: "TRAP REALM",
+    description: "TrapHouse redzone instance. Isolated from Region 1. No safezones.",
     onlinePlayers: 0,
     maxPlayers: 0,
     ping: "18 ms",
     status: "ONLINE",
-    functions: ["turfwar"],
+    functions: ["traphouse"],
   },
   {
     id: "region4",
-    name: "Region 4 · Turf War",
-    tag: "TURF REALM",
-    description: "Second Turf War instance. Isolated from Region 3 players.",
+    name: "Region 4 · TrapHouse",
+    tag: "TRAP REALM",
+    description: "Second TrapHouse instance. Isolated from Region 3. No safezones.",
     onlinePlayers: 0,
     maxPlayers: 0,
     ping: "18 ms",
     status: "ONLINE",
-    functions: ["turfwar"],
+    functions: ["traphouse"],
   },
 ];
 
@@ -111,7 +111,8 @@ export default function Regions({ onClose }: RegionsProps) {
   const [serverSubTab, setServerSubTab] = useState<ServerTab>("public");
   const [publicServers, setPublicServers] = useState<ServerRealm[]>(DEFAULT_PUBLIC_SERVERS);
   const [jobServers, setJobServers] = useState<SideJobServer[]>(DEFAULT_JOB_SERVERS);
-  const [inSafezone, setInSafezone] = useState(true);
+  const [inSafezone, setInSafezone] = useState(false);
+  const [requireSafezone, setRequireSafezone] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [lockReason, setLockReason] = useState<string | null>(null);
   const [loadingServers, setLoadingServers] = useState(false);
@@ -129,6 +130,7 @@ export default function Regions({ onClose }: RegionsProps) {
       sideJobServers?: SideJobServer[];
       currentServerId?: string;
       inSafezone?: boolean;
+      requireSafezone?: boolean;
       isLocked?: boolean;
       lockReason?: string;
     }>("cfx-keydi-modules:getServers", {})
@@ -141,6 +143,7 @@ export default function Regions({ onClose }: RegionsProps) {
           }
           if (res.sideJobServers && res.sideJobServers.length > 0) setJobServers(res.sideJobServers);
           if (typeof res.inSafezone === "boolean") setInSafezone(res.inSafezone);
+          if (typeof res.requireSafezone === "boolean") setRequireSafezone(res.requireSafezone);
           if (typeof res.isLocked === "boolean") setIsLocked(res.isLocked);
           setLockReason(res.lockReason || null);
         }
@@ -175,7 +178,8 @@ export default function Regions({ onClose }: RegionsProps) {
   }, [loadServerRealms, markCurrent]);
 
   const handleSwitchServer = (realm: { id: string; name: string; isCurrent?: boolean }) => {
-    if (realm.isCurrent || switchingServer || !inSafezone || isLocked) return;
+    if (realm.isCurrent || switchingServer || isLocked) return;
+    if (requireSafezone && !inSafezone) return;
     setSwitchingServer(realm.id);
     if (isBrowserEnv()) {
       markCurrent(realm.id);
@@ -209,8 +213,8 @@ export default function Regions({ onClose }: RegionsProps) {
     <ModulePageShell
       title="Regions"
       eyebrow="REGIONS"
-      subtitle="Switch regions in-game. Region 1 Farm · Region 2 School · Region 3–4 Turf."
-      sidebarHint="Each region is isolated. Switch only from a safezone."
+      subtitle="Region 1 Main (grind & illegal) · Region 2 School · Region 3–4 TrapHouse (no safezone)."
+      sidebarHint="Switch from a safezone on Region 1 or 2. TrapHouse regions have no safezone — leave via F5 when not in combat."
       onClose={onClose}
     >
       <div className="flex flex-1 flex-col justify-between overflow-hidden">
@@ -218,16 +222,20 @@ export default function Regions({ onClose }: RegionsProps) {
           <div
             className={cn(
               "flex items-center justify-between rounded-xl border px-4 py-2.5 transition",
-              inSafezone && !isLocked
+              (!requireSafezone || inSafezone) && !isLocked
                 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
                 : "border-red-500/40 bg-red-500/10 text-red-400"
             )}
           >
             <div className="flex items-center gap-2.5 text-xs font-bold">
-              {inSafezone && !isLocked ? (
+              {(!requireSafezone || inSafezone) && !isLocked ? (
                 <>
                   <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
-                  <span>Safezone Verified — Server switching unlocked</span>
+                  <span>
+                    {requireSafezone
+                      ? "Safezone Verified — Server switching unlocked"
+                      : "TrapHouse region — switching unlocked (leave combat first)"}
+                  </span>
                 </>
               ) : (
                 <>
@@ -281,7 +289,8 @@ export default function Regions({ onClose }: RegionsProps) {
               const isBusy = switchingServer === realm.id;
               const cap = realm.maxPlayers > 0 ? realm.maxPlayers : 1;
               const playerPct = Math.min(100, Math.round((realm.onlinePlayers / cap) * 100));
-              const canSwitch = inSafezone && !isLocked && !realm.isCurrent;
+              const switchUnlocked = (!requireSafezone || inSafezone) && !isLocked;
+              const canSwitch = switchUnlocked && !realm.isCurrent;
 
               return (
                 <div
@@ -355,7 +364,7 @@ export default function Regions({ onClose }: RegionsProps) {
                         ) : !canSwitch ? (
                           <>
                             <Lock className="h-3.5 w-3.5 text-red-400" />
-                            Locked (Outside Safezone)
+                            {requireSafezone && !inSafezone ? "Locked (Outside Safezone)" : "Locked"}
                           </>
                         ) : (
                           <>
@@ -411,7 +420,7 @@ export default function Regions({ onClose }: RegionsProps) {
                   <span className="font-black text-[#ff4d4d]">3.</span> Grind oranges without Farm-region lag.
                 </li>
                 <li className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-[#0d0d12]/60 p-2">
-                  <span className="font-black text-[#ff4d4d]">4.</span> Switch back to Region 1 · All Farm when finished.
+                  <span className="font-black text-[#ff4d4d]">4.</span> Switch back to Region 1 · Main when finished.
                 </li>
               </ul>
             </div>
@@ -419,7 +428,7 @@ export default function Regions({ onClose }: RegionsProps) {
             <div className="grid grid-cols-2 gap-3">
               {jobServers.map((jobSrv) => {
                 const isBusy = switchingServer === jobSrv.id;
-                const canSwitch = inSafezone && !isLocked && !jobSrv.isCurrent;
+                const canSwitch = (!requireSafezone || inSafezone) && !isLocked && !jobSrv.isCurrent;
                 return (
                   <div
                     key={jobSrv.id}
@@ -484,9 +493,10 @@ export default function Regions({ onClose }: RegionsProps) {
                 </span>
               </div>
               <p className="text-[11px] leading-relaxed text-[#a08890]">
-                Regions split the city in-game (same character, same inventory). Region 1 = All Farm.
-                Region 2 = School. Region 3 & 4 = Turf War. Players only see others in the same region.
-                Your last region is saved and restored when you reconnect.
+                Regions split the city in-game (same character, same inventory). Region 1 = Main
+                grind & illegal (everyone here sees each other). Region 2 = School / school war.
+                Region 3 & 4 = TrapHouse only (no safezone). Players only see others in the same
+                region. Your last region is saved and restored when you reconnect.
               </p>
               <div className="grid grid-cols-3 gap-3 pt-1">
                 <div className="rounded-xl border border-[#ff3a3a]/20 bg-[#0d0d12] p-3">

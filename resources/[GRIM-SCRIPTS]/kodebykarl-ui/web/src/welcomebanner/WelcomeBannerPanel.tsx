@@ -14,9 +14,6 @@ import {
   Square, 
   Clock, 
   Sparkles,
-  Maximize2,
-  CheckCircle2,
-  AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -253,60 +250,68 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
   };
 
   return (
-    <div className="pandora fixed inset-0 z-[99950] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 font-sans select-none">
-      <div className="relative flex h-[620px] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-700/80 bg-[#090d18] shadow-2xl ring-1 ring-white/10">
-        
+    <div className="pandora fixed inset-0 z-[99950] flex items-center justify-center bg-black/80 p-4 font-sans select-none backdrop-blur-[6px]">
+      <div
+        className="relative flex h-[540px] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border-2 border-[#ff3a3a] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]"
+        style={{ background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)" }}
+      >
+        <div className="panel-grid pointer-events-none absolute inset-0 opacity-25" />
+
         {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-[#0c1222] px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-600/20 border border-cyan-500/40 text-cyan-400">
-              <Sparkles className="h-5 w-5" />
+        <div
+          className="relative flex items-center justify-between border-b px-3 py-2"
+          style={{ borderBottomColor: "rgba(255, 58, 58, 0.25)" }}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#ff3a3a] bg-[#ff3a3a]/15 text-white">
+              <Sparkles className="h-3.5 w-3.5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30">
-                  {selfEdit ? "VIP Self Edit" : data?.staffGroup || "Staff Management"}
+              <div className="flex items-center gap-1.5">
+                <span className="rounded border border-[#ff3a3a] bg-[#ff3a3a]/20 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-[#ff4d4d]">
+                  {selfEdit ? "VIP Self Edit" : data?.staffGroup || "Staff"}
                 </span>
-                <span className="text-xs text-slate-400">• {data?.staffName || "Admin"}</span>
+                <span className="text-[10px] text-[#a08890]">· {data?.staffName || "Admin"}</span>
               </div>
-              <h2 className="text-base font-black text-white tracking-wide">
-                {selfEdit ? "My Welcome Banner" : "Custom Welcome Banner System"}
+              <h2 className="text-[13px] font-black text-white tracking-wide">
+                {selfEdit ? "My Welcome Banner" : "Welcome Banner System"}
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={openAddForm}
-              className="flex items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-cyan-600/20 hover:bg-cyan-600 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:text-white transition-all shadow-md active:scale-95"
+              className="flex items-center gap-1 rounded-md border border-[#ff3a3a] bg-[#ff3a3a]/20 hover:bg-[#ff3a3a]/35 px-2.5 py-1.5 text-[10px] font-bold text-[#ff4d4d] transition active:scale-95"
             >
-              <Plus className="h-4 w-4" />
-              {selfEdit ? (players.length > 0 ? "Edit My Banner" : "Create My Banner") : "Add Player Banner"}
+              <Plus className="h-3.5 w-3.5" />
+              {selfEdit ? (players.length > 0 ? "Edit My Banner" : "Create My Banner") : "Add Banner"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-1 rounded-md border border-[#ff3a3a]/30 bg-[#181216] px-2 py-1 text-[10px] font-semibold text-white/80 transition hover:border-[#ff3a3a] hover:text-white"
             >
-              <X className="h-4 w-4" />
+              <span>Esc</span>
+              <X className="h-3 w-3 text-[#ff4d4d]" />
             </button>
           </div>
         </div>
 
         {/* Search Bar */}
         {!selfEdit && (
-        <div className="border-b border-slate-800 bg-[#090d18] px-6 py-2.5">
-          <div className="flex items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-1.5 shadow-inner">
-            <Search className="h-4 w-4 text-slate-400 shrink-0" />
+        <div className="relative border-b border-[#ff3a3a]/20 px-3 py-1.5">
+          <div className="flex items-center gap-2 rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 text-[#a08890] shrink-0" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by Player Name, License Identifier, GIF/Image URL, or Sound..."
-              className="w-full bg-transparent text-xs text-white outline-none placeholder:text-slate-500"
+              placeholder="Search by name, identifier, GIF, or sound..."
+              className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#a08890]/60"
             />
             {search && (
-              <button onClick={() => setSearch("")} className="text-slate-500 hover:text-white text-xs">
+              <button onClick={() => setSearch("")} className="text-[#a08890] hover:text-white text-[10px]">
                 Clear
               </button>
             )}
@@ -315,20 +320,20 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
         )}
 
         {/* Main Content Area */}
-        <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
           {/* Left / Center: Player Cards List */}
-          <div className="no-scrollbar flex-1 space-y-2.5 overflow-y-auto p-5">
+          <div className="no-scrollbar flex-1 space-y-1.5 overflow-y-auto p-3">
             {filtered.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500 py-12">
-                <Users className="h-12 w-12 stroke-1 opacity-40 text-cyan-400" />
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-[#a08890] py-8">
+                <Users className="h-9 w-9 stroke-1 opacity-40 text-[#ff4d4d]" />
                 <div className="text-center">
-                  <p className="text-sm font-bold text-slate-300">
+                  <p className="text-[12px] font-bold text-white/80">
                     {selfEdit ? "No Banner Yet" : "No Custom Banner Players Found"}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-[10px] text-[#a08890] mt-0.5 max-w-xs">
                     {selfEdit
                       ? 'Click "Create My Banner" to set your join GIF & sound.'
-                      : 'Click "Add Player Banner" to assign custom GIF & sound to any citizen or VIP.'}
+                      : 'Click "Add Banner" to assign custom GIF & sound.'}
                   </p>
                 </div>
               </div>
@@ -336,66 +341,63 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
               filtered.map((player) => (
                 <div
                   key={player.identifier}
-                  className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-[#0e1424] hover:border-slate-700/80 p-3.5 transition-all shadow-md group"
+                  className="flex items-center gap-3 rounded-lg border border-[#ff3a3a]/25 bg-[#181216] hover:border-[#ff3a3a]/50 p-2.5 transition group"
                 >
-                  {/* Banner Thumbnail Preview */}
-                  <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-black/60 shadow-md">
+                  <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md border border-[#ff3a3a]/30 bg-black/60">
                     {player.gif ? (
                       <img src={player.gif} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-slate-600">
-                        <Image className="h-5 w-5" />
+                      <div className="flex h-full items-center justify-center text-[#a08890]">
+                        <Image className="h-4 w-4" />
                       </div>
                     )}
                   </div>
 
-                  {/* Player Information & Details */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="truncate text-sm font-bold text-white">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="truncate text-[12px] font-bold text-white">
                         {player.name || "Unnamed Player"}
                       </h4>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-[#ff3a3a]/15 text-[#ff4d4d] border border-[#ff3a3a]/40">
                         Vol: {Math.round((player.volume ?? 0.6) * 100)}%
                       </span>
                       {player.duration && (
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-black/30 text-[#a08890] border border-[#ff3a3a]/20">
                           {player.duration}s
                         </span>
                       )}
                     </div>
 
-                    <p className="truncate font-mono text-[11px] text-slate-400 mt-0.5">
+                    <p className="truncate font-mono text-[10px] text-[#a08890] mt-0.5">
                       {player.identifier}
                     </p>
 
-                    <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1">
+                    <div className="flex items-center gap-2 text-[10px] text-[#a08890] mt-0.5">
                       {player.sound ? (
-                        <span className="flex items-center gap-1 text-cyan-300/90 font-mono truncate max-w-xs">
-                          <Volume2 className="h-3 w-3 shrink-0 text-cyan-400" />
+                        <span className="flex items-center gap-1 text-[#ff8080] font-mono truncate max-w-xs">
+                          <Volume2 className="h-3 w-3 shrink-0 text-[#ff4d4d]" />
                           <span className="truncate">{player.sound}</span>
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-slate-500 italic">
+                        <span className="flex items-center gap-1 italic">
                           <VolumeX className="h-3 w-3 shrink-0" /> No Sound
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Action Buttons: Play/Test, Edit, Delete */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     {player.sound && (
                       <button
                         type="button"
                         onClick={() => togglePlayAudio(player.sound || "", player.volume ?? 0.6)}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-600/10 text-cyan-300 hover:bg-cyan-600 hover:text-white transition-all"
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-[#ff3a3a]/40 bg-[#ff3a3a]/10 text-[#ff4d4d] hover:bg-[#ff3a3a] hover:text-white transition"
                         title="Test Sound Audio"
                       >
                         {isPlayingAudio && audioPreviewRef.current?.src.includes(player.sound) ? (
-                          <Square className="h-3.5 w-3.5 fill-current" />
+                          <Square className="h-3 w-3 fill-current" />
                         ) : (
-                          <Play className="h-3.5 w-3.5 fill-current" />
+                          <Play className="h-3 w-3 fill-current" />
                         )}
                       </button>
                     )}
@@ -403,10 +405,10 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     <button
                       type="button"
                       onClick={() => openEditForm(player)}
-                      className="flex h-9 items-center gap-1.5 px-3 rounded-xl border border-indigo-500/40 bg-indigo-600/15 hover:bg-indigo-600 text-indigo-200 hover:text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+                      className="flex h-7 items-center gap-1 px-2 rounded-md border border-[#ff3a3a]/40 bg-[#ff3a3a]/10 hover:bg-[#ff3a3a] text-[#ff4d4d] hover:text-white text-[10px] font-bold transition"
                       title="Edit Player Banner"
                     >
-                      <Edit3 className="h-3.5 w-3.5" />
+                      <Edit3 className="h-3 w-3" />
                       <span>Edit</span>
                     </button>
 
@@ -414,10 +416,10 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                       type="button"
                       disabled={busy}
                       onClick={() => removePlayer(player)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-500/30 bg-red-600/15 text-red-300 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95"
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-rose-500/30 bg-rose-600/15 text-rose-300 hover:bg-rose-600 hover:text-white transition"
                       title="Delete Player Banner"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
@@ -427,21 +429,20 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
 
           {/* Right Drawer: Add / Edit Form */}
           {showDrawer && (
-            <div className="flex w-[380px] shrink-0 flex-col border-l border-slate-800 bg-[#0b101c] shadow-2xl animate-in slide-in-from-right-4 duration-200">
-              {/* Form Title */}
-              <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4 bg-[#0d1322]">
+            <div className="flex w-[340px] shrink-0 flex-col border-l border-[#ff3a3a]/25 bg-[#0d0d12] animate-in slide-in-from-right-4 duration-200">
+              <div className="flex items-center justify-between border-b border-[#ff3a3a]/25 px-3 py-2 bg-[#140d11]">
                 <div className="flex items-center gap-2 text-white">
                   {isEditing ? (
-                    <Edit3 className="h-4 w-4 text-cyan-400" />
+                    <Edit3 className="h-3.5 w-3.5 text-[#ff4d4d]" />
                   ) : (
-                    <UserPlus className="h-4 w-4 text-emerald-400" />
+                    <UserPlus className="h-3.5 w-3.5 text-[#ff4d4d]" />
                   )}
                   <div>
-                    <h3 className="text-sm font-black">
-                      {isEditing ? "Edit Player Banner" : "Add Player Banner"}
+                    <h3 className="text-[12px] font-black">
+                      {isEditing ? "Edit Banner" : "Add Banner"}
                     </h3>
-                    <p className="text-[10px] text-slate-400">
-                      {isEditing ? "Modify GIF, sound, volume & dimensions" : "Assign custom welcome banner & audio"}
+                    <p className="text-[9px] text-[#a08890]">
+                      {isEditing ? "Modify GIF, sound & size" : "Assign GIF & audio"}
                     </p>
                   </div>
                 </div>
@@ -451,17 +452,15 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     stopAudioPreview();
                     setShowDrawer(false);
                   }}
-                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                  className="text-[#a08890] hover:text-white p-1 rounded-md hover:bg-[#181216] transition"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
 
-              {/* Form Body Inputs */}
-              <div className="no-scrollbar flex-1 space-y-3.5 overflow-y-auto p-5">
-                {/* Identifier / License */}
+              <div className="no-scrollbar flex-1 space-y-2.5 overflow-y-auto p-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  <label className="block text-[9px] font-bold uppercase tracking-wider text-[#a08890] mb-0.5">
                     Player License Identifier
                   </label>
                   <input
@@ -469,45 +468,39 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder="license:xxxxxxxx..."
                     disabled={selfEdit}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-white outline-none focus:border-cyan-500 disabled:opacity-60"
+                    className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5 text-[11px] font-mono text-white outline-none focus:border-[#ff3a3a] disabled:opacity-60"
                   />
-                  <span className="text-[10px] text-slate-500 mt-1 block">
+                  <span className="text-[9px] text-[#a08890]/70 mt-0.5 block">
                     {selfEdit
                       ? "Locked to your VIP license."
-                      : "Use full license identifier or select an online player below."}
+                      : "Full license or pick an online player below."}
                   </span>
                 </div>
 
-                {/* Player Name */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  <label className="block text-[9px] font-bold uppercase tracking-wider text-[#a08890] mb-0.5">
                     Player Display Name
                   </label>
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. John Doe"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                    className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-[#ff3a3a]"
                   />
                 </div>
 
-                {/* GIF / Image URL with Live Thumbnail Preview */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                  <label className="block text-[9px] font-bold uppercase tracking-wider text-[#a08890] mb-0.5">
                     GIF / Image URL
                   </label>
                   <input
                     value={gif}
                     onChange={(e) => setGif(e.target.value)}
                     placeholder="https://.../banner.gif"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                    className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-[#ff3a3a]"
                   />
-                  <span className="text-[10px] text-slate-500 mt-1 block">
-                    Direct image link (.gif, .png, .jpg, .webp)
-                  </span>
-
                   {gif && (
-                    <div className="mt-2 h-20 w-full overflow-hidden rounded-xl border border-slate-700 bg-black/50 flex items-center justify-center">
+                    <div className="mt-1.5 h-16 w-full overflow-hidden rounded-md border border-[#ff3a3a]/25 bg-black/50 flex items-center justify-center">
                       <img
                         src={gif}
                         alt="Preview"
@@ -520,25 +513,24 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                   )}
                 </div>
 
-                {/* Sound URL & Audio Test Button */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-[#a08890]">
                       Sound URL (MP3 / OGG)
                     </label>
                     {sound && (
                       <button
                         type="button"
                         onClick={() => togglePlayAudio(sound, volume)}
-                        className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 hover:text-cyan-300"
+                        className="flex items-center gap-1 text-[9px] font-bold text-[#ff4d4d] hover:text-[#ff8080]"
                       >
                         {isPlayingAudio ? (
                           <>
-                            <Square className="h-3 w-3 fill-current" /> Stop Audio
+                            <Square className="h-2.5 w-2.5 fill-current" /> Stop
                           </>
                         ) : (
                           <>
-                            <Play className="h-3 w-3 fill-current" /> Test Audio
+                            <Play className="h-2.5 w-2.5 fill-current" /> Test
                           </>
                         )}
                       </button>
@@ -548,21 +540,17 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     value={sound}
                     onChange={(e) => setSound(e.target.value)}
                     placeholder="https://.../welcome.mp3"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                    className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-[#ff3a3a]"
                   />
-                  <span className="text-[10px] text-slate-500 mt-1 block">
-                    Direct MP3 or OGG link (Discord CDN, FiveManage, etc.)
-                  </span>
                 </div>
 
-                {/* Volume Slider */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-300 mb-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <Volume2 className="h-3.5 w-3.5 text-cyan-400" />
-                      Sound Playback Volume
+                <div className="rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-2.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-[#a08890] mb-1">
+                    <span className="flex items-center gap-1">
+                      <Volume2 className="h-3 w-3 text-[#ff4d4d]" />
+                      Volume
                     </span>
-                    <span className="font-mono text-cyan-400">{Math.round(volume * 100)}%</span>
+                    <span className="font-mono text-[#ff4d4d]">{Math.round(volume * 100)}%</span>
                   </div>
                   <input
                     type="range"
@@ -571,18 +559,17 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     step={0.05}
                     value={volume}
                     onChange={(e) => setVolume(Number(e.target.value))}
-                    className="w-full accent-cyan-500 cursor-pointer"
+                    className="w-full accent-[#ff3a3a] cursor-pointer"
                   />
                 </div>
 
-                {/* Duration Slider */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-300 mb-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-amber-400" />
-                      Display Duration
+                <div className="rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-2.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-[#a08890] mb-1">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-[#ff4d4d]" />
+                      Duration
                     </span>
-                    <span className="font-mono text-amber-400">{duration} seconds</span>
+                    <span className="font-mono text-[#ff4d4d]">{duration}s</span>
                   </div>
                   <input
                     type="range"
@@ -591,47 +578,45 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                     step={1}
                     value={duration}
                     onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full accent-amber-500 cursor-pointer"
+                    className="w-full accent-[#ff3a3a] cursor-pointer"
                   />
                 </div>
 
-                {/* Custom Dimensions (Optional) */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                      Width (px, opt)
+                    <label className="block text-[8px] font-bold uppercase tracking-wider text-[#a08890] mb-0.5">
+                      Width (px)
                     </label>
                     <input
                       type="number"
                       value={width}
                       onChange={(e) => setWidth(e.target.value)}
-                      placeholder="e.g. 350"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500"
+                      placeholder="350"
+                      className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2 py-1 text-[11px] text-white outline-none focus:border-[#ff3a3a]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                      Height (px, opt)
+                    <label className="block text-[8px] font-bold uppercase tracking-wider text-[#a08890] mb-0.5">
+                      Height (px)
                     </label>
                     <input
                       type="number"
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
-                      placeholder="e.g. 200"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500"
+                      placeholder="200"
+                      className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2 py-1 text-[11px] text-white outline-none focus:border-[#ff3a3a]"
                     />
                   </div>
                 </div>
 
-                {/* Quick Select from Online Players (staff only) */}
                 {!selfEdit && (
                   <div>
-                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Quick Pick Online Players ({online.length})
+                    <p className="mb-1 text-[8px] font-bold uppercase tracking-wider text-[#a08890]">
+                      Quick Pick Online ({online.length})
                     </p>
-                    <div className="no-scrollbar max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 p-1.5">
+                    <div className="no-scrollbar max-h-24 space-y-0.5 overflow-y-auto rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-1">
                       {online.length === 0 ? (
-                        <p className="text-[11px] text-slate-500 p-2 text-center">No other players online.</p>
+                        <p className="text-[10px] text-[#a08890] p-1.5 text-center">No other players online.</p>
                       ) : (
                         online.map((player) => (
                           <button
@@ -639,14 +624,14 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                             type="button"
                             onClick={() => pickOnline(player)}
                             className={cn(
-                              "w-full rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors",
+                              "w-full rounded border px-2 py-1 text-left text-[10px] transition",
                               identifier === player.identifier
-                                ? "border-cyan-500 bg-cyan-600/20 text-white font-bold"
-                                : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                ? "border-[#ff3a3a] bg-[#ff3a3a]/20 text-white font-bold"
+                                : "border-transparent text-[#a08890] hover:bg-[#ff3a3a]/10 hover:text-white"
                             )}
                           >
                             <span className="block truncate">{player.name}</span>
-                            <span className="block truncate font-mono text-[9px] opacity-60">{player.identifier}</span>
+                            <span className="block truncate font-mono text-[8px] opacity-60">{player.identifier}</span>
                           </button>
                         ))
                       )}
@@ -655,15 +640,14 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                 )}
               </div>
 
-              {/* Form Action Buttons */}
-              <div className="flex items-center gap-2 p-4 border-t border-slate-800 bg-[#0d1322]">
+              <div className="flex items-center gap-1.5 p-2.5 border-t border-[#ff3a3a]/25 bg-[#140d11]">
                 <button
                   type="button"
                   onClick={() => {
                     stopAudioPreview();
                     setShowDrawer(false);
                   }}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                  className="px-3 py-1.5 rounded-md border border-[#ff3a3a]/30 bg-[#181216] text-[#a08890] text-[10px] font-bold transition hover:text-white"
                 >
                   Cancel
                 </button>
@@ -671,9 +655,9 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
                   type="button"
                   disabled={busy || !identifier.trim() || !gif.trim()}
                   onClick={savePlayerBanner}
-                  className="flex-1 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white py-2 text-xs font-black transition-all shadow-md shadow-cyan-600/30"
+                  className="flex-1 rounded-md border border-[#ff3a3a] bg-gradient-to-r from-[#b30000] to-[#ff3a3a] disabled:opacity-40 text-white py-1.5 text-[10px] font-black transition hover:brightness-110"
                 >
-                  {isEditing ? "Update Player Banner" : "Save Player Banner"}
+                  {isEditing ? "Update Banner" : "Save Banner"}
                 </button>
               </div>
             </div>
@@ -681,11 +665,15 @@ export default function WelcomeBannerPanel({ data, onClose }: WelcomeBannerPanel
         </div>
 
         {/* Bottom Footer */}
-        <div className="flex shrink-0 items-center justify-between border-t border-slate-800 bg-[#0c1222] px-6 py-2.5 text-[11px] text-slate-400 font-mono">
-          <span>Pandora City Welcome Banner System</span>
-          <span className="text-cyan-400 font-bold">{players.length} Total Custom Banners</span>
+        <div
+          className="relative flex shrink-0 items-center justify-between border-t px-3 py-1.5 text-[10px] font-mono"
+          style={{ borderTopColor: "rgba(255, 58, 58, 0.25)" }}
+        >
+          <span className="text-[#a08890]">Grim City Welcome Banner</span>
+          <span className="text-[#ff4d4d] font-bold">{players.length} Total Banners</span>
         </div>
       </div>
     </div>
   );
 }
+

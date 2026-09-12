@@ -154,7 +154,7 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
 
     self.accounts = accounts
     self.coords = coords
-    self.group = group
+    self.group = Core.NormalizeGroup(group) or "user"
     self.identifier = identifier
     self.ssn = ssn
     self.inventory = inventory
@@ -169,18 +169,9 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
     self.metadata = metadata
     self.lastPlaytime = self.metadata.lastPlaytime or 0
     self.paycheckEnabled = true
-    self.admin = Core.IsPlayerAdmin(playerId)
     self.license = Core.GetAceLicense(identifier, playerId)
-    if not self.license then
-        if Config.Multichar then
-            local startIndex = identifier:find(":", 1)
-            if startIndex then
-                self.license = ("%s%s"):format(Config.Identifier, identifier:sub(startIndex, identifier:len()))
-            end
-        else
-            self.license = ("%s:%s"):format(Config.Identifier, identifier)
-        end
-    end
+    Core.ApplyPlayerGroupAce(playerId, self.group)
+    self.admin = Config.AdminGroups[self.group] == true or Core.IsPlayerAdmin(playerId)
 
     if type(self.metadata.jobDuty) ~= "boolean" then
         self.metadata.jobDuty = self.job.name ~= "unemployed" and Config.DefaultJobDuty or false
@@ -209,10 +200,6 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
         skin_female = {},
         onDuty = false,
     }
-
-    if self.license then
-        ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, self.group))
-    end
 
     local stateBag = Player(self.source).state
     stateBag:set("identifier", self.identifier, false)
@@ -306,20 +293,17 @@ function CreateExtendedPlayer(playerId, identifier, ssn, group, accounts, invent
             return
         end
 
-        newGroup = newGroup:lower():gsub("%s+", "")
+        newGroup = Core.NormalizeGroup(newGroup)
+        if not newGroup then
+            return
+        end
+
         local lastGroup = self.group
         self.license = Core.GetAceLicense(self.identifier, self.source) or self.license
-
-        if self.license and lastGroup and lastGroup ~= newGroup then
-            ExecuteCommand(("remove_principal identifier.%s group.%s"):format(self.license, lastGroup))
-        end
-
-        if self.license then
-            ExecuteCommand(("add_principal identifier.%s group.%s"):format(self.license, newGroup))
-        end
+        Core.ApplyPlayerGroupAce(self.source, newGroup, lastGroup)
 
         self.group = newGroup
-        self.admin = Core.IsPlayerAdmin(self.source)
+        self.admin = Config.AdminGroups[self.group] == true or Core.IsPlayerAdmin(self.source)
 
         Core.PersistPlayerGroup(self.identifier, self.license, newGroup)
 

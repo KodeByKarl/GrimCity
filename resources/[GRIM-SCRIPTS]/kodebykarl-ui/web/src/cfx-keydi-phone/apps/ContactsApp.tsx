@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
   Contact,
+  MessageSquare,
+  Phone,
   Plus,
   Search,
   Trash2,
@@ -28,6 +30,17 @@ interface PlayerHit {
 }
 
 type View = "list" | "add" | "detail";
+
+export type ContactAction = {
+  peerIdentifier?: string | null;
+  contactId: number;
+  name: string;
+};
+
+function asText(value: unknown, fallback = "") {
+  if (value == null) return fallback;
+  return String(value);
+}
 
 function isBrowser() {
   return (
@@ -101,7 +114,7 @@ async function nui<T>(event: string, data: Record<string, unknown> = {}): Promis
 }
 
 function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = asText(name).trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
@@ -118,7 +131,13 @@ function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg"
   );
 }
 
-export default function ContactsApp() {
+export default function ContactsApp({
+  onOpenMessage,
+  onStartCall,
+}: {
+  onOpenMessage?: (opts: ContactAction) => void;
+  onStartCall?: (opts: ContactAction) => void;
+}) {
   const [view, setView] = useState<View>("list");
   const [contacts, setContacts] = useState<PhoneContact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,15 +169,17 @@ export default function ContactsApp() {
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return contacts;
-    return contacts.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.number.toLowerCase().includes(q),
-    );
+    return contacts.filter((c) => {
+      const name = asText(c.name).toLowerCase();
+      const number = asText(c.number).toLowerCase();
+      return name.includes(q) || number.includes(q);
+    });
   }, [contacts, filter]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, PhoneContact[]>();
     for (const c of filtered) {
-      const letter = (c.name.trim()[0] || "#").toUpperCase();
+      const letter = (asText(c.name).trim()[0] || "#").toUpperCase();
       const key = /[A-Z]/.test(letter) ? letter : "#";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
@@ -469,6 +490,39 @@ export default function ContactsApp() {
           >
             Save changes
           </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onStartCall?.({
+                  peerIdentifier: selected.contactIdentifier,
+                  contactId: selected.id,
+                  name: selected.name,
+                })
+              }
+              className="flex items-center justify-center gap-2 rounded-2xl bg-[#30d158] py-3 text-[13px] font-black text-[#05240d] disabled:opacity-40"
+            >
+              <Phone className="h-4 w-4" />
+              Call
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onOpenMessage?.({
+                  peerIdentifier: selected.contactIdentifier,
+                  contactId: selected.id,
+                  name: selected.name,
+                })
+              }
+              className="flex items-center justify-center gap-2 rounded-2xl bg-[#007aff] py-3 text-[13px] font-black text-white disabled:opacity-40"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Message
+            </button>
+          </div>
 
           <button
             type="button"

@@ -110,7 +110,7 @@ function formatMessage(msg: Message, templates: Record<string, string>): string 
 const MessageRow = memo(function MessageRow({ html }: { html: string }) {
   return (
     <div
-      className="grim-chat-msg shrink-0 min-h-min text-[14px] leading-normal break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-hidden"
+      className="grim-chat-msg shrink-0 min-h-min text-[14px] leading-normal break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-x-hidden overflow-y-visible"
       style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "pre-wrap", flexShrink: 0, minHeight: "min-content" }}
       dangerouslySetInnerHTML={{ __html: html }}
     />

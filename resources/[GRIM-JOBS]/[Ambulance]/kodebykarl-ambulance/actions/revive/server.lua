@@ -207,6 +207,13 @@ RegisterNetEvent('cfx-keydi-ambulance:reviveTarget', function(playerId)
 	TriggerClientEvent('cfx-keydi-ambulance:client:RemoveBleed', xTarget.source)
 
 	exports['es_extended']:SecureSetStatus(xTarget.source, { hunger = 100, thirst = 100, stress = 0 })
+	SetTimeout(500, function()
+		if GetResourceState('kodebykarl-ui') == 'started' then
+			pcall(function()
+				exports['kodebykarl-ui']:RestorePlayerBucket(xTarget.source)
+			end)
+		end
+	end)
     if AmbulanceLogs and AmbulanceLogs.Revive then
         local job = xPlayer.job and (('%s — %s'):format(xPlayer.job.label or xPlayer.job.name, xPlayer.job.grade_label or '')) or nil
         AmbulanceLogs.Revive({
@@ -225,5 +232,17 @@ RegisterNetEvent('cfx-keydi-ambulance:reviveTarget', function(playerId)
             coords = xPlayer.getCoords(true),
             targetCoords = xTarget.getCoords(true),
         })
+    end
+    if GetResourceState('kodebykarl-logs') == 'started' then
+        pcall(function()
+            exports['kodebykarl-logs']:LogRevive({
+                src = targetId,
+                revivedBy = src,
+                method = 'ems',
+                item = kitItem,
+                itemAmount = kitAmount,
+                targetCoords = xTarget.getCoords(true),
+            })
+        end)
     end
 end)

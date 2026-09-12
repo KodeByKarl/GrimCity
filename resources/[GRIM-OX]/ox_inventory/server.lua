@@ -84,6 +84,46 @@ AddEventHandler('ox_inventory:setPlayerInventory', server.setPlayerInventory)
 
 local registeredDumpsters = {}
 
+--- plate -> { owner = string|false, expires = number }
+local trunkOwnerCache = {}
+
+local function normalizeVehiclePlate(plate)
+    if not plate or plate == '' then return '' end
+    plate = tostring(plate)
+    if server.trimplate then
+        plate = string.strtrim(plate)
+    else
+        plate = (plate:match('^%s*(.-)%s*$')) or plate
+    end
+    return plate:upper()
+end
+
+---Owned vehicles: registered owner only. Unregistered (job/rental/NPC) stay open if unlocked.
+---@param playerInv OxInventory
+---@param plate string
+---@return boolean
+local function canOpenOwnedTrunk(playerInv, plate)
+    plate = normalizeVehiclePlate(plate)
+    if plate == '' or not playerInv?.owner then return false end
+
+    local now = os.time()
+    local cached = trunkOwnerCache[plate]
+    local owner
+
+    if cached and cached.expires > now then
+        owner = cached.owner
+    else
+        owner = MySQL.scalar.await(
+            'SELECT `owner` FROM `owned_vehicles` WHERE UPPER(TRIM(`plate`)) = ? LIMIT 1',
+            { plate }
+        )
+        trunkOwnerCache[plate] = { owner = owner or false, expires = now + 30 }
+    end
+
+    if not owner then return true end
+    return owner == playerInv.owner
+end
+
 ---@param coords vector3
 ---@return number?
 local function getDumpsterFromCoords(coords)
@@ -126,6 +166,74 @@ local function getClosestStashCoords(playerPed, stash)
     return #(coordinates - playerCoords) < distance and coordinates or nil
 end
 
+local EvidenceLockers = lib.load('data.evidence')
+
+local function sanitizeEvidenceLocker(value)
+    if value == nil then return end
+
+    local locker = tostring(value):gsub('%s+', '')
+    if locker == '' then return end
+
+    return locker:sub(1, 48)
+end
+
+local function sanitizeEvidencePrefix(value)
+    local prefix = tostring(value or ''):lower():gsub('[^%w]', '')
+    if prefix == 'sheriff' or prefix == 'bcso' then
+        prefix = 'sd'
+    elseif prefix == 'police' or prefix == 'lspd' then
+        prefix = 'pd'
+    end
+
+    if prefix == 'pd' or prefix == 'sd' then
+        return prefix
+    end
+end
+
+local function resolveEvidencePrefix(source, requested)
+    local ped = source and GetPlayerPed(source)
+    if ped and ped ~= 0 and EvidenceLockers then
+        local coords = GetEntityCoords(ped)
+        local nearest, nearestDist
+
+        for i = 1, #EvidenceLockers do
+            local evidence = EvidenceLockers[i]
+            if evidence and evidence.coords then
+                local dist = #(coords - evidence.coords)
+                if not nearestDist or dist < nearestDist then
+                    nearestDist = dist
+                    nearest = evidence
+                end
+            end
+        end
+
+        if nearest and nearestDist and nearestDist <= 8.0 then
+            return sanitizeEvidencePrefix(nearest.prefix or nearest.department) or 'pd'
+        end
+    end
+
+    return sanitizeEvidencePrefix(requested) or 'pd'
+end
+
+local function getEvidenceInventoryId(source, data, ignoreSecurityChecks)
+    local locker, requestedPrefix
+
+    if type(data) == 'table' then
+        locker = data.locker or data.id or data[1]
+        requestedPrefix = data.prefix or data.department
+    else
+        locker = data
+    end
+
+    locker = sanitizeEvidenceLocker(locker)
+    if not locker then return end
+
+    local prefix = ignoreSecurityChecks and (sanitizeEvidencePrefix(requestedPrefix) or 'pd')
+        or resolveEvidencePrefix(source, requestedPrefix)
+
+    return ('evidence-%s-%s'):format(prefix, locker), prefix
+end
+
 ---@param source number
 ---@param invType string
 ---@param data? string | number | table | vector3
@@ -154,6 +262,11 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
         if invType == 'stash' then
             right = Inventory(data, left, ignoreSecurityChecks)
             if right == false then return false end
+        elseif invType == 'policeevidence' then
+            if ignoreSecurityChecks or server.hasGroup(left, shared.police) then
+                local evidenceId = getEvidenceInventoryId(source, data, ignoreSecurityChecks)
+                right = evidenceId and Inventory(evidenceId)
+            end
         elseif isDataTable then
             if data.netid then
                 local entity = NetworkGetEntityFromNetworkId(data.netid)
@@ -184,6 +297,10 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
                 if plate then
                     if server.trimplate then plate = string.strtrim(plate) end
 
+                    if invType == 'trunk' and not ignoreSecurityChecks and not canOpenOwnedTrunk(left, plate) then
+                        return false, false, 'trunk_not_owner'
+                    end
+
                     data.id = (invType == 'glovebox' and 'glove' or 'trunk') .. plate
                 end
 
@@ -202,10 +319,6 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
                 right = Inventory(data.id)
             else
                 return
-            end
-        elseif invType == 'policeevidence' then
-            if ignoreSecurityChecks or server.hasGroup(left, shared.police) then
-                right = Inventory(('evidence-%s'):format(data))
             end
         elseif invType == 'dumpster' then
             if shared.networkdumpsters then
@@ -335,6 +448,12 @@ lib.callback.register('ox_inventory:openInventory', function(source, invType, da
     end
 
     return openInventory(source, invType, data)
+end)
+
+lib.callback.register('ox_inventory:canOpenTrunk', function(source, plate)
+    local playerInv = Inventory(source)
+    if not playerInv then return false end
+    return canOpenOwnedTrunk(playerInv, plate)
 end)
 
 ---@param netId number
@@ -607,6 +726,23 @@ RegisterCommand('convertinventory', function(source, args)
 end, true)
 
 
+-- Admin/mod cannot spawn items. Superadmin / owner / developer only.
+local ITEM_SPAWN_GROUPS = {
+    developer = true,
+    owner = true,
+    superadmin = true,
+}
+
+local function canUseItemSpawnCommand(src)
+    if src == 0 then return true end
+    local getPlayer = server.GetPlayerFromId
+    if not getPlayer then return false end
+    local xPlayer = getPlayer(src)
+    if not xPlayer then return false end
+    local group = xPlayer.getGroup and xPlayer.getGroup() or 'user'
+    return ITEM_SPAWN_GROUPS[group] == true
+end
+
 lib.addCommand({ 'additem', 'giveitem' }, {
     help = 'Gives an item to a player with the given id',
     params = {
@@ -615,8 +751,12 @@ lib.addCommand({ 'additem', 'giveitem' }, {
         { name = 'count',  type = 'number',                                help = 'The amount of the item to give', optional = true },
         { name = 'type',   help = 'Sets the "type" metadata to the value', optional = true },
     },
-    restricted = 'group.admin',
+    restricted = 'group.superadmin',
 }, function(source, args)
+    if not canUseItemSpawnCommand(source) then
+        return Citizen.Trace(('Blocked additem from player %s (admin/mod cannot spawn items)\n'):format(source))
+    end
+
     local item = Items(args.item)
 
     if item then
@@ -681,8 +821,12 @@ lib.addCommand('setitem', {
         { name = 'count',  type = 'number',                                       help = 'The amount of items to set',     optional = true },
         { name = 'type',   help = 'Add or remove items with the metadata "type"', optional = true },
     },
-    restricted = 'group.admin',
+    restricted = 'group.superadmin',
 }, function(source, args)
+    if not canUseItemSpawnCommand(source) then
+        return Citizen.Trace(('Blocked setitem from player %s (admin/mod cannot spawn items)\n'):format(source))
+    end
+
     local item = Items(args.item)
 
     if item then
@@ -707,9 +851,10 @@ lib.addCommand('setitem', {
 end)
 
 lib.addCommand('clearevidence', {
-    help = 'Clears a police evidence locker with the given id',
+    help = 'Clears a PD or SD evidence locker with the given id',
     params = {
-        { name = 'locker', type = 'number', help = 'The locker id to clear' },
+        { name = 'locker', help = 'The locker code to clear' },
+        { name = 'department', help = 'pd or sd (defaults to your job)', optional = true },
     },
 }, function(source, args)
     if not server.isPlayerBoss then return end
@@ -721,7 +866,21 @@ lib.addCommand('clearevidence', {
     local hasPermission = group and server.isPlayerBoss(source, group, grade)
 
     if hasPermission then
-        MySQL.query('DELETE FROM ox_inventory WHERE name = ?', { ('evidence-%s'):format(args.locker) })
+        local prefix = sanitizeEvidencePrefix(args.department)
+        if not prefix then
+            if group == 'sheriff' or group == 'bcso' then
+                prefix = 'sd'
+            else
+                prefix = 'pd'
+            end
+        end
+
+        local locker = sanitizeEvidenceLocker(args.locker)
+        if not locker then return end
+
+        MySQL.query('DELETE FROM ox_inventory WHERE name = ?', { ('evidence-%s-%s'):format(prefix, locker) })
+        -- Also clear legacy shared locker ids from before PD/SD split
+        MySQL.query('DELETE FROM ox_inventory WHERE name = ?', { ('evidence-%s'):format(locker) })
     end
 end)
 

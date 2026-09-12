@@ -583,7 +583,8 @@ function client.exitPlayerCustomization(appearance)
     if not appearance then
         client.setPlayerAppearance(getAppearance())
     else
-        client.setPedTattoos(cache.ped, appearance.tattoos)
+        -- Full re-apply (not just tattoos) so the ped re-renders after creator exit.
+        client.setPlayerAppearance(appearance)
     end
 
     RestorePlayerStats()

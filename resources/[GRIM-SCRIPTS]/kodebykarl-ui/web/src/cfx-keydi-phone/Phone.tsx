@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   BatteryFull,
@@ -12,8 +12,12 @@ import {
   Contact,
   MessageSquare,
   Settings,
+  Phone as PhoneIcon,
+  PhoneOff,
 } from "lucide-react";
 import PlaceholderApp from "./apps/PlaceholderApp";
+import type { MessagePeer } from "./apps/MessagesApp";
+import type { ContactAction } from "./apps/ContactsApp";
 
 const WalletApp = lazy(() => import("./apps/WalletApp"));
 const MarketApp = lazy(() => import("./apps/MarketApp"));
@@ -32,10 +36,33 @@ export interface PhonePlayerData {
   number?: string;
 }
 
+export type PhoneCallInfo = {
+  name?: string;
+  number?: string;
+  peerIdentifier?: string;
+  nonce?: number;
+  reason?: string;
+};
+
+export type PhoneCallSeed = {
+  action: "incoming" | "accepted" | "ended";
+  data?: PhoneCallInfo | null;
+  nonce?: number;
+};
+
+type LiveCall = {
+  status: "outgoing" | "incoming" | "active";
+  name: string;
+  number?: string | null;
+  peerIdentifier?: string | null;
+  startedAt?: number;
+};
+
 interface PhoneProps {
   visible: boolean;
   data?: PhonePlayerData | null;
   onClose?: () => void;
+  callSeed?: PhoneCallSeed | null;
 }
 
 type AppDef = {
@@ -70,6 +97,136 @@ async function fetchNui(event: string, data: Record<string, unknown> = {}) {
     headers: { "Content-Type": "application/json; charset=UTF-8" },
     body: JSON.stringify(data),
   }).catch(() => {});
+}
+
+async function nuiJson<T>(event: string, data: Record<string, unknown> = {}): Promise<T | null> {
+  const isBrowser =
+    !(window as unknown as { invokeNative?: unknown }).invokeNative &&
+    !navigator.userAgent.includes("FiveM");
+  if (isBrowser) return { ok: true } as T;
+  const resourceName = (window as unknown as { GetParentResourceName?: () => string })
+    .GetParentResourceName
+    ? (window as unknown as { GetParentResourceName: () => string }).GetParentResourceName()
+    : "kodebykarl-ui";
+  try {
+    const res = await fetch(`https://${resourceName}/${event}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify(data),
+    });
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+class AppErrorBoundary extends Component<
+  { children: React.ReactNode; onReset?: () => void },
+  { error: string | null }
+> {
+  state = { error: null as string | null };
+
+  static getDerivedStateFromError(err: Error) {
+    return { error: err?.message || "Something went wrong" };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0c0e14] px-6 text-center">
+          <p className="text-[14px] font-semibold text-[#f8f3e8]">App crashed</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-[#9a9386]">{this.state.error}</p>
+          <button
+            type="button"
+            onClick={() => {
+              this.setState({ error: null });
+              this.props.onReset?.();
+            }}
+            className="mt-4 rounded-full bg-[#f5c542] px-4 py-2 text-[12px] font-black text-[#1a1408]"
+          >
+            Close app
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function formatCallClock(startedAt?: number) {
+  if (!startedAt) return "00:00";
+  const sec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function CallOverlay({
+  call,
+  onAccept,
+  onDecline,
+  onHangup,
+}: {
+  call: LiveCall;
+  onAccept: () => void;
+  onDecline: () => void;
+  onHangup: () => void;
+}) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (call.status !== "active") return;
+    const id = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [call.status]);
+
+  const label =
+    call.status === "incoming" ? "Incoming call" : call.status === "outgoing" ? "Calling…" : "Connected";
+
+  return (
+    <div className="absolute inset-0 z-[80] flex flex-col bg-gradient-to-b from-[#1a2030] via-[#12141c] to-[#0a0c12] px-6 pb-10 pt-16 text-center">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#9a9386]">{label}</p>
+      <div className="mt-8 flex flex-1 flex-col items-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#2a3344] to-[#1a2030] text-[22px] font-black text-[#f5c542] ring-1 ring-white/10">
+          {(call.name || "?").trim().slice(0, 1).toUpperCase()}
+        </div>
+        <p className="mt-4 text-[22px] font-semibold tracking-tight text-[#f8f3e8]">{call.name}</p>
+        {call.number ? (
+          <p className="mt-1 text-[12px] tabular-nums text-[#9a9386]">{call.number}</p>
+        ) : null}
+        {call.status === "active" ? (
+          <p className="mt-3 text-[13px] tabular-nums text-[#30d158]">{formatCallClock(call.startedAt)}</p>
+        ) : null}
+      </div>
+
+      {call.status === "incoming" ? (
+        <div className="grid grid-cols-2 gap-4 px-2">
+          <button
+            type="button"
+            onClick={onDecline}
+            className="flex flex-col items-center gap-2"
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ff3b30] text-white shadow-lg">
+              <PhoneOff className="h-6 w-6" />
+            </span>
+            <span className="text-[11px] font-semibold text-[#9a9386]">Decline</span>
+          </button>
+          <button type="button" onClick={onAccept} className="flex flex-col items-center gap-2">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#30d158] text-[#05240d] shadow-lg">
+              <PhoneIcon className="h-6 w-6" />
+            </span>
+            <span className="text-[11px] font-semibold text-[#9a9386]">Accept</span>
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={onHangup} className="mx-auto flex flex-col items-center gap-2">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ff3b30] text-white shadow-lg">
+            <PhoneOff className="h-6 w-6" />
+          </span>
+          <span className="text-[11px] font-semibold text-[#9a9386]">Hang up</span>
+        </button>
+      )}
+    </div>
+  );
 }
 
 function useClock(enabled = true) {
@@ -441,9 +598,17 @@ function HomeScreen({
 function AppScreen({
   appId,
   player,
+  messagePeer,
+  onOpenMessage,
+  onStartCall,
+  onCrashReset,
 }: {
   appId: string;
   player?: PhonePlayerData | null;
+  messagePeer?: MessagePeer | null;
+  onOpenMessage: (opts: ContactAction) => void;
+  onStartCall: (opts: ContactAction | MessagePeer) => void;
+  onCrashReset: () => void;
 }) {
   const fallback = (
     <div className="absolute inset-0 flex items-center justify-center bg-[#f2f2f7] text-[13px] text-[#8e8e93]">
@@ -451,80 +616,173 @@ function AppScreen({
     </div>
   );
 
+  let screen: React.ReactNode = null;
+
   if (appId === "wallet") {
-    return (
+    screen = (
       <Suspense fallback={fallback}>
         <WalletApp player={player} />
       </Suspense>
     );
-  }
-
-  if (appId === "market") {
-    return (
+  } else if (appId === "market") {
+    screen = (
       <Suspense fallback={fallback}>
         <MarketApp />
       </Suspense>
     );
-  }
-
-  if (appId === "contacts") {
-    return (
+  } else if (appId === "contacts") {
+    screen = (
       <Suspense fallback={fallback}>
-        <ContactsApp />
+        <ContactsApp onOpenMessage={onOpenMessage} onStartCall={onStartCall} />
       </Suspense>
     );
-  }
-
-  if (appId === "messages") {
-    return (
+  } else if (appId === "messages") {
+    screen = (
       <Suspense fallback={fallback}>
-        <MessagesApp />
+        <MessagesApp startPeer={messagePeer} onStartCall={onStartCall} />
       </Suspense>
     );
-  }
-
-  if (appId === "settings") {
-    return (
+  } else if (appId === "settings") {
+    screen = (
       <Suspense fallback={fallback}>
         <SettingsApp player={player} />
       </Suspense>
     );
+  } else {
+    const app = APPS.find((a) => a.id === appId);
+    if (!app) return null;
+    screen = (
+      <PlaceholderApp
+        title={app.label}
+        icon={app.icon}
+        color={app.color}
+        message="Coming soon."
+        player={player}
+      />
+    );
   }
 
-  const app = APPS.find((a) => a.id === appId);
-  if (!app) return null;
-
-  return (
-    <PlaceholderApp
-      title={app.label}
-      icon={app.icon}
-      color={app.color}
-      message="Coming soon."
-      player={player}
-    />
-  );
+  return <AppErrorBoundary onReset={onCrashReset}>{screen}</AppErrorBoundary>;
 }
 
-export default function Phone({ visible, data, onClose }: PhoneProps) {
+export default function Phone({ visible, data, onClose, callSeed }: PhoneProps) {
   const [view, setView] = useState<PhoneView>("lock");
   const [activeApp, setActiveApp] = useState<string | null>(null);
+  const [messagePeer, setMessagePeer] = useState<MessagePeer | null>(null);
+  const [liveCall, setLiveCall] = useState<LiveCall | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) {
       setView("lock");
       setActiveApp(null);
+      setMessagePeer(null);
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (!callSeed) return;
+    if (callSeed.action === "incoming") {
+      setLiveCall({
+        status: "incoming",
+        name: callSeed.data?.name || "Unknown",
+        number: callSeed.data?.number,
+        peerIdentifier: callSeed.data?.peerIdentifier,
+      });
+      setView((v) => (v === "lock" ? "home" : v));
+    } else if (callSeed.action === "accepted") {
+      setLiveCall((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "active",
+              name: callSeed.data?.name || prev.name,
+              number: callSeed.data?.number ?? prev.number,
+              startedAt: Date.now(),
+            }
+          : {
+              status: "active",
+              name: callSeed.data?.name || "Unknown",
+              number: callSeed.data?.number,
+              peerIdentifier: callSeed.data?.peerIdentifier,
+              startedAt: Date.now(),
+            },
+      );
+    } else if (callSeed.action === "ended") {
+      setLiveCall(null);
+    }
+  }, [callSeed]);
 
   const close = useCallback(() => {
     void fetchNui("cfx-keydi-phone:close");
     onClose?.();
   }, [onClose]);
 
+  const startCall = useCallback(async (opts: ContactAction | MessagePeer) => {
+    setCallError(null);
+    const res = await nuiJson<{
+      ok?: boolean;
+      error?: string;
+      name?: string;
+      number?: string;
+      peerIdentifier?: string;
+    }>("cfx-keydi-phone:call:start", {
+      peerIdentifier: opts.peerIdentifier || undefined,
+      contactId: "contactId" in opts ? opts.contactId : undefined,
+    });
+    if (!res?.ok) {
+      setCallError(res?.error || "Could not start call");
+      window.setTimeout(() => setCallError(null), 4000);
+      return;
+    }
+    setLiveCall({
+      status: "outgoing",
+      name: res.name || opts.name || "Unknown",
+      number: res.number,
+      peerIdentifier: res.peerIdentifier || opts.peerIdentifier,
+    });
+  }, []);
+
+  const openMessage = useCallback((opts: ContactAction) => {
+    setMessagePeer({
+      peerIdentifier: opts.peerIdentifier,
+      contactId: opts.contactId,
+      name: opts.name,
+    });
+    setActiveApp("messages");
+    setView("app");
+  }, []);
+
+  const acceptCall = useCallback(async () => {
+    const res = await nuiJson<{ ok?: boolean; error?: string }>("cfx-keydi-phone:call:accept");
+    if (!res?.ok) {
+      setCallError(res?.error || "Could not answer");
+      return;
+    }
+    setLiveCall((prev) =>
+      prev ? { ...prev, status: "active", startedAt: Date.now() } : prev,
+    );
+  }, []);
+
+  const declineCall = useCallback(async () => {
+    setLiveCall(null);
+    await nuiJson("cfx-keydi-phone:call:decline");
+  }, []);
+
+  const hangupCall = useCallback(async () => {
+    setLiveCall(null);
+    await nuiJson("cfx-keydi-phone:call:hangup");
+  }, []);
+
   useEffect(() => {
     if (!visible) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (liveCall) {
+          if (liveCall.status === "incoming") void declineCall();
+          else void hangupCall();
+          return;
+        }
         if (view === "app") {
           setView("home");
           setActiveApp(null);
@@ -537,7 +795,7 @@ export default function Phone({ visible, data, onClose }: PhoneProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visible, view, close]);
+  }, [visible, view, close, liveCall, declineCall, hangupCall]);
 
   if (!visible) return null;
 
@@ -578,18 +836,47 @@ export default function Phone({ visible, data, onClose }: PhoneProps) {
             <HomeScreen
               player={data}
               onOpenApp={(id) => {
+                if (id === "messages") setMessagePeer(null);
                 setActiveApp(id);
                 setView("app");
               }}
             />
           )}
-          {view === "app" && activeApp && <AppScreen appId={activeApp} player={data} />}
+          {view === "app" && activeApp && (
+            <AppScreen
+              appId={activeApp}
+              player={data}
+              messagePeer={messagePeer}
+              onOpenMessage={openMessage}
+              onStartCall={startCall}
+              onCrashReset={() => {
+                setActiveApp(null);
+                setView("home");
+              }}
+            />
+          )}
+
+          {callError ? (
+            <div className="absolute bottom-12 left-3 right-3 z-[90] rounded-xl border border-red-500/30 bg-red-500/15 px-3 py-2 text-center text-[11px] text-red-200">
+              {callError}
+            </div>
+          ) : null}
+
+          {liveCall ? (
+            <CallOverlay
+              call={liveCall}
+              onAccept={() => void acceptCall()}
+              onDecline={() => void declineCall()}
+              onHangup={() => void hangupCall()}
+            />
+          ) : null}
 
           <button
             type="button"
             aria-label="Back"
             className="absolute bottom-0 left-1/2 z-50 flex h-8 w-[150px] -translate-x-1/2 items-end justify-center pb-2.5"
             onClick={() => {
+              if (liveCall) return;
               if (view === "app") {
                 setActiveApp(null);
                 setView("home");

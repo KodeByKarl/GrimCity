@@ -224,25 +224,54 @@ local function addBankOffline(identifier, amount)
     return true
 end
 
-local function creditSender(invoice, amount)
-    local targetJob = invoice.sender_job
-    if (not targetJob or targetJob == "") and invoice.invoice_type and invoice.invoice_type:lower() ~= "personal" then
+local function societyAccountForInvoice(invoice)
+    local jobName = invoice and invoice.sender_job
+    if (not jobName or jobName == "") and invoice and invoice.invoice_type and invoice.invoice_type:lower() ~= "personal" then
         local societyCfg = cfg().JobInvoices or {}
         for jName, jData in pairs(societyCfg) do
             if (jData.label and jData.label:lower() == invoice.invoice_type:lower()) or jName == invoice.invoice_type:lower() then
-                targetJob = jName
+                jobName = jName
                 break
             end
         end
     end
+    if not jobName or jobName == "" then return nil end
 
-    if invoice.kind == "job" and targetJob and targetJob ~= "" then
-        if GetResourceState("cfx-keydi-society") == "started" then
-            local success = exports["cfx-keydi-society"]:AddSocietyMoney(targetJob, amount)
-            if success then
+    if GetResourceState("cfx-keydi-society") == "started" then
+        local account
+        pcall(function()
+            account = exports["cfx-keydi-society"]:AccountForJob(jobName)
+        end)
+        if type(account) == "string" and account ~= "" then
+            return account
+        end
+    end
+    return ("society_%s"):format(jobName)
+end
+
+local function creditSender(invoice, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if amount <= 0 then return false end
+
+    if invoice.kind == "job" then
+        local account = societyAccountForInvoice(invoice)
+        if account and GetResourceState("cfx-keydi-society") == "started" then
+            local ok = false
+            pcall(function()
+                local result = exports["cfx-keydi-society"]:AddMoney(
+                    account,
+                    amount,
+                    invoice.sender_identifier,
+                    ("Invoice #%s — %s"):format(invoice.id or "?", invoice.title or "billing")
+                )
+                ok = result ~= false and result ~= nil and result ~= "invalid" and result ~= "db_failed"
+            end)
+            if ok then
                 return true
             end
         end
+        print(("^1[cfx-keydi-invoice]^7 failed to credit society %s for invoice #%s"):format(tostring(account), tostring(invoice.id)))
+        return false
     end
 
     local xSender = ESX.GetPlayerFromIdentifier(invoice.sender_identifier)
@@ -254,11 +283,68 @@ local function creditSender(invoice, amount)
     return addBankOffline(invoice.sender_identifier, amount)
 end
 
+local function debitSender(invoice, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if amount <= 0 then return false end
+
+    if invoice.kind == "job" then
+        local account = societyAccountForInvoice(invoice)
+        if account and GetResourceState("cfx-keydi-society") == "started" then
+            pcall(function()
+                exports["cfx-keydi-society"]:RemoveMoney(account, amount, invoice.sender_identifier, ("Invoice #%s rejected"):format(invoice.id or "?"))
+            end)
+            return true
+        end
+        return false
+    end
+
+    local xSender = ESX.GetPlayerFromIdentifier(invoice.sender_identifier)
+    if xSender then
+        xSender.removeAccountMoney("bank", amount)
+        return true
+    end
+
+    return addBankOffline(invoice.sender_identifier, -amount)
+end
+
+local function tryAutoPay(row, xTarget)
+    if not row or not xTarget then return false end
+    local total = tonumber(row.total) or 0
+    if total <= 0 then return false end
+
+    local bank = xTarget.getAccount("bank")
+    local cash = xTarget.getAccount("money")
+    local bankBal = bank and tonumber(bank.money) or 0
+    local cashBal = cash and tonumber(cash.money) or 0
+
+    local account
+    if bankBal >= total then
+        account = "bank"
+    elseif cashBal >= total then
+        account = "money"
+    else
+        return false
+    end
+
+    xTarget.removeAccountMoney(account, total)
+    creditSender(row, total)
+
+    MySQL.update.await(
+        "UPDATE `keydi_invoices` SET `status` = 'paid', `paid_at` = CURRENT_TIMESTAMP, `payment_method` = ? WHERE id = ?",
+        { "auto", row.id }
+    )
+    row.status = "paid"
+    row.payment_method = "auto"
+    return true
+end
+
 local function attachPerms(invoice, identifier)
     if not invoice then return nil end
     local unpaid = invoice.status == "unpaid"
-    invoice.canPay = unpaid and invoice.receiverIdentifier == identifier
+    local isReceiver = invoice.receiverIdentifier == identifier
+    invoice.canPay = unpaid and isReceiver
     invoice.canCancel = unpaid and invoice.senderIdentifier == identifier
+    invoice.canReject = isReceiver and (unpaid or invoice.paymentMethod == "auto")
     return invoice
 end
 
@@ -359,6 +445,7 @@ lib.callback.register("cfx-keydi-invoice:open", function(source, opts)
         jobName = jobName,
         jobLabel = job.label or jobName,
         canJobInvoice = jobInfo ~= nil,
+        forceSocietyInvoice = jobInfo and jobInfo.forceSociety == true,
         jobInvoiceLabel = jobInfo and jobInfo.label or nil,
         isStaff = ownerDev,
         canSociety = ownerDev,
@@ -428,8 +515,9 @@ local function createInvoice(source, data)
 
     local job = xPlayer.job or {}
     local info = jobInvoiceInfo(job.name, job.grade)
+    local forceSociety = info and info.forceSociety == true
     local kind = "personal"
-    if data.kind == "job" or (data.kind ~= "personal" and info ~= nil) then
+    if forceSociety or data.kind == "job" or (data.kind ~= "personal" and info ~= nil) then
         if info then
             kind = "job"
         end
@@ -484,11 +572,26 @@ local function createInvoice(source, data)
 
     local formatted = attachPerms(formatInvoice(saved), xTarget.identifier)
     if formatted then
-        formatted.canPay = true
+        formatted.canPay = formatted.status == "unpaid"
+    end
+
+    if data.autoAccept and saved.status == "unpaid" then
+        if tryAutoPay(saved, xTarget) then
+            saved = getInvoiceById(id) or saved
+            formatted = attachPerms(formatInvoice(saved), xTarget.identifier)
+            notify(xTarget.source, ("Invoice #%s auto-paid ($%s). You can still reject it."):format(id, saved.total or total), "inform")
+            notify(source, ("Invoice #%s auto-paid by %s ($%s)."):format(id, playerName(xTarget), saved.total or total), "success")
+            TriggerClientEvent("cfx-keydi-invoice:client:paid", source, {
+                id = id,
+                total = saved.total or total,
+            })
+        end
     end
 
     TriggerClientEvent("cfx-keydi-invoice:client:received", xTarget.source, formatted)
-    notify(source, ("%s #%s sent to %s."):format(kind == "job" and "Invoice" or "Receipt", id, playerName(xTarget)), "success")
+    if not (data.autoAccept and saved.status == "paid") then
+        notify(source, ("%s #%s sent to %s."):format(kind == "job" and "Invoice" or "Receipt", id, playerName(xTarget)), "success")
+    end
 
     return { ok = true, id = id, reference = reference }
 end
@@ -562,6 +665,24 @@ local function declineInvoice(source, invoiceId, asReceiver)
     if not row then
         return { ok = false, error = "Invoice not found" }
     end
+    if row.status == "paid" then
+        if not asReceiver or row.payment_method ~= "auto" or row.receiver_identifier ~= xPlayer.identifier then
+            return { ok = false, error = "Invoice cannot be cancelled" }
+        end
+
+        local total = tonumber(row.total) or 0
+        xPlayer.addAccountMoney("bank", total)
+        debitSender(row, total)
+        MySQL.update.await("DELETE FROM `keydi_invoices` WHERE id = ?", { row.id })
+
+        local xSender = ESX.GetPlayerFromIdentifier(row.sender_identifier)
+        if xSender then
+            notify(xSender.source, ("Invoice #%s was rejected. $%s refunded."):format(row.id, total), "inform")
+        end
+        notify(source, ("Invoice rejected. $%s refunded to your bank."):format(total), "success")
+        return { ok = true, refunded = total }
+    end
+
     if row.status ~= "unpaid" then
         return { ok = false, error = "Invoice cannot be cancelled" }
     end

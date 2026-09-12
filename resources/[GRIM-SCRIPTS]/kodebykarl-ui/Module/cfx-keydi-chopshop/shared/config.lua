@@ -83,18 +83,37 @@ Config.ChopShop = {
 
     BlockJobVehicles = true,
 
-    -- Primary illegal payout
+    -- Dirty-money payout scales with the chopped vehicle (dealership / vehicles price).
+    -- Super cars (~250k list) hit the 500k cap; cheaper cars pay less.
     MoneyReward = {
         item = "black_money",
-        amount = 500000,
+        pricePercent = 200, -- % of list price
+        min = 25000,
+        max = 500000,
+        -- Used when the model has no listed price
+        amount = 75000,
+        classAmounts = {
+            [0] = 40000,   -- Compacts
+            [1] = 60000,   -- Sedans
+            [2] = 80000,   -- SUVs
+            [3] = 120000,  -- Coupes
+            [4] = 100000,  -- Muscle
+            [5] = 200000,  -- Sports Classics
+            [6] = 180000,  -- Sports
+            [7] = 500000,  -- Super
+            [8] = 35000,   -- Motorcycles
+            [9] = 70000,   -- Off-road
+            [11] = 50000,  -- Utility
+            [12] = 55000,  -- Vans
+        },
     },
 
-    -- Optional scrap leftovers (still rolls on top of the 500k)
+    -- Optional scrap leftovers (on top of dirty cash)
     Rewards = {
         { item = "scrapmetal", min = 4, max = 10, chance = 70 },
-        { item = "car_door", min = 1, max = 1, chance = 35 },
-        { item = "car_wheel", min = 1, max = 2, chance = 40 },
-        { item = "car_battery", min = 1, max = 1, chance = 25 },
-        { item = "spark_plugs", min = 1, max = 2, chance = 30 },
+        { item = "door", min = 1, max = 1, chance = 35 },
+        { item = "tire", min = 1, max = 2, chance = 40 },
+        { item = "engine", min = 1, max = 1, chance = 25 },
+        { item = "window", min = 1, max = 2, chance = 30 },
     },
 }

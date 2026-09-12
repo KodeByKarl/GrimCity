@@ -26,6 +26,7 @@ CreateThread(function()
                     if IsControlJustPressed(0, toggle_helicam) then -- Toggle Helicam
                         PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", false)
                         helicam = true
+                        TriggerServerEvent('kodebykarl-utils:thermal:heliVision', true)
                     end
                     if IsControlJustPressed(0, toggle_rappel) then -- Initiate rappel
                         if cache.seat == 1 or cache.seat == 2 then
@@ -122,6 +123,8 @@ CreateThread(function()
                 DestroyCam(cam, false)
                 SetNightvision(false)
                 SetSeethrough(false)
+                vision_state = 0
+                TriggerServerEvent('kodebykarl-utils:thermal:heliVision', false)
             end
         end
 		Wait(sleep)

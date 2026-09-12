@@ -93,6 +93,7 @@ local function BuildLocalPayload()
         canSheriffBoss = false,
         canAmbulanceBoss = false,
         canPambulanceBoss = false,
+        canSambulanceBoss = false,
         canDojBoss = false,
         canPoliceMdt = false,
         canSheriffMdt = false,
@@ -439,6 +440,22 @@ RegisterNUICallback('cfx-keydi-ipad:mdt:removeBolo', function(data, cb)
         return
     end
     cb(deptCb('cfx-keydi-ipad:mdt:removeBolo', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:mdt:search', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:mdt:search', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:mdt:addCase', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(deptCb('cfx-keydi-ipad:mdt:addCase', data or {}))
 end)
 
 AddEventHandler('onResourceStop', function(res)

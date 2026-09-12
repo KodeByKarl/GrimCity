@@ -379,8 +379,6 @@ export default function VipStaffPanel({ onOwnStatusChanged }: VipStaffPanelProps
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#a08890]">
                         <span className="font-bold text-[#ff8080]">{m.label}</span>
                         <span>·</span>
-                        <span>{m.characterSlots} Chars</span>
-                        <span>·</span>
                         <span className="flex items-center gap-1">
                           <CalendarClock className="h-3 w-3 text-[#ff4d4d]" />
                           Expires {formatDate(m.expiresAt)}
@@ -525,7 +523,6 @@ export default function VipStaffPanel({ onOwnStatusChanged }: VipStaffPanelProps
                       )}
                     >
                       <span className="text-[11px] font-black uppercase">{t.label}</span>
-                      <span className="text-[8.5px] text-[#a08890]">{t.characterSlots} Slots</span>
                     </button>
                   ))}
                 </div>
@@ -633,7 +630,6 @@ export default function VipStaffPanel({ onOwnStatusChanged }: VipStaffPanelProps
                       )}
                     >
                       <span className="text-[11px] font-black uppercase">{t.label}</span>
-                      <span className="text-[8.5px] text-[#a08890]">{t.characterSlots} Slots</span>
                     </button>
                   ))}
                 </div>

@@ -17,8 +17,17 @@ Config.ReviveCooldown = 1500
 -- Death recap, then ambulance revive + arena spawn
 Config.DeathScreenMs = 5000
 
+-- Kept when entering/leaving deathmatch. Empty table is NOT valid for ox_inventory:ClearInventory
+-- (it skips slot sync and players walk out with the arena gun).
 Config.KeepItems = {
+    'money',
+    'black_money',
+}
 
+-- Always stripped on leave (arena loadout).
+Config.LoadoutItems = {
+    'WEAPON_PISTOL',
+    'ammo-9',
 }
 
 -- Arena spawn (cfx-bwd-pvp map). Stream/map files are not copied.

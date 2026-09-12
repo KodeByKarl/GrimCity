@@ -13,7 +13,7 @@ const DEFAULT_DATA: ComServData = {
   remaining: 0,
   total: 0,
   reason: "",
-  brand: "PANDORA CITY",
+  brand: "GRIM CITY",
 };
 
 export default function ComServHud() {
@@ -54,55 +54,53 @@ export default function ComServHud() {
   const progress = Math.min(100, Math.round((done / total) * 100));
 
   return (
-    <div className="pandora fixed right-6 top-[42%] -translate-y-1/2 z-[99990] w-[280px] select-none pointer-events-none font-sans">
+    <div className="pandora fixed right-6 top-[42%] -translate-y-1/2 z-[99990] w-[250px] select-none pointer-events-none font-sans">
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl border shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)]",
-          completedFlash ? "border-emerald-400/40" : "border-[rgba(143,228,255,0.22)]"
+          "relative overflow-hidden rounded-xl border-2 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]",
+          completedFlash ? "border-emerald-400/50" : "border-[#ff3a3a]"
         )}
         style={{
-          background: "linear-gradient(180deg, rgba(10, 40, 70, 0.96) 0%, rgba(5, 25, 47, 0.98) 100%)",
+          background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)",
         }}
       >
-        <div className="panel-grid pointer-events-none absolute inset-0 opacity-40" />
+        <div className="panel-grid pointer-events-none absolute inset-0 opacity-30" />
 
         <div
-          className="relative flex items-center gap-2.5 px-3.5 py-2.5"
+          className="relative flex items-center gap-2 px-3 py-2"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(53,199,242,0.35) 0%, rgba(28,111,168,0.55) 55%, rgba(11,44,78,0.6) 100%)",
-            borderBottom: "1px solid rgba(255, 210, 76, 0.35)",
+            borderBottom: "1px solid rgba(255, 58, 58, 0.25)",
           }}
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/25 bg-white/12">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#ff3a3a] bg-[#ff3a3a]/15">
             {completedFlash ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+              <CheckCircle2 className="h-3 w-3 text-emerald-300" />
             ) : (
-              <HardHat className="h-3.5 w-3.5 text-white" />
+              <HardHat className="h-3 w-3 text-white" />
             )}
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/90">
+            <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#ff4d4d]">
               Community Service
             </span>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[#ffd24c]/80 truncate">
-              {data.brand || "PANDORA CITY"}
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#a08890] truncate">
+              {data.brand || "GRIM CITY"}
             </span>
           </div>
         </div>
 
-        <div className="relative px-3.5 py-3 space-y-3">
+        <div className="relative px-3 py-2.5 space-y-2.5">
           <div className="flex items-end justify-between gap-2">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-white/45">Remaining</p>
-              <p className="text-2xl font-black tabular-nums text-white leading-none mt-0.5">
+              <p className="text-[8px] font-bold uppercase tracking-wider text-[#a08890]">Remaining</p>
+              <p className="text-xl font-black tabular-nums text-white leading-none mt-0.5">
                 {data.remaining}
-                <span className="text-sm font-bold text-white/40"> / {data.total}</span>
+                <span className="text-xs font-bold text-[#a08890]"> / {data.total}</span>
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-white/45">Progress</p>
-              <p className="text-lg font-black tabular-nums text-[#8fe4ff] leading-none mt-0.5">{progress}%</p>
+              <p className="text-[8px] font-bold uppercase tracking-wider text-[#a08890]">Progress</p>
+              <p className="text-base font-black tabular-nums text-[#ff4d4d] leading-none mt-0.5">{progress}%</p>
             </div>
           </div>
 
@@ -113,19 +111,19 @@ export default function ComServHud() {
                 width: `${progress}%`,
                 background: completedFlash
                   ? "linear-gradient(90deg, #34d399, #6ee7b7)"
-                  : "linear-gradient(90deg, #35c7f2, #ffd24c)",
+                  : "linear-gradient(90deg, #b30000, #ff3a3a)",
               }}
             />
           </div>
 
           {data.reason ? (
-            <div className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
-              <p className="text-[8px] font-black uppercase tracking-wider text-white/40 mb-0.5">Reason</p>
-              <p className="text-[11px] font-semibold text-white/85 leading-snug line-clamp-2">{data.reason}</p>
+            <div className="rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2 py-1.5">
+              <p className="text-[7px] font-black uppercase tracking-wider text-[#a08890] mb-0.5">Reason</p>
+              <p className="text-[10px] font-semibold text-white/85 leading-snug line-clamp-2">{data.reason}</p>
             </div>
           ) : null}
 
-          <p className="text-[9px] font-medium text-white/40 text-center">
+          <p className="text-[8px] font-medium text-[#a08890] text-center">
             Complete marked tasks in the service zone
           </p>
         </div>

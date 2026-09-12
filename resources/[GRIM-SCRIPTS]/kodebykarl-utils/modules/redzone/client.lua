@@ -1,4 +1,5 @@
 local Config = require 'configs.redzone'
+local Region = require 'helpers.region'
 
 if not Config or not Config.Enabled then return end
 
@@ -41,6 +42,9 @@ CreateThread(function()
                 thickness = zone.thickness or 80.0,
                 debug = zone.debug == true,
                 onEnter = function()
+                    if not Region.Allowed('grind') and not Region.Allowed('illegal') then
+                        return
+                    end
                     insideZones[zone.name] = true
                     LocalPlayer.state:set('inRedZone', true, false)
 

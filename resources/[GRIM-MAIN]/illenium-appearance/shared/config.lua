@@ -2,10 +2,10 @@ Config = {}
 
 Config.Debug = false
 
-Config.ClothingCost = 100
-Config.BarberCost = 100
-Config.TattooCost = 100
-Config.SurgeonCost = 100
+Config.ClothingCost = 2500
+Config.BarberCost = 2500
+Config.TattooCost = 2500
+Config.SurgeonCost = 1000000
 
 Config.ChargePerTattoo = true -- Charge players per tattoo. Config.TattooCost will become the cost of 1 tattoo. The cost can be overridden by adding `cost` key in shared/tattoos.lua for specific tattoos
 
@@ -121,7 +121,7 @@ Config.Blips = {
         Name = "Tattoo Shop",
     },
     ["surgeon"] = {
-        Show = true,
+        Show = false,
         Sprite = 102,
         Color = 4,
         Scale = 0.7,
@@ -544,15 +544,15 @@ Config.Stores = {
     },
     {
         type = "surgeon",
-        coords = vector4(298.78, -572.81, 43.26, 114.27),
-        size = vector3(4, 4, 4),
-        rotation = 45,
+        coords = vector4(-1023.3960, -1342.0713, 6.2205, 252.6069), -- City HP Surgery
+        size = vector3(2.5, 2.5, 2.5),
+        rotation = 252.6069,
         usePoly = false,
         points = {
-            vector3(298.84417724609, -572.92205810547, 43.26),
-            vector3(296.39556884766, -575.65942382812, 43.26),
-            vector3(293.56317138672, -572.60675048828, 43.26),
-            vector3(296.28656005859, -570.330078125, 43.26)
+            vector3(-1025.0, -1343.5, 6.22),
+            vector3(-1021.5, -1343.5, 6.22),
+            vector3(-1021.5, -1340.5, 6.22),
+            vector3(-1025.0, -1340.5, 6.22)
         }
     }
 }
@@ -562,22 +562,85 @@ Config.ClothingRooms = {}
 
 
 Config.PlayerOutfitRooms = {
-    -- Sample outfit room config
-{
+    {
         job = "police",
-        coords = vector4(41.5474, -421.1711, 39.1436, 251.6538),
-        size = vector3(4, 4, 4),
-        rotation = 45,
+        coords = vector4(80.1504, -377.2947, 41.6247, 153.7896),
+        size = vector3(3.5, 3.5, 3.0),
+        rotation = 153.7896,
         usePoly = false,
         points = {
-            vector3(284.83, -574.01, 43.16),
-            vector3(286.33, -570.03, 43.16),
-            vector3(290.33, -571.74, 43.16),
-            vector3(289.0, -574.75, 43.16)
+            vector3(78.5, -375.8, 41.62),
+            vector3(81.8, -375.8, 41.62),
+            vector3(81.8, -378.8, 41.62),
+            vector3(78.5, -378.8, 41.62)
+        }
+    },
+    {
+        job = "sheriff",
+        coords = vector4(1881.2179, 3661.3215, 34.1129, 291.0265),
+        size = vector3(3.5, 3.5, 3.0),
+        rotation = 291.0265,
+        usePoly = false,
+        points = {
+            vector3(1879.6, 3660.0, 34.11),
+            vector3(1882.8, 3660.0, 34.11),
+            vector3(1882.8, 3662.8, 34.11),
+            vector3(1879.6, 3662.8, 34.11)
         }
     }
 }
 
 Config.Outfits = {}
 
-Config.InitialPlayerClothes = {}
+Config.InitialPlayerClothes = {
+    Male = {
+        Model = "mp_m_freemode_01",
+        Components = {
+            { component_id = 0, drawable = 0, texture = 0 },
+            { component_id = 1, drawable = 0, texture = 0 },
+            { component_id = 2, drawable = 0, texture = 0 },
+            { component_id = 3, drawable = 0, texture = 0 },
+            { component_id = 4, drawable = 0, texture = 0 },
+            { component_id = 5, drawable = 0, texture = 0 },
+            { component_id = 6, drawable = 0, texture = 0 },
+            { component_id = 7, drawable = 0, texture = 0 },
+            { component_id = 8, drawable = 0, texture = 0 },
+            { component_id = 9, drawable = 0, texture = 0 },
+            { component_id = 10, drawable = 0, texture = 0 },
+            { component_id = 11, drawable = 0, texture = 0 },
+        },
+        Props = {
+            { prop_id = 0, drawable = -1, texture = -1 },
+            { prop_id = 1, drawable = -1, texture = -1 },
+            { prop_id = 2, drawable = -1, texture = -1 },
+            { prop_id = 6, drawable = -1, texture = -1 },
+            { prop_id = 7, drawable = -1, texture = -1 },
+        },
+        Hair = { color = 0, highlight = 0, style = 0, texture = 0 },
+    },
+    Female = {
+        Model = "mp_f_freemode_01",
+        Components = {
+            { component_id = 0, drawable = 0, texture = 0 },
+            { component_id = 1, drawable = 0, texture = 0 },
+            { component_id = 2, drawable = 0, texture = 0 },
+            { component_id = 3, drawable = 0, texture = 0 },
+            { component_id = 4, drawable = 0, texture = 0 },
+            { component_id = 5, drawable = 0, texture = 0 },
+            { component_id = 6, drawable = 0, texture = 0 },
+            { component_id = 7, drawable = 0, texture = 0 },
+            { component_id = 8, drawable = 0, texture = 0 },
+            { component_id = 9, drawable = 0, texture = 0 },
+            { component_id = 10, drawable = 0, texture = 0 },
+            { component_id = 11, drawable = 0, texture = 0 },
+        },
+        Props = {
+            { prop_id = 0, drawable = -1, texture = -1 },
+            { prop_id = 1, drawable = -1, texture = -1 },
+            { prop_id = 2, drawable = -1, texture = -1 },
+            { prop_id = 6, drawable = -1, texture = -1 },
+            { prop_id = 7, drawable = -1, texture = -1 },
+        },
+        Hair = { color = 0, highlight = 0, style = 0, texture = 0 },
+    },
+}

@@ -276,6 +276,8 @@ local function EnterShowroom(playerId, dealershipId, originalCoords)
 
     local financeAllowed = financedCount < maxFinanced
 
+    FgDealershipSession(playerId, 'showroom', true)
+
     return {
 
         vehicles = Showroom.Server.GetVehicles(dealershipId),
@@ -375,6 +377,8 @@ lib.callback.register("jg-dealerships:server:exit-showroom", function(playerId, 
     ClearPedTasksImmediately(playerPed)
 
     activeSessions[playerIdentifier] = nil
+
+    FgDealershipSession(playerId, 'showroom', false)
 
     return true
 

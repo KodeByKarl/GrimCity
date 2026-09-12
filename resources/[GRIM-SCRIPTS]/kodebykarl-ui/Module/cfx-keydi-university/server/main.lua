@@ -120,6 +120,13 @@ lib.callback.register('cfx-keydi-university:registrar:open', function(source)
         return { ok = false, error = 'disabled' }
     end
 
+    if ConfigServerLocations and ConfigServerLocations.CanUseFunction then
+        if not ConfigServerLocations.CanUseFunction('school', source) then
+            notify(source, ConfigServerLocations.WrongServerMessage('school'), 'error')
+            return { ok = false, error = 'region' }
+        end
+    end
+
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then return { ok = false, error = 'no_player' } end
 
@@ -144,6 +151,11 @@ end)
 lib.callback.register('cfx-keydi-university:registrar:apply', function(source, data)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then return { ok = false, error = 'no_player' } end
+    if ConfigServerLocations and ConfigServerLocations.CanUseFunction then
+        if not ConfigServerLocations.CanUseFunction('school', source) then
+            return { ok = false, error = 'region', message = ConfigServerLocations.WrongServerMessage('school') }
+        end
+    end
     if isAlreadyStudent(xPlayer) then
         return { ok = false, error = 'already_student', message = cfg().Notify.alreadyStudent }
     end

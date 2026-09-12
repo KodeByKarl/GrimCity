@@ -30,13 +30,12 @@ local function resolveSystemJobData(jobName, jobLabel)
 end
 
 local function resolvePlayerGang(xPlayer)
-    local gangName, gangLabel, gradeLabel = nil, nil, 'Region 3'
+    local gangName, gangLabel = nil, nil
 
     if xPlayer.gang then
         if type(xPlayer.gang) == 'table' then
             gangName = xPlayer.gang.name
             gangLabel = xPlayer.gang.label
-            gradeLabel = xPlayer.gang.grade_label or 'Region 3'
         elseif type(xPlayer.gang) == 'string' then
             gangName = xPlayer.gang
         end
@@ -45,7 +44,6 @@ local function resolvePlayerGang(xPlayer)
         if type(gangObj) == 'table' then
             gangName = gangObj.name
             gangLabel = gangObj.label
-            gradeLabel = gangObj.grade_label or 'Region 3'
         elseif type(gangObj) == 'string' then
             gangName = gangObj
         end
@@ -55,7 +53,7 @@ local function resolvePlayerGang(xPlayer)
         gangLabel = gangName and gangName:gsub('^%l', string.upper) or 'GANG'
     end
 
-    return gangName, gangLabel, gradeLabel
+    return gangName, gangLabel
 end
 
 --- System job announcement without a player source (drop-in for cfx-cs-chat JobTemplateWithoutID)
@@ -93,7 +91,7 @@ function GangTemplateFromSource(source, message)
         return false, 'disabled'
     end
 
-    local gangName, gangLabel, gradeLabel = resolvePlayerGang(xPlayer)
+    local gangName, gangLabel = resolvePlayerGang(xPlayer)
     gangName = type(gangName) == 'string' and gangName:lower() or nil
     local gangData = ResolveGangTemplate(gangName, gangLabel)
     if not gangData then
@@ -101,14 +99,7 @@ function GangTemplateFromSource(source, message)
     end
 
     gangLabel = gangData.label or gangLabel or gangName:upper()
-    gradeLabel = gradeLabel or ''
-
-    local headerLeft = 'FEED • ' .. gangLabel
-    if gradeLabel ~= '' then
-        headerLeft = headerLeft .. ' | {0} | ' .. gradeLabel
-    else
-        headerLeft = headerLeft .. ' | {0}'
-    end
+    local headerLeft = 'FEED • ' .. gangLabel .. ' | {0}'
 
     local time = os.date('%H:%M')
     local speaker = xPlayer.getName and xPlayer.getName() or xPlayer.name or 'Unknown'
@@ -128,8 +119,18 @@ function GangTemplateFromSource(source, message)
     return true
 end
 
+--- Show a 3D /me above a player (same as the /me command).
+---@param source number
+---@param text string
+---@return boolean
+function DisplayMe(source, text)
+    if type(BroadcastMe3D) ~= 'function' then return false end
+    return BroadcastMe3D(source, text) == true
+end
+
 exports('JobTemplateWithoutID', JobTemplateWithoutID)
 exports('GangTemplateFromSource', GangTemplateFromSource)
+exports('DisplayMe', DisplayMe)
 
 -- Event fallback (same-server) if export isn't refreshed yet
 AddEventHandler('cfx-keydi-ui:GangTemplateFromSource', function(src, message, cb)

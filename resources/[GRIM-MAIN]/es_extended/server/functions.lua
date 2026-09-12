@@ -6,6 +6,43 @@ function ESX.Trace(msg)
     end
 end
 
+--- Server-side proximity check used by jobs (police cuff, ID, escort, etc).
+---@param src number
+---@param target number
+---@param maxDistance? number
+---@param _reason? string
+---@return boolean
+function ESX.VerifyDistance(src, target, maxDistance, _reason)
+    src = tonumber(src)
+    target = tonumber(target)
+    maxDistance = tonumber(maxDistance) or 5.0
+    if not src or not target or src < 1 or target < 1 then
+        return false
+    end
+
+    local pedA = GetPlayerPed(src)
+    local pedB = GetPlayerPed(target)
+    if not pedA or pedA == 0 or not pedB or pedB == 0 then
+        return false
+    end
+
+    local dist = #(GetEntityCoords(pedA) - GetEntityCoords(pedB))
+    if dist > maxDistance then
+        if Config.EnableDebug then
+            print(("[^3VERIFY DISTANCE^7] %s -> %s failed (%.2fm > %.2fm)%s"):format(
+                src,
+                target,
+                dist,
+                maxDistance,
+                _reason and (" [" .. tostring(_reason) .. "]") or ""
+            ))
+        end
+        return false
+    end
+
+    return true
+end
+
 --- Triggers an event for one or more clients.
 ---@param eventName string The name of the event to trigger.
 ---@param playerIds table|number If a number, represents a single player ID. If a table, represents an array of player IDs.
@@ -22,6 +59,27 @@ function ESX.TriggerClientEvent(eventName, playerIds, ...)
     for i = 1, #playerIds do
         TriggerClientEventInternal(eventName, playerIds[i], payload, payloadLength)
     end
+end
+
+---@param allowedGroups string | table
+---@param playerGroup string
+---@return boolean
+function Core.CommandAllowsGroup(allowedGroups, playerGroup)
+    playerGroup = Core.NormalizeGroup(playerGroup)
+    if not playerGroup then
+        return false
+    end
+
+    if type(allowedGroups) == "table" then
+        for i = 1, #allowedGroups do
+            if Core.NormalizeGroup(allowedGroups[i]) == playerGroup then
+                return true
+            end
+        end
+        return false
+    end
+
+    return Core.NormalizeGroup(allowedGroups) == playerGroup
 end
 
 ---@param name string | table
@@ -66,7 +124,19 @@ function ESX.RegisterCommand(name, group, cb, allowConsole, suggestion)
         else
             local xPlayer, err = ESX.Players[playerId], nil
 
-            if command.suggestion then
+            -- DB /setgroup is the source of truth. Do not use RegisterCommand ACE
+            -- restriction here: that prints "Access denied for command" before Lua
+            -- runs, so owners not listed in admin.cfg get blocked if ACE principal
+            -- attach lags or uses the wrong license.
+            if not err and playerId ~= 0 then
+                if not xPlayer then
+                    err = TranslateCap("commanderror_invalidcommand", name)
+                elseif not Core.CommandAllowsGroup(command.group, xPlayer.getGroup()) then
+                    err = TranslateCap("commanderror_invalidcommand", name)
+                end
+            end
+
+            if not err and command.suggestion then
                 if command.suggestion.validate then
                     if #args ~= #command.suggestion.arguments then
                         err = TranslateCap("commanderror_argumentmismatch", #args, #command.suggestion.arguments)
@@ -172,20 +242,20 @@ function ESX.RegisterCommand(name, group, cb, allowConsole, suggestion)
             if err then
                 if playerId == 0 then
                     print(("[^3WARNING^7] %s^7"):format(err))
-                else
+                elseif xPlayer then
                     xPlayer.showNotification(err)
                 end
             else
                 cb(xPlayer or false, args, function(msg)
                     if playerId == 0 then
                         print(("[^3WARNING^7] %s^7"):format(msg))
-                    else
+                    elseif xPlayer then
                         xPlayer.showNotification(msg)
                     end
                 end)
             end
         end
-    end, true)
+    end, false)
 
     if type(group) == "table" then
         for _, v in ipairs(group) do
@@ -420,6 +490,57 @@ function ESX.GetIdentifier(playerId)
     return identifier:gsub(("%s:"):format(identifierType), "")
 end
 
+--- Match the live license to the users row this city already stored
+--- (`char1:license:HASH`, `char1:HASH`, plain HASH). New accounts keep `char1:license:HASH`.
+---@param playerId number | string
+---@return string?
+function Core.ResolveUserIdentifier(playerId)
+    local hash = ESX.GetIdentifier(playerId)
+    if not hash or hash == "" then
+        return nil
+    end
+
+    local candidates = {
+        ("char1:license:%s"):format(hash),
+        ("char1:%s"):format(hash),
+        hash,
+        ("license:%s"):format(hash),
+    }
+
+    for i = 1, #candidates do
+        local found = MySQL.scalar.await("SELECT identifier FROM users WHERE identifier = ? LIMIT 1", { candidates[i] })
+        if found then
+            return found
+        end
+    end
+
+    local row = MySQL.single.await([[
+        SELECT identifier FROM users
+        WHERE identifier LIKE ? OR identifier LIKE ?
+        ORDER BY id ASC
+        LIMIT 1
+    ]], {
+        ("char%%:%s"):format(hash),
+        ("char%%:license:%s"):format(hash),
+    })
+    if row and row.identifier then
+        return row.identifier
+    end
+
+    return candidates[1]
+end
+
+---@param group? string
+---@return string?
+function Core.NormalizeGroup(group)
+    if type(group) ~= "string" then
+        return nil
+    end
+
+    group = group:lower():gsub("%s+", "")
+    return group ~= "" and group or nil
+end
+
 --- Rockstar license used by ACE principals (`license:HASH`).
 --- Handles `char1:HASH`, `char1:license:HASH`, and `license:license:HASH`.
 ---@param identifier? string
@@ -427,7 +548,12 @@ end
 ---@return string?
 function Core.GetAceLicense(identifier, playerId)
     if playerId then
-        local live = GetPlayerIdentifierByType(tostring(playerId), Config.Identifier or "license")
+        local src = tostring(playerId)
+        local live = GetPlayerIdentifierByType(src, Config.Identifier or "license")
+        if live and live ~= "" then
+            return live
+        end
+        live = GetPlayerIdentifierByType(src, "license2")
         if live and live ~= "" then
             return live
         end
@@ -451,6 +577,72 @@ function Core.GetAceLicense(identifier, playerId)
     return ("%s:%s"):format(Config.Identifier or "license", stripped)
 end
 
+---@param playerId? number|string
+---@param license? string
+---@return string[]
+function Core.CollectAcePrincipals(playerId, license)
+    local principals, seen = {}, {}
+
+    local function add(principal)
+        if type(principal) == "string" and principal ~= "" and not seen[principal] then
+            seen[principal] = true
+            principals[#principals + 1] = principal
+        end
+    end
+
+    playerId = tonumber(playerId)
+    if playerId and playerId > 0 then
+        add(("player.%s"):format(playerId))
+        local ids = GetPlayerIdentifiers(playerId)
+        if ids then
+            for i = 1, #ids do
+                local id = ids[i]
+                if id and (id:find("^license:") == 1 or id:find("^license2:") == 1) then
+                    add(("identifier.%s"):format(id))
+                end
+            end
+        end
+    end
+
+    if type(license) == "string" and license ~= "" then
+        add(("identifier.%s"):format(license))
+    end
+
+    return principals
+end
+
+--- Map a DB staff group onto live ACE principals so /setgroup works without admin.cfg entries.
+---@param playerId number|string
+---@param newGroup? string
+---@param oldGroup? string
+function Core.ApplyPlayerGroupAce(playerId, newGroup, oldGroup)
+    newGroup = Core.NormalizeGroup(newGroup) or "user"
+    oldGroup = Core.NormalizeGroup(oldGroup)
+    local license = Core.GetAceLicense(nil, playerId)
+    local principals = Core.CollectAcePrincipals(playerId, license)
+
+    for i = 1, #principals do
+        if oldGroup and oldGroup ~= newGroup then
+            ExecuteCommand(("remove_principal %s group.%s"):format(principals[i], oldGroup))
+        end
+        if newGroup ~= "user" then
+            ExecuteCommand(("add_principal %s group.%s"):format(principals[i], newGroup))
+        end
+    end
+end
+
+---@param playerId number|string
+---@param group? string
+function Core.ClearPlayerSessionAce(playerId, group)
+    playerId = tonumber(playerId)
+    group = Core.NormalizeGroup(group)
+    if not playerId or playerId < 1 or not group or group == "user" then
+        return
+    end
+
+    ExecuteCommand(("remove_principal player.%s group.%s"):format(playerId, group))
+end
+
 --- Account-level group stored by Rockstar license (survives relog and character switch).
 ---@param license string
 ---@return string?
@@ -459,12 +651,21 @@ function Core.GetStoredPlayerGroup(license)
         return nil
     end
 
-    local ok, group = pcall(function()
-        return MySQL.scalar.await("SELECT `group` FROM `user_groups` WHERE `license` = ?", { license })
-    end)
+    local hash = license:gsub("^license2:", ""):gsub("^license:", "")
+    local variants = { license }
+    if hash ~= "" then
+        variants[#variants + 1] = "license:" .. hash
+        variants[#variants + 1] = "license2:" .. hash
+        variants[#variants + 1] = hash
+    end
 
-    if ok and type(group) == "string" and group ~= "" then
-        return group
+    for i = 1, #variants do
+        local ok, group = pcall(function()
+            return MySQL.scalar.await("SELECT `group` FROM `user_groups` WHERE `license` = ?", { variants[i] })
+        end)
+        if ok and type(group) == "string" and group ~= "" then
+            return Core.NormalizeGroup(group) or group
+        end
     end
 end
 
@@ -475,7 +676,7 @@ end
 ---@return boolean
 function Core.PersistPlayerGroup(identifier, license, newGroup)
     license = license or Core.GetAceLicense(identifier)
-    newGroup = type(newGroup) == "string" and newGroup:lower():gsub("%s+", "") or "user"
+    newGroup = Core.NormalizeGroup(newGroup) or "user"
 
     if license then
         pcall(function()

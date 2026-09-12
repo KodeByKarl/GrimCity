@@ -1,6 +1,6 @@
 --[[
-  VIP membership — Multicharacter slots + ped menu + welcome banner hooks.
-  Identifier key = normalized license:xxx (same as kodebykarl-multicharacter).
+  VIP membership — ped menu /reskin + welcome banner + grind bonus.
+  Identifier key = normalized license:xxx.
 ]]
 
 local function DebugLog(msg)
@@ -67,11 +67,23 @@ CreateThread(function()
     pcall(EnsureTable)
 end)
 
+local function PlayerGroup(xPlayer)
+    if not xPlayer then return "user" end
+    local group = xPlayer.getGroup and xPlayer.getGroup() or "user"
+    return tostring(group or "user"):lower():gsub("%s+", "")
+end
+
 local function IsStaff(xPlayer)
     if not xPlayer then return false end
-    local group = xPlayer.getGroup and xPlayer.getGroup() or "user"
     local allowed = ConfigVip.StaffGroups or {}
-    return allowed[group] == true
+    return allowed[PlayerGroup(xPlayer)] == true
+end
+
+local function HasPedMenuGroup(src)
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return false end
+    local allowed = ConfigVip.PedMenuGroups or {}
+    return allowed[PlayerGroup(xPlayer)] == true
 end
 
 local function TierMeta(tier)
@@ -129,42 +141,6 @@ local function IsoFromDb(expiresAt)
     return s
 end
 
---- Sync MultiVIP slots into kodebykarl-multicharacter table
-local function SyncMulticharSlots(identifier, slots, playerName, grantedBy)
-    identifier = NormalizeLicense(identifier)
-    if not identifier then return end
-    slots = math.max(1, math.min(3, tonumber(slots) or 1))
-
-    pcall(function()
-        MySQL.query.await([[
-            INSERT INTO multicharacter_slots (identifier, slots, name, granted_by)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                slots = VALUES(slots),
-                name = COALESCE(VALUES(name), name),
-                granted_by = VALUES(granted_by),
-                updated_at = CURRENT_TIMESTAMP
-        ]], {
-            identifier,
-            slots,
-            playerName,
-            grantedBy or "vip-system",
-        })
-    end)
-
-    -- Prefer export if multicharacter exposes one later
-    pcall(function()
-        if GetResourceState("kodebykarl-multicharacter") == "started" then
-            local exp = exports["kodebykarl-multicharacter"]
-            if exp and exp.SetVipSlots then
-                exp:SetVipSlots(identifier, slots, playerName, grantedBy)
-            end
-        end
-    end)
-
-    DebugLog(("synced slots=%s for %s"):format(slots, identifier))
-end
-
 local function GetActiveVipRow(identifier)
     identifier = NormalizeLicense(identifier)
     if not identifier then return nil end
@@ -179,7 +155,6 @@ local function GetActiveVipRow(identifier)
     local days, hours, stillActive = RemainingFromExpires(row.expires_at)
     if not stillActive then
         MySQL.update.await("DELETE FROM grim_vip WHERE identifier = ?", { identifier })
-        SyncMulticharSlots(identifier, 1, nil, "vip-expired")
         return nil
     end
 
@@ -230,6 +205,14 @@ local function BuildStatus(identifier)
         welcomeBanner = meta.welcomeBanner == true,
         grindBonus = tonumber(meta.grindBonus) or 0,
     }
+end
+
+local function CanOpenPedMenu(src)
+    if HasPedMenuGroup(src) then
+        return true
+    end
+    local status = BuildStatus(LicenseFromSource(src))
+    return status.active and status.pedMenu == true
 end
 
 local MAX_VIP_DAYS = 3650
@@ -296,7 +279,6 @@ local function UpsertVip(identifier, tier, expires, autoRenew, grantedBy, player
         grantedBy or "system",
     })
 
-    SyncMulticharSlots(identifier, meta.characterSlots or 1, playerName, grantedBy or "vip-system")
     return true
 end
 
@@ -319,11 +301,10 @@ local function RevokeVip(identifier)
     if not identifier then return false end
     EnsureTable()
     MySQL.update.await("DELETE FROM grim_vip WHERE identifier = ?", { identifier })
-    SyncMulticharSlots(identifier, 1, nil, "vip-revoked")
     return true
 end
 
---- Public helpers for other resources (illenium / welcomebanner / multichar / autofarm)
+--- Public helpers for other resources (illenium / welcomebanner / autofarm)
 exports("GetVipStatus", function(src)
     local license = LicenseFromSource(src)
     if not license then return nil end
@@ -354,8 +335,7 @@ exports("GetVipSlotsForIdentifier", function(identifier)
 end)
 
 exports("CanUsePedMenu", function(src)
-    local status = BuildStatus(LicenseFromSource(src))
-    return status.active and status.pedMenu == true
+    return CanOpenPedMenu(src)
 end)
 
 exports("CanEditWelcomeBanner", function(src)
@@ -558,17 +538,26 @@ lib.callback.register("cfx-keydi-vip:getAllVipMembers", function(source)
     EnsureTable()
 
     local rows = MySQL.query.await([[
-        SELECT 
-            v.identifier, 
-            COALESCE(NULLIF(v.name, ''), u.name, 'Unknown Player') as name, 
-            v.tier, 
-            v.label, 
-            v.expires_at, 
-            v.auto_renew, 
+        SELECT
+            v.identifier,
+            COALESCE(
+                NULLIF(v.name, ''),
+                (
+                    SELECT NULLIF(TRIM(CONCAT(COALESCE(u.firstname, ''), ' ', COALESCE(u.lastname, ''))), '')
+                    FROM users u
+                    WHERE u.identifier = v.identifier
+                       OR u.identifier LIKE CONCAT('char%:', v.identifier)
+                    LIMIT 1
+                ),
+                'Unknown Player'
+            ) as name,
+            v.tier,
+            v.label,
+            v.expires_at,
+            v.auto_renew,
             v.granted_by,
             v.started_at
         FROM grim_vip v
-        LEFT JOIN users u ON u.identifier = v.identifier
         ORDER BY v.expires_at DESC
     ]]) or {}
 
@@ -727,8 +716,7 @@ lib.callback.register("cfx-keydi-vip:staffRevokeByIdentifier", function(source, 
 end)
 
 lib.callback.register("cfx-keydi-vip:canPedMenu", function(source)
-    local status = BuildStatus(LicenseFromSource(source))
-    return status.active and status.pedMenu == true
+    return CanOpenPedMenu(source)
 end)
 
 lib.callback.register("cfx-keydi-vip:canWelcomeBanner", function(source)
@@ -774,7 +762,7 @@ RegisterCommand("setvip", function(src, args)
     TriggerClientEvent(
         "esx:showNotification",
         targetId,
-        ("VIP %s · %sd · %s slots"):format(meta.label, days, meta.characterSlots or 1),
+        ("VIP %s · %sd"):format(meta.label, days),
         "success"
     )
     if src > 0 then

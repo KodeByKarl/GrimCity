@@ -70,12 +70,14 @@ INSERT INTO `jobs` (`name`, `label`, `type`, `whitelisted`) VALUES
 ('police', 'Police', 'leo', 1),
 ('ambulance', 'EMS', 'ems', 0),
 ('pambulance', 'Paleto Ambulance', 'ems', 0),
+('sambulance', 'Sandy Ambulance', 'ems', 0),
 ('mechanic', 'Mechanic', 'mechanic', 0),
 ('offpolice', 'Off-Duty Police', 'leo', 0),
 ('sheriff', 'Sheriff', 'leo', 1),
 ('offsheriff', 'Off-Duty Sheriff', 'leo', 0),
 ('offambulance', 'Off-Duty EMS', 'ems', 0),
 ('offpambulance', 'Off-Duty Paleto Ambulance', 'ems', 0),
+('offsambulance', 'Off-Duty Sandy Ambulance', 'ems', 0),
 ('offmechanic', 'Off-Duty Mechanic', 'mechanic', 0),
 ('8ball', '8Ball', 'civ', 0),
 ('burgershot', 'Burger Shot', 'civ', 0),
@@ -209,7 +211,21 @@ INSERT INTO `job_grades` (`id`, `job_name`, `grade`, `name`, `label`, `salary`, 
 (106, 'offpambulance', 3, 'resident_doctor', 'Resident Doctor', 0, '{}', '{}'),
 (107, 'offpambulance', 4, 'senior_resident_doctor', 'Senior Resident Doctor', 0, '{}', '{}'),
 (108, 'offpambulance', 5, 'assistant_director', 'Assistant Director', 0, '{}', '{}'),
-(109, 'offpambulance', 6, 'boss', 'Medical Director', 0, '{}', '{}');
+(109, 'offpambulance', 6, 'boss', 'Medical Director', 0, '{}', '{}'),
+(110, 'sambulance', 0, 'intern', 'Intern', 65000, '{}', '{}'),
+(111, 'sambulance', 1, 'nurse', 'Nurse', 70000, '{}', '{}'),
+(112, 'sambulance', 2, 'head_nurse', 'Head Nurse', 75000, '{}', '{}'),
+(113, 'sambulance', 3, 'resident_doctor', 'Resident Doctor', 80000, '{}', '{}'),
+(114, 'sambulance', 4, 'senior_resident_doctor', 'Senior Resident Doctor', 85000, '{}', '{}'),
+(115, 'sambulance', 5, 'assistant_director', 'Assistant Director', 90000, '{}', '{}'),
+(116, 'sambulance', 6, 'boss', 'Medical Director', 100000, '{}', '{}'),
+(117, 'offsambulance', 0, 'intern', 'Intern', 0, '{}', '{}'),
+(118, 'offsambulance', 1, 'nurse', 'Nurse', 0, '{}', '{}'),
+(119, 'offsambulance', 2, 'head_nurse', 'Head Nurse', 0, '{}', '{}'),
+(120, 'offsambulance', 3, 'resident_doctor', 'Resident Doctor', 0, '{}', '{}'),
+(121, 'offsambulance', 4, 'senior_resident_doctor', 'Senior Resident Doctor', 0, '{}', '{}'),
+(122, 'offsambulance', 5, 'assistant_director', 'Assistant Director', 0, '{}', '{}'),
+(123, 'offsambulance', 6, 'boss', 'Medical Director', 0, '{}', '{}');
 
 -- --------------------------------------------------------
 -- Table structure & data for table `licenses`
@@ -257,8 +273,8 @@ CREATE TABLE `users` (
   `loadout` longtext DEFAULT NULL,
   `metadata` LONGTEXT NULL DEFAULT NULL,
   `position` longtext NULL DEFAULT NULL,
-  `firstname` varchar(16) DEFAULT NULL,
-  `lastname` varchar(16) DEFAULT NULL,
+  `firstname` varchar(50) DEFAULT NULL,
+  `lastname` varchar(50) DEFAULT NULL,
   `dateofbirth` varchar(10) DEFAULT NULL,
   `sex` varchar(1) DEFAULT NULL,
   `height` int(11) DEFAULT NULL,
@@ -595,7 +611,7 @@ ALTER TABLE `vehicle_categories`
 -- AUTO_INCREMENT Definitions
 -- --------------------------------------------------------
 ALTER TABLE `job_grades`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=124;
 
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;

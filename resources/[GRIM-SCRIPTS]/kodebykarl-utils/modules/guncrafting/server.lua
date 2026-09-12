@@ -5,6 +5,7 @@
 ]]
 
 local Vars = require 'helpers.vars'
+local Region = require 'helpers.region'
 
 local cooldown = {}
 local recipeById = {}
@@ -19,198 +20,70 @@ local GunCrafting = {
     locations = {
         {
             id = 1,
-            label = 'Gun Crafting Bench — Cypress Flats Warehouse',
-            coords = vec4(723.15, -1088.74, 22.17, 90.0),
+            label = 'Gun Crafting Bench',
+            coords = vec4(3310.6545, 5176.4243, 19.6146, 51.9649),
             model = 'gr_prop_gr_bench_02b',
             spawnProp = true,
-            sections = { 'pistols', 'attachments', 'ammo' },
-        },
-        {
-            id = 2,
-            label = 'Gun Crafting Bench — El Burro Scrapyard',
-            coords = vec4(1424.78, -2579.92, 45.45, 180.0),
-            model = 'prop_tool_bench02',
-            spawnProp = true,
-            sections = { 'pistols', 'attachments', 'ammo' },
-        },
-        {
-            id = 3,
-            label = 'Gun Crafting Bench — Sandy Shores Bunker',
-            coords = vec4(2481.65, 4956.12, 44.82, 315.0),
-            model = 'gr_prop_gr_bench_02b',
-            spawnProp = true,
-            sections = { 'pistols', 'attachments', 'ammo' },
-        },
-        {
-            id = 4,
-            label = 'Gun Crafting Bench — Paleto Sawmill Workshop',
-            coords = vec4(-584.22, 5284.11, 70.26, 70.0),
-            model = 'gr_prop_gr_bench_02b',
-            spawnProp = true,
-            sections = { 'pistols', 'attachments', 'ammo' },
+            sections = { 'weapons' },
         },
     },
 
-    -- Server-side Crafting Catalog & Material Requirements
+    -- Same cost for every firearm. Each craft yields 2 guns.
     recipes = {
-        -- =============================================================
-        -- PISTOLS
-        -- =============================================================
         {
-            id = 'craft_heavypistol',
-            section = 'pistols',
-            label = 'Heavy Pistol',
-            description = 'High stopping power .45 semi-automatic handgun.',
-            item = 'WEAPON_HEAVYPISTOL',
-            count = 1,
-            craftTime = 7500,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 8 },
-                { item = 'iron', label = 'Iron', count = 5 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 2 },
-            },
-        },
-        {
-            id = 'craft_pistol50',
-            section = 'pistols',
-            label = '.50 Pistol',
-            description = 'Heavy caliber .50 Action Express handgun.',
-            item = 'WEAPON_PISTOL50',
-            count = 1,
-            craftTime = 8000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 10 },
-                { item = 'iron', label = 'Iron', count = 6 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 2 },
-            },
-        },
-        {
-            id = 'craft_g29',
-            section = 'pistols',
-            label = 'G29',
-            description = 'Glock 29 compact tactical combat pistol.',
-            item = 'WEAPON_COMBATPISTOL',
-            count = 1,
+            id = 'craft_pistol',
+            section = 'weapons',
+            label = 'Pistol',
+            description = 'Standard 9mm pistol. Crafts 2.',
+            item = 'WEAPON_PISTOL',
+            count = 2,
             craftTime = 7000,
             ingredients = {
-                { item = 'steel', label = 'Steel', count = 7 },
-                { item = 'iron', label = 'Iron', count = 4 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 2 },
+                { item = 'gunpowder', label = 'Gunpowder', count = 5 },
+                { item = 'copper', label = 'Copper', count = 5 },
+                { item = 'car_blueprint', label = 'Blueprint', count = 2 },
             },
         },
         {
-            id = 'craft_deagle',
-            section = 'pistols',
-            label = 'Desert Deagle',
-            description = 'High caliber Desert Eagle handgun.',
-            item = 'WEAPON_PISTOL50',
-            count = 1,
-            craftTime = 8500,
+            id = 'craft_glock22',
+            section = 'weapons',
+            label = 'Glock 22',
+            description = 'Glock 22 pistol. Crafts 2.',
+            item = 'WEAPON_GLOCK22',
+            count = 2,
+            craftTime = 7000,
             ingredients = {
-                { item = 'steel', label = 'Steel', count = 12 },
-                { item = 'aluminum', label = 'Aluminum', count = 6 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 3 },
+                { item = 'gunpowder', label = 'Gunpowder', count = 5 },
+                { item = 'copper', label = 'Copper', count = 5 },
+                { item = 'car_blueprint', label = 'Blueprint', count = 2 },
             },
         },
         {
-            id = 'craft_vintagepistol',
-            section = 'pistols',
-            label = 'Vintage Pistol',
-            description = 'Classic vintage semi-automatic handgun.',
-            item = 'WEAPON_VINTAGEPISTOL',
-            count = 1,
-            craftTime = 6500,
+            id = 'craft_appistol',
+            section = 'weapons',
+            label = 'AP Pistol',
+            description = 'Fully automatic AP Pistol. Crafts 2.',
+            item = 'WEAPON_APPISTOL',
+            count = 2,
+            craftTime = 8000,
             ingredients = {
-                { item = 'steel', label = 'Steel', count = 6 },
-                { item = 'iron', label = 'Iron', count = 4 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 1 },
+                { item = 'gunpowder', label = 'Gunpowder', count = 5 },
+                { item = 'copper', label = 'Copper', count = 5 },
+                { item = 'car_blueprint', label = 'Blueprint', count = 2 },
             },
         },
         {
-            id = 'craft_pistolmk2',
-            section = 'pistols',
-            label = 'MK2',
-            description = 'Upgraded tactical Pistol Mk II.',
-            item = 'WEAPON_PISTOL_MK2',
-            count = 1,
+            id = 'craft_assaultrifle',
+            section = 'weapons',
+            label = 'Assault Rifle',
+            description = 'Standard assault rifle. Crafts 2.',
+            item = 'WEAPON_ASSAULTRIFLE',
+            count = 2,
             craftTime = 9000,
             ingredients = {
-                { item = 'steel', label = 'Steel', count = 10 },
-                { item = 'aluminum', label = 'Aluminum', count = 5 },
-                { item = 'weapon_parts', label = 'Weapon Parts', count = 3 },
-            },
-        },
-
-        -- =============================================================
-        -- ATTACHMENTS
-        -- =============================================================
-        {
-            id = 'craft_suppressor',
-            section = 'attachments',
-            label = 'Weapon Suppressor',
-            description = 'Reduces muzzle flash and gunfire noise.',
-            item = 'at_suppressor_light',
-            count = 1,
-            craftTime = 5000,
-            ingredients = {
-                { item = 'aluminum', label = 'Aluminum', count = 5 },
-                { item = 'steel', label = 'Steel', count = 3 },
-            },
-        },
-        {
-            id = 'craft_extendedclip',
-            section = 'attachments',
-            label = 'Extended Magazine',
-            description = 'Increases firearm magazine capacity.',
-            item = 'at_clip_extended_pistol',
-            count = 1,
-            craftTime = 4000,
-            ingredients = {
-                { item = 'steel', label = 'Steel', count = 4 },
-                { item = 'spring', label = 'Spring', count = 2 },
-            },
-        },
-
-        -- =============================================================
-        -- AMMO
-        -- =============================================================
-        {
-            id = 'craft_ammo_9mm',
-            section = 'ammo',
-            label = '9mm Ammo Box (50 rounds)',
-            description = 'Standard pistol & SMG ammunition.',
-            item = 'ammo-9',
-            count = 50,
-            craftTime = 3500,
-            ingredients = {
-                { item = 'copper', label = 'Copper', count = 3 },
-                { item = 'lead', label = 'Lead', count = 2 },
-            },
-        },
-        {
-            id = 'craft_ammo_rifle',
-            section = 'ammo',
-            label = '5.56 Rifle Ammo Box (60 rounds)',
-            description = 'Assault rifle ammunition.',
-            item = 'ammo-rifle',
-            count = 60,
-            craftTime = 4500,
-            ingredients = {
+                { item = 'gunpowder', label = 'Gunpowder', count = 5 },
                 { item = 'copper', label = 'Copper', count = 5 },
-                { item = 'lead', label = 'Lead', count = 4 },
-            },
-        },
-        {
-            id = 'craft_ammo_shotgun',
-            section = 'ammo',
-            label = '12 Gauge Shells (30 shells)',
-            description = 'Heavy shotgun ammunition.',
-            item = 'ammo-shotgun',
-            count = 30,
-            craftTime = 4000,
-            ingredients = {
-                { item = 'copper', label = 'Copper', count = 4 },
-                { item = 'lead', label = 'Lead', count = 3 },
+                { item = 'car_blueprint', label = 'Blueprint', count = 2 },
             },
         },
     },
@@ -309,6 +182,10 @@ lib.callback.register('cfx-keydi-utils:guncrafting:craft', function(source, loca
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then
         return false, 'Player not found.'
+    end
+
+    if not Region.Allowed('illegal', src) then
+        return false, Region.Message('illegal')
     end
 
     locationId = tonumber(locationId)

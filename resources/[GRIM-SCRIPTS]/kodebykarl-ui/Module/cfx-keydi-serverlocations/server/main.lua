@@ -120,9 +120,9 @@ end
 
 local function GetLockReason(src)
     local state = Player(src).state
-    if not state then return nil end
+    if not state then return "Unknown status" end
 
-    if ConfigServerLocations.LockInJail and (state.isJailed or state.inJail or state.comserv) then
+    if ConfigServerLocations.LockInJail and (state.isJailed or state.inJail or state.comserv or (tonumber(state.jailTime) or 0) > 0) then
         return "In Jail / Community Service"
     end
     if ConfigServerLocations.LockInArena and state.inArena then
@@ -131,25 +131,53 @@ local function GetLockReason(src)
     if ConfigServerLocations.LockInPvp ~= false and (state.inPvp or state.isInPvp) then
         return "Inside Deathmatch Arena"
     end
+    if state.dead or state.isDead then
+        return "Downed"
+    end
+    if state.cuffed or state.isHandcuffed then
+        return "Restrained"
+    end
+    if ConfigServerLocations.LockInCombat ~= false and state.inCombat then
+        return "In combat"
+    end
+    if state.inHouseRobbery then
+        return "Inside a house robbery"
+    end
+
+    if ConfigServerLocations.LockInInstance ~= false then
+        local currentLoc = ServerLocations.GetPlayerLocation(src)
+        if currentLoc then
+            local expected = tonumber(currentLoc.bucket) or 0
+            local actual = GetPlayerRoutingBucket(src)
+            if actual ~= expected then
+                return "Inside an active instance"
+            end
+        end
+        if GetResourceState('kodebykarl-robbery') == 'started' then
+            local ok, inside = pcall(function()
+                return exports['kodebykarl-robbery']:IsInsideHouse(src)
+            end)
+            if ok and inside then
+                return "Inside a house robbery"
+            end
+        end
+    end
     return nil
 end
 
 local function IsInSafezone(src)
     local state = Player(src).state
-    if state then
-        if state.inSafeZone == true or state.inSafezone == true then
-            return true
-        end
-        if state.inSafeZone == false or state.inSafezone == false then
-            return false
-        end
+    if not state then return false end
+    if state.inSafeZone == true or state.inSafezone == true then
+        return true
     end
-    return true
+    return false
 end
 
 function ServerLocations.GetPlayerId(src)
-    local id = playerLocations[src] or ConfigServerLocations.DefaultId or "region2"
-    return ConfigServerLocations.NormalizeId(id) or "region2"
+    local fallback = ConfigServerLocations.DefaultId or "region1"
+    local id = playerLocations[src] or fallback
+    return ConfigServerLocations.NormalizeId(id) or fallback
 end
 
 function ServerLocations.GetPlayerLocation(src)
@@ -199,6 +227,7 @@ function ServerLocations.GetServersData(src)
     local current = ServerLocations.GetPlayerLocation(src)
     local lockReason = GetLockReason(src)
     local inSafezone = IsInSafezone(src)
+    local requireSafezone = ConfigServerLocations.RequiresSafezoneToSwitch(src)
 
     return {
         publicServers = publicServers,
@@ -207,8 +236,9 @@ function ServerLocations.GetServersData(src)
         currentType = current and current.type or "main",
         maxClients = GetMaxClients(),
         inSafezone = inSafezone,
+        requireSafezone = requireSafezone,
         isLocked = lockReason ~= nil,
-        lockReason = lockReason or (ConfigServerLocations.RequireSafezone and not inSafezone and "Outside Safezone" or nil),
+        lockReason = lockReason or (requireSafezone and not inSafezone and "Outside Safezone" or nil),
     }
 end
 
@@ -303,7 +333,7 @@ local function ValidateSwitch(src, locationId, opts)
         return false, ("Region switching locked while %s."):format(lockReason)
     end
 
-    if ConfigServerLocations.RequireSafezone and not opts.skipSafezone and not IsInSafezone(src) then
+    if ConfigServerLocations.RequiresSafezoneToSwitch(src) and not opts.skipSafezone and not IsInSafezone(src) then
         return false, "Region switching locked! You must be inside a Safezone."
     end
 
@@ -339,6 +369,105 @@ exports("GetPlayerLocation", ServerLocations.GetPlayerLocation)
 exports("PlayerHasFunction", ServerLocations.PlayerHasFunction)
 exports("GetServersData", ServerLocations.GetServersData)
 exports("SwitchPlayer", ServerLocations.SwitchPlayer)
+exports("WrongServerMessage", function(fn)
+    return ConfigServerLocations.WrongServerMessage(fn)
+end)
+exports("RequiresSafezoneToSwitch", function(src)
+    return ConfigServerLocations.RequiresSafezoneToSwitch(src)
+end)
+
+local function GetPublicBucketOwners()
+    local map = {}
+    for i = 1, #ConfigServerLocations.PublicServers do
+        local loc = ConfigServerLocations.PublicServers[i]
+        map[tonumber(loc.bucket) or 0] = loc.id
+    end
+    return map
+end
+
+--- If the player is sitting in a different PUBLIC region bucket than assigned
+--- (hospital / appearance / scripts that SetPlayerRoutingBucket(src, 0)), snap back.
+--- Private instances (appearance = player id, garage interiors, PvP) are left alone.
+function ServerLocations.VerifyPlayerBucket(src)
+    src = tonumber(src)
+    if not src or src < 1 or not GetPlayerName(src) then
+        return false
+    end
+
+    local loc = ServerLocations.GetPlayerLocation(src)
+    if not loc or loc.type == "job" then
+        return false
+    end
+
+    local expected = tonumber(loc.bucket) or 0
+    local actual = GetPlayerRoutingBucket(src)
+    if actual == expected then
+        return true
+    end
+
+    local owners = GetPublicBucketOwners()
+    if owners[actual] and owners[actual] ~= loc.id then
+        DebugLog(("verify: %s [%s] was in public bucket %s (%s), restoring %s bucket %s"):format(
+            GetPlayerName(src) or "?", src, tostring(actual), owners[actual], loc.id, tostring(expected)
+        ))
+        return ServerLocations.RestorePlayerBucket(src) == true
+    end
+
+    return false
+end
+
+--- Return the player to their saved region bucket.
+--- Region 1 is bucket 0 (default world) so scripts that reset to 0 keep Main together.
+function ServerLocations.RestorePlayerBucket(src, opts)
+    src = tonumber(src)
+    if not src or src < 1 or not GetPlayerName(src) then
+        return false
+    end
+
+    opts = opts or {}
+    if not opts.force then
+        local state = Player(src).state
+        if state then
+            if state.inPvp or state.isInPvp then return false end
+            if state.inArena then return false end
+            if state.inHouseRobbery then return false end
+        end
+
+        if GetResourceState('kodebykarl-robbery') == 'started' then
+            local ok, inside = pcall(function()
+                return exports['kodebykarl-robbery']:IsInsideHouse(src)
+            end)
+            if ok and inside then
+                return false
+            end
+        end
+    end
+
+    local loc = ServerLocations.GetPlayerLocation(src)
+    if not loc then return false end
+
+    ApplyRouting(src, loc)
+    return true
+end
+
+exports("RestorePlayerBucket", ServerLocations.RestorePlayerBucket)
+exports("VerifyPlayerBucket", ServerLocations.VerifyPlayerBucket)
+exports("GetExpectedBucket", function(src)
+    local loc = ServerLocations.GetPlayerLocation(src)
+    return loc and tonumber(loc.bucket) or 0
+end)
+
+RegisterNetEvent("cfx-keydi-serverlocations:server:restoreBucket", function()
+    local src = source
+    if type(src) ~= "number" or src < 1 then return end
+    ServerLocations.RestorePlayerBucket(src)
+end)
+
+RegisterNetEvent("cfx-keydi-serverlocations:server:verifyBucket", function()
+    local src = source
+    if type(src) ~= "number" or src < 1 then return end
+    ServerLocations.VerifyPlayerBucket(src)
+end)
 
 ESX.RegisterServerCallback("cfx-keydi-serverlocations:server:getServersData", function(source, cb)
     cb(ServerLocations.GetServersData(source))
@@ -412,6 +541,15 @@ AddEventHandler("esx:playerLoaded", function(playerId)
         if GetPlayerName(playerId) then
             AssignSavedOrDefault(playerId, false)
         end
+        -- Other scripts (hospital / spawn) may overwrite the bucket right after load.
+        Wait(2500)
+        if GetPlayerName(playerId) then
+            ServerLocations.VerifyPlayerBucket(playerId)
+        end
+        Wait(4000)
+        if GetPlayerName(playerId) then
+            ServerLocations.VerifyPlayerBucket(playerId)
+        end
     end)
 end)
 
@@ -443,5 +581,28 @@ AddEventHandler("onResourceStart", function(resourceName)
                 AssignSavedOrDefault(id, false)
             end
         end
+        Wait(3000)
+        players = GetPlayers()
+        for i = 1, #players do
+            local id = tonumber(players[i])
+            if id then
+                ServerLocations.VerifyPlayerBucket(id)
+            end
+        end
     end)
+end)
+
+-- Keep Region 1 players in the same bucket so they always see each other.
+-- Only corrects drift into another PUBLIC region (not garage / PvP / appearance).
+CreateThread(function()
+    while true do
+        Wait(5000)
+        local players = GetPlayers()
+        for i = 1, #players do
+            local id = tonumber(players[i])
+            if id then
+                ServerLocations.VerifyPlayerBucket(id)
+            end
+        end
+    end
 end)

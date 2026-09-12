@@ -6,16 +6,18 @@ Config.HouseRob.TimeToCloseDoors = 25 -- in minutes (only start counting after o
 Config.HouseRob.ChanceToAlertPolice = 100 -- chance in percent to call the police if a house robbery is in progress
 Config.HouseRob.MinZOffset = 45
 
--- Footstep sound meter while inside a robbed house.
--- Walk/run raises the meter; aim (RMB / LT) while moving stays silent.
--- At 100% the player is force-exited and LEO are alerted.
+-- Footstep + gunfire sound meter while inside a robbed house.
+-- Walking/running always raises the meter (aiming does NOT hide footsteps).
+-- Shooting spikes the meter. At 100% the player is force-exited and LEO are alerted.
 -- Paleto / Blaine County houses (y >= 2500 or name contains "paleto") alert sheriff.
 Config.HouseRob.SoundDetection = {
     enabled = true,
     walkNoise = 7.5,       -- % per second while walking
     runNoise = 18.0,       -- % per second while running
     sprintNoise = 28.0,    -- % per second while sprinting
-    idleDecay = 5.0,       -- % per second decay when still / aiming
+    shotSpike = 60.0,      -- % added the frame a shot is fired
+    shotNoise = 40.0,      -- % per second while holding fire with a gun
+    idleDecay = 5.0,       -- % per second decay when still
     moveThreshold = 0.45,  -- GetEntitySpeed must exceed this to count as moving
     alertJobs = { 'police' },
     -- Houses north of this Y (Sandy / Grapeseed / Paleto / Senora) go to sheriff.
@@ -24,10 +26,27 @@ Config.HouseRob.SoundDetection = {
 }
 
 Config.HouseRob.Rewards = {
-    -- Full package once per house (first successful search). Extra cabinets still give recmats.
+    -- Full package once per house (first successful search). Only 1 recycling pack per house.
     -- All amounts are rolled/applied server-side only — never trust the client.
     dirtyMoney = { item = 'black_money', amount = 50000 },
-    recycling = { item = 'recmats', min = 10, max = 20 },
+    recycling = { item = 'recmats', min = 1, max = 1 },
+
+    -- 5–10 car blueprints for one random lootable project vehicle (same model so they stack toward 25).
+    blueprints = { item = 'car_blueprint', min = 5, max = 10 },
+
+    -- Random unique project-vehicle parts (Charger Engine, Civic Tires, etc.).
+    projectParts = {
+        rolls = { min = 2, max = 3 },
+        pool = {
+            { item = 'engine', min = 1, max = 1 },
+            { item = 'transmission', min = 1, max = 1 },
+            { item = 'suspension', min = 1, max = 1 },
+            { item = 'bodyframe', min = 1, max = 1 },
+            { item = 'tire', min = 1, max = 2 },
+            { item = 'door', min = 1, max = 1 },
+            { item = 'window', min = 1, max = 2 },
+        },
+    },
 }
 
 -- Legacy rare loot disabled (house robbery uses Rewards above only).

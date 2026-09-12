@@ -1,6 +1,20 @@
 if Config.UseTarget then return end
 
 local currentZone = nil
+local currentZoneText = nil
+
+local function hideOwnedTextUI()
+    local open, text = lib.isTextUIOpen()
+    if open and text and currentZoneText and text == currentZoneText then
+        lib.hideTextUI()
+    end
+    currentZoneText = nil
+end
+
+local function showZoneTextUI(text)
+    currentZoneText = text
+    lib.showTextUI(text, Config.TextUIOptions)
+end
 
 local Zones = {
     Store = {},
@@ -42,13 +56,13 @@ local function onStoreEnter(data)
         }
         local prefix = Config.UseRadialMenu and "" or "[E] "
         if currentZone.name == "clothing" then
-            lib.showTextUI(prefix .. string.format(_L("textUI.clothing"), Config.ClothingCost), Config.TextUIOptions)
+            showZoneTextUI(prefix .. string.format(_L("textUI.clothing"), Config.ClothingCost))
         elseif currentZone.name == "barber" then
-            lib.showTextUI(prefix .. string.format(_L("textUI.barber"), Config.BarberCost), Config.TextUIOptions)
+            showZoneTextUI(prefix .. string.format(_L("textUI.barber"), Config.BarberCost))
         elseif currentZone.name == "tattoo" then
-            lib.showTextUI(prefix .. string.format(_L("textUI.tattoo"), Config.TattooCost), Config.TextUIOptions)
+            showZoneTextUI(prefix .. string.format(_L("textUI.tattoo"), Config.TattooCost))
         elseif currentZone.name == "surgeon" then
-            lib.showTextUI(prefix .. string.format(_L("textUI.surgeon"), Config.SurgeonCost), Config.TextUIOptions)
+            showZoneTextUI(prefix .. string.format(_L("textUI.surgeon"), Config.SurgeonCost))
         end
         Radial.AddOption(currentZone)
     end
@@ -66,7 +80,7 @@ local function onClothingRoomEnter(data)
                 index = index
             }
             local prefix = Config.UseRadialMenu and "" or "[E] "
-            lib.showTextUI(prefix .. _L("textUI.clothingRoom"), Config.TextUIOptions)
+            showZoneTextUI(prefix .. _L("textUI.clothingRoom"))
             Radial.AddOption(currentZone)
         end
     end
@@ -83,7 +97,7 @@ local function onPlayerOutfitRoomEnter(data)
             index = index
         }
         local prefix = Config.UseRadialMenu and "" or "[E] "
-        lib.showTextUI(prefix .. _L("textUI.playerOutfitRoom"), Config.TextUIOptions)
+        showZoneTextUI(prefix .. _L("textUI.playerOutfitRoom"))
         Radial.AddOption(currentZone)
     end
 end
@@ -91,7 +105,7 @@ end
 local function onZoneExit()
     currentZone = nil
     Radial.RemoveOption()
-    lib.hideTextUI()
+    hideOwnedTextUI()
 end
 
 local function SetupZone(store, onEnter, onExit)
@@ -148,6 +162,12 @@ local function ZonesLoop()
         local sleep = 1000
         if currentZone then
             sleep = 5
+            if currentZoneText then
+                local open, text = lib.isTextUIOpen()
+                if not open or text ~= currentZoneText then
+                    showZoneTextUI(currentZoneText)
+                end
+            end
             if IsControlJustReleased(0, 38) then
                 if currentZone.name == "clothingRoom" then
                     local clothingRoom = Config.ClothingRooms[currentZone.index]

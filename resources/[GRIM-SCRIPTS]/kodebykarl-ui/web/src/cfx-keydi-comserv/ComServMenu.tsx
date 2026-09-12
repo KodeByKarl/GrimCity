@@ -109,16 +109,16 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
   };
 
   return (
-    <div className="flex items-start justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1.5">
+    <div className="flex items-start justify-between gap-2 rounded-md border border-[#ff3a3a]/20 bg-[#181216] px-2 py-1">
       <div className="min-w-0 flex-1">
-        <p className="text-[8px] font-black uppercase tracking-wider text-white/35">{label}</p>
+        <p className="text-[8px] font-black uppercase tracking-wider text-[#a08890]">{label}</p>
         <p className="mt-0.5 break-all font-mono text-[10px] font-semibold text-white/85">{display}</p>
       </div>
       {canCopy && (
         <button
           type="button"
           onClick={copy}
-          className="mt-0.5 shrink-0 rounded-md border border-white/10 bg-black/20 p-1 text-white/45 transition hover:border-white/25 hover:text-white"
+          className="mt-0.5 shrink-0 rounded border border-[#ff3a3a]/25 bg-black/20 p-1 text-[#a08890] transition hover:border-[#ff3a3a] hover:text-white"
           title={`Copy ${label}`}
         >
           {copied ? <Check className="h-3 w-3 text-emerald-300" /> : <Copy className="h-3 w-3" />}
@@ -203,7 +203,7 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
   const [searching, setSearching] = useState(false);
 
   const maxActions = data?.maxActions || 100;
-  const brand = data?.brand || "PANDORA CITY";
+  const brand = data?.brand || "GRIM CITY";
 
   useEffect(() => {
     setOnline(data?.online || []);
@@ -293,95 +293,92 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
   };
 
   return (
-    <div className="pandora fixed inset-0 z-[99995] flex items-center justify-center bg-black/55 backdrop-blur-[2px]">
+    <div className="pandora fixed inset-0 z-[99995] flex items-center justify-center bg-black/80 p-4 font-sans backdrop-blur-[6px]">
       <div
-        className="relative flex h-[78vh] w-[920px] max-w-[94vw] flex-col overflow-hidden rounded-2xl border shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]"
+        className="relative flex h-[560px] w-[820px] max-w-[94vw] flex-col overflow-hidden rounded-2xl border-2 border-[#ff3a3a] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]"
         style={{
-          background: "linear-gradient(180deg, rgba(10, 40, 70, 0.97) 0%, rgba(5, 25, 47, 0.98) 100%)",
-          borderColor: "rgba(143, 228, 255, 0.22)",
+          background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)",
         }}
       >
-        <div className="panel-grid pointer-events-none absolute inset-0 opacity-30" />
+        <div className="panel-grid pointer-events-none absolute inset-0 opacity-25" />
 
         <div
-          className="relative flex items-center justify-between gap-3 border-b px-4 py-3"
+          className="relative flex items-center justify-between gap-2 border-b px-3 py-2"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(53,199,242,0.35) 0%, rgba(28,111,168,0.55) 55%, rgba(11,44,78,0.6) 100%)",
-            borderBottomColor: "rgba(255, 210, 76, 0.35)",
+            borderBottomColor: "rgba(255, 58, 58, 0.25)",
           }}
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/12">
-              <HardHat className="h-4 w-4 text-white" />
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#ff3a3a] bg-[#ff3a3a]/15">
+              <HardHat className="h-3.5 w-3.5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/90">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#ff4d4d]">
                 Community Service
               </p>
-              <p className="truncate text-[11px] font-bold uppercase tracking-wider text-[#ffd24c]/85">
+              <p className="truncate text-[10px] font-bold uppercase tracking-wider text-[#a08890]">
                 {brand} · {data?.staffName || "Staff"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={refresh}
               disabled={busy}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/25 text-white/80 transition hover:border-white/30 hover:text-white disabled:opacity-40"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-[#ff3a3a]/30 bg-[#181216] text-white/80 transition hover:border-[#ff3a3a] hover:text-white disabled:opacity-40"
               title="Refresh"
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} />
+              <RefreshCw className={cn("h-3 w-3 text-[#ff4d4d]", busy && "animate-spin")} />
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/25 px-2.5 py-1.5 text-[10px] font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+              className="flex items-center gap-1 rounded-md border border-[#ff3a3a]/30 bg-[#181216] px-2 py-1 text-[10px] font-semibold text-white/80 transition hover:border-[#ff3a3a] hover:text-white"
             >
               <span>Esc</span>
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3 text-[#ff4d4d]" />
             </button>
           </div>
         </div>
 
-        <div className="relative flex gap-2 border-b border-white/10 px-4 py-2">
+        <div className="relative flex gap-1.5 border-b border-[#ff3a3a]/20 px-3 py-1.5">
           <button
             type="button"
             onClick={() => setTab("sentence")}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition",
+              "rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition",
               tab === "sentence"
-                ? "bg-[#35c7f2]/25 text-[#8fe4ff] border border-[#35c7f2]/35"
-                : "text-white/50 hover:text-white/80 border border-transparent"
+                ? "bg-[#ff3a3a]/25 text-[#ff4d4d] border border-[#ff3a3a]"
+                : "text-[#a08890] hover:text-white border border-transparent"
             )}
           >
-            <span className="inline-flex items-center gap-1.5">
-              <Gavel className="h-3.5 w-3.5" /> Sentence
+            <span className="inline-flex items-center gap-1">
+              <Gavel className="h-3 w-3" /> Sentence
             </span>
           </button>
           <button
             type="button"
             onClick={() => setTab("active")}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition",
+              "rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition",
               tab === "active"
-                ? "bg-[#35c7f2]/25 text-[#8fe4ff] border border-[#35c7f2]/35"
-                : "text-white/50 hover:text-white/80 border border-transparent"
+                ? "bg-[#ff3a3a]/25 text-[#ff4d4d] border border-[#ff3a3a]"
+                : "text-[#a08890] hover:text-white border border-transparent"
             )}
           >
-            <span className="inline-flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" /> Active ({active.length})
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3 w-3" /> Active ({active.length})
             </span>
           </button>
         </div>
 
         {tab === "sentence" ? (
           <div className="relative grid min-h-0 flex-1 grid-cols-[1.15fr_0.85fr] gap-0">
-            <div className="flex min-h-0 flex-col border-r border-white/10">
-              <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
-                <div className="flex rounded-lg border border-white/10 bg-black/20 p-0.5">
+            <div className="flex min-h-0 flex-col border-r border-[#ff3a3a]/20">
+              <div className="flex items-center gap-2 border-b border-[#ff3a3a]/20 px-2.5 py-2">
+                <div className="flex rounded-md border border-[#ff3a3a]/25 bg-[#181216] p-0.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -390,8 +387,8 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                       setOfflineResults([]);
                     }}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase transition",
-                      mode === "online" ? "bg-[#35c7f2]/25 text-[#8fe4ff]" : "text-white/45 hover:text-white/75"
+                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-bold uppercase transition",
+                      mode === "online" ? "bg-[#ff3a3a]/25 text-[#ff4d4d]" : "text-[#a08890] hover:text-white"
                     )}
                   >
                     <Wifi className="h-3 w-3" /> Online
@@ -403,8 +400,8 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                       setSelected(null);
                     }}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase transition",
-                      mode === "offline" ? "bg-[#35c7f2]/25 text-[#8fe4ff]" : "text-white/45 hover:text-white/75"
+                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-bold uppercase transition",
+                      mode === "offline" ? "bg-[#ff3a3a]/25 text-[#ff4d4d]" : "text-[#a08890] hover:text-white"
                     )}
                   >
                     <WifiOff className="h-3 w-3" /> Offline
@@ -412,27 +409,27 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                 </div>
 
                 <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/35" />
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[#a08890]" />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder={mode === "online" ? "Search online players..." : "Search offline by name..."}
-                    className="w-full rounded-lg border border-white/10 bg-black/30 py-2 pl-8 pr-3 text-[12px] text-white outline-none placeholder:text-white/30 focus:border-[#35c7f2]/40"
+                    className="w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] py-1.5 pl-7 pr-2 text-[11px] text-white outline-none placeholder:text-[#a08890]/60 focus:border-[#ff3a3a]"
                   />
                 </div>
               </div>
 
-              <div className="no-scrollbar min-h-0 flex-1 space-y-1.5 overflow-y-auto p-3">
+              <div className="no-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
                 {mode === "offline" && search.trim().length < 2 && (
-                  <p className="px-2 py-6 text-center text-[11px] text-white/40">
+                  <p className="px-2 py-5 text-center text-[10px] text-[#a08890]">
                     Type at least 2 characters to search offline players.
                   </p>
                 )}
                 {mode === "offline" && searching && (
-                  <p className="px-2 py-4 text-center text-[11px] text-white/40">Searching...</p>
+                  <p className="px-2 py-3 text-center text-[10px] text-[#a08890]">Searching...</p>
                 )}
                 {list.length === 0 && !(mode === "offline" && search.trim().length < 2) && !searching && (
-                  <p className="px-2 py-6 text-center text-[11px] text-white/40">No players found.</p>
+                  <p className="px-2 py-5 text-center text-[10px] text-[#a08890]">No players found.</p>
                 )}
                 {list.map((player) => {
                   const isSelected =
@@ -445,20 +442,20 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                       disabled={!!player.serving}
                       onClick={() => setSelected(player)}
                       className={cn(
-                        "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition",
+                        "flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition",
                         isSelected
-                          ? "border-[#35c7f2]/45 bg-[#35c7f2]/15"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]",
+                          ? "border-[#ff3a3a] bg-[#ff3a3a]/15"
+                          : "border-[#ff3a3a]/20 bg-[#181216] hover:border-[#ff3a3a]/50",
                         player.serving && "opacity-45 pointer-events-none"
                       )}
                     >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/25">
-                          <User className="h-3.5 w-3.5 text-[#8fe4ff]" />
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[#ff3a3a]/30 bg-black/25">
+                          <User className="h-3 w-3 text-[#ff4d4d]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-[12px] font-bold text-white">{player.name}</p>
-                          <p className="truncate text-[10px] text-white/40">
+                          <p className="truncate text-[11px] font-bold text-white">{player.name}</p>
+                          <p className="truncate text-[9px] text-[#a08890]">
                             {player.online !== false && player.source != null
                               ? `ID ${player.source}`
                               : "Offline"}
@@ -467,9 +464,9 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                         </div>
                       </div>
                       {mode === "online" ? (
-                        <Wifi className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
+                        <Wifi className="h-3 w-3 shrink-0 text-emerald-400/80" />
                       ) : (
-                        <WifiOff className="h-3.5 w-3.5 shrink-0 text-white/35" />
+                        <WifiOff className="h-3 w-3 shrink-0 text-[#a08890]" />
                       )}
                     </button>
                   );
@@ -477,18 +474,18 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col overflow-hidden p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45">Sentence details</p>
+            <div className="flex min-h-0 flex-col overflow-hidden p-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#a08890]">Sentence details</p>
 
-              <div className="no-scrollbar mt-3 min-h-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-3">
+              <div className="no-scrollbar mt-2 min-h-0 flex-1 overflow-y-auto rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-2.5">
                 {selected ? (
                   <PlayerDetailsCard player={selected} />
                 ) : (
-                  <p className="py-4 text-center text-[11px] text-white/40">Select a player from the list</p>
+                  <p className="py-3 text-center text-[10px] text-[#a08890]">Select a player from the list</p>
                 )}
               </div>
 
-              <label className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-white/45">
+              <label className="mt-2 block text-[9px] font-bold uppercase tracking-wider text-[#a08890]">
                 Actions
               </label>
               <input
@@ -497,11 +494,11 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                 max={maxActions}
                 value={actions}
                 onChange={(e) => setActions(Number(e.target.value))}
-                className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[13px] font-semibold text-white outline-none focus:border-[#35c7f2]/40"
+                className="mt-1 w-full rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5 text-[12px] font-semibold text-white outline-none focus:border-[#ff3a3a]"
               />
-              <p className="mt-1 text-[10px] text-white/30">Max {maxActions}</p>
+              <p className="mt-0.5 text-[9px] text-[#a08890]/70">Max {maxActions}</p>
 
-              <label className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-white/45">
+              <label className="mt-2 block text-[9px] font-bold uppercase tracking-wider text-[#a08890]">
                 Reason
               </label>
               <textarea
@@ -510,44 +507,44 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                 rows={2}
                 maxLength={180}
                 placeholder="Why are they on community service?"
-                className="mt-1.5 w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[12px] text-white outline-none placeholder:text-white/30 focus:border-[#35c7f2]/40"
+                className="mt-1 w-full resize-none rounded-md border border-[#ff3a3a]/25 bg-[#181216] px-2.5 py-1.5 text-[11px] text-white outline-none placeholder:text-[#a08890]/60 focus:border-[#ff3a3a]"
               />
 
               <button
                 type="button"
                 disabled={!selected || busy || !!selected?.serving}
                 onClick={sendSentence}
-                className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-[#35c7f2]/40 bg-gradient-to-r from-[#1c6fa8] to-[#35c7f2] px-4 py-3 text-[12px] font-black uppercase tracking-wide text-white shadow-[0_10px_30px_rgba(53,199,242,0.25)] transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-40"
+                className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#ff3a3a] bg-gradient-to-r from-[#b30000] to-[#ff3a3a] px-3 py-2.5 text-[11px] font-black uppercase tracking-wide text-white transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-40"
               >
-                <Gavel className="h-4 w-4" />
+                <Gavel className="h-3.5 w-3.5" />
                 Send to Comserv
               </button>
             </div>
           </div>
         ) : (
-          <div className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto p-3">
             {active.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
-                <Users className="h-8 w-8 opacity-50" />
-                <p className="text-[12px]">No active community service sentences.</p>
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-[#a08890]">
+                <Users className="h-7 w-7 opacity-50" />
+                <p className="text-[11px]">No active community service sentences.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {active.map((entry) => {
                   const done = Math.max(0, entry.total - entry.remaining);
                   const pct = Math.min(100, Math.round((done / Math.max(entry.total, 1)) * 100));
                   return (
                     <div
                       key={entry.identifier}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                      className="rounded-lg border border-[#ff3a3a]/25 bg-[#181216] p-2.5"
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-[13px] font-bold text-white">{entry.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="truncate text-[12px] font-bold text-white">{entry.name}</p>
                             <span
                               className={cn(
-                                "rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase",
+                                "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase",
                                 entry.online
                                   ? "bg-emerald-500/15 text-emerald-300"
                                   : "bg-white/10 text-white/50"
@@ -556,19 +553,19 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                               {entry.online ? `Online${entry.source ? ` #${entry.source}` : ""}` : "Offline"}
                             </span>
                           </div>
-                          <p className="mt-1 text-[11px] text-white/55 line-clamp-2">{entry.reason}</p>
-                          <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                          <p className="mt-0.5 text-[10px] text-[#a08890] line-clamp-2">{entry.reason}</p>
+                          <div className="mt-1.5 grid gap-1 sm:grid-cols-2">
                             <DetailRow label="IP" value={entry.ip} />
                             <DetailRow label="Discord" value={entry.discord} />
                             <DetailRow label="Steam" value={entry.steam} />
                             <DetailRow label="License" value={entry.license} />
                           </div>
-                          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/35">
+                          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] text-[#a08890]">
                             <span>
                               By <span className="text-white/60">{entry.adminName}</span>
                             </span>
                             <span className="inline-flex items-center gap-1">
-                              <Clock3 className="h-3 w-3" /> {formatTime(entry.createdAt)}
+                              <Clock3 className="h-2.5 w-2.5" /> {formatTime(entry.createdAt)}
                             </span>
                           </p>
                         </div>
@@ -577,25 +574,25 @@ export default function ComServMenu({ data, onClose }: ComServMenuProps) {
                           type="button"
                           disabled={busy}
                           onClick={() => endSentence(entry)}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/15 px-2.5 py-1.5 text-[10px] font-bold uppercase text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-40"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-400/30 bg-rose-500/15 px-2 py-1 text-[9px] font-bold uppercase text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-40"
                         >
                           <Trash2 className="h-3 w-3" /> End
                         </button>
                       </div>
 
-                      <div className="mt-3 flex items-end justify-between gap-2">
-                        <p className="text-[11px] font-bold text-white">
+                      <div className="mt-2 flex items-end justify-between gap-2">
+                        <p className="text-[10px] font-bold text-white">
                           {entry.remaining}
-                          <span className="text-white/40"> / {entry.total} remaining</span>
+                          <span className="text-[#a08890]"> / {entry.total} remaining</span>
                         </p>
-                        <p className="text-[11px] font-bold text-[#8fe4ff]">{pct}%</p>
+                        <p className="text-[10px] font-bold text-[#ff4d4d]">{pct}%</p>
                       </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
                             width: `${pct}%`,
-                            background: "linear-gradient(90deg, #35c7f2, #ffd24c)",
+                            background: "linear-gradient(90deg, #b30000, #ff3a3a)",
                           }}
                         />
                       </div>

@@ -168,6 +168,7 @@ toggleFreecam = function()
         })
     else
         restorePlayer()
+        TriggerServerEvent('kodebykarl-utils:freecam:stopped')
         lib.notify({
             title = 'FREECAM',
             description = 'Freecam disabled',

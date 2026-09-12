@@ -51,6 +51,7 @@ export interface IpadPlayerData {
   canSheriffBoss?: boolean;
   canAmbulanceBoss?: boolean;
   canPambulanceBoss?: boolean;
+  canSambulanceBoss?: boolean;
   canDojBoss?: boolean;
   canPoliceMdt?: boolean;
   canSheriffMdt?: boolean;
@@ -83,6 +84,7 @@ const APPS: AppDef[] = [
   { id: "sheriffboss", label: "Sheriff Boss", icon: Star, color: "#b45309" },
   { id: "ambulanceboss", label: "EMS Boss", icon: Ambulance, color: "#b91c1c" },
   { id: "pambulanceboss", label: "Paleto EMS", icon: Ambulance, color: "#9f1239" },
+  { id: "sambulanceboss", label: "Sandy EMS", icon: Ambulance, color: "#be123c" },
   { id: "dojboss", label: "DOJ Boss", icon: Scale, color: "#4c1d95" },
   { id: "policemdt", label: "Police MDT", icon: ClipboardList, color: "#1e3a8a" },
   { id: "sheriffmdt", label: "Sheriff MDT", icon: ClipboardList, color: "#92400e" },
@@ -98,6 +100,7 @@ const HOME_APPS_POLICE_BOSS = ["policeboss"] as const;
 const HOME_APPS_SHERIFF_BOSS = ["sheriffboss"] as const;
 const HOME_APPS_AMBULANCE_BOSS = ["ambulanceboss"] as const;
 const HOME_APPS_PAMBULANCE_BOSS = ["pambulanceboss"] as const;
+const HOME_APPS_SAMBULANCE_BOSS = ["sambulanceboss"] as const;
 const HOME_APPS_DOJ_BOSS = ["dojboss"] as const;
 const HOME_APPS_POLICE_MDT = ["policemdt"] as const;
 const HOME_APPS_SHERIFF_MDT = ["sheriffmdt"] as const;
@@ -375,6 +378,7 @@ function HomeScreen({
     if (player?.canSheriffBoss) apps.unshift(...HOME_APPS_SHERIFF_BOSS);
     if (player?.canAmbulanceBoss) apps.unshift(...HOME_APPS_AMBULANCE_BOSS);
     if (player?.canPambulanceBoss) apps.unshift(...HOME_APPS_PAMBULANCE_BOSS);
+    if (player?.canSambulanceBoss) apps.unshift(...HOME_APPS_SAMBULANCE_BOSS);
     if (player?.canDojBoss) apps.unshift(...HOME_APPS_DOJ_BOSS);
     if (player?.canBusinessBoss) apps.unshift(...HOME_APPS_BUSINESS);
     if (player?.canEditEconomy) apps.unshift(...HOME_APPS_OWNER);
@@ -385,6 +389,7 @@ function HomeScreen({
     player?.canSheriffBoss,
     player?.canAmbulanceBoss,
     player?.canPambulanceBoss,
+    player?.canSambulanceBoss,
     player?.canDojBoss,
     player?.canPoliceMdt,
     player?.canSheriffMdt,
@@ -583,6 +588,14 @@ function AppScreen({
     return (
       <Suspense fallback={fallback}>
         <DeptBossApp player={player} department="pambulance" />
+      </Suspense>
+    );
+  }
+  if (appId === "sambulanceboss") {
+    if (!player?.canSambulanceBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <DeptBossApp player={player} department="sambulance" />
       </Suspense>
     );
   }

@@ -56,7 +56,8 @@ Config.CheckVehicleModel = true -- Extra security
 Config.SpawnVehiclesWithServerSetter = false
 
 -- Vehicle Transfers
-Config.GarageVehicleTransferCost = 1000 -- Cost to transfer between garages
+Config.GarageVehicleTransferCost = 2500 -- Cost to transfer between garages
+Config.GarageVehicleTakeOutCost = 2500 -- Cost charged from bank every time a vehicle is taken out of a public garage
 Config.TransferHidePlayerNames = false
 Config.TransferRequireNearbyPlayer = false -- false = any online player (by ID/name); true = must be within TransferNearbyDistance
 Config.TransferNearbyDistance = 20.0 -- only used if TransferRequireNearbyPlayer = true
@@ -94,9 +95,37 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
-  ["Islington South"] = {
-    coords = vector3(273.0000, -343.8499, 44.9199),
-    spawn = vector4(274.5707, -333.1659, 44.9199, 152.1733),
+  ["Police Station Public"] = {
+    coords = vector3(109.9534, -429.1195, 40.3253),
+    spawn = vector4(120.7265, -421.3372, 40.3253, 258.4241),
+    distance = 3.0,
+    type = "car",
+    hideBlip = false,
+    blip = {
+      id = 357,
+      color = 0,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Integrity Way"] = {
+    coords = vector3(-17.1902, -570.9355, 37.7450),
+    spawn = vector4(-6.6761, -573.6871, 37.7451, 334.6148),
+    distance = 3.0,
+    type = "car",
+    hideBlip = false,
+    blip = {
+      id = 357,
+      color = 0,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["New Player Garage"] = {
+    coords = vector3(-279.2086, -986.2623, 31.0806),
+    spawn = vector4(-279.2086, -986.2623, 31.0806, 247.3372),
     distance = 3.0,
     type = "car",
     hideBlip = false,
@@ -206,20 +235,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
-  ["Grapeseed"] = {
-    coords = vector3(1713.0601, 4745.3198, 41.9608),
-    spawn = vector4(1704.0221, 4748.1758, 41.9862, 84.8982),
-    distance = 3.0,
-    type = "car",
-    hideBlip = false,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
   ["Paleto Bay"] = {
     coords = vector3(107.3200, 6611.7700, 31.9761),
     spawn = vector4(114.5835, 6609.0938, 31.8836, 228.8401),
@@ -251,20 +266,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
   ["MMS"] = {
     coords = vector3(-1525.8643, 91.1884, 56.5328),
     spawn = vector4(-1525.8643, 91.1884, 56.5328, 286.0026),
-    distance = 3.0,
-    type = "car",
-    hideBlip = true,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
-  ["RuthLess"] = {
-    coords = vector3(-182.8840, -1305.1544, 31.3034),
-    spawn = vector4(-182.8840, -1305.1544, 31.3034, 2.0634),
     distance = 3.0,
     type = "car",
     hideBlip = true,
@@ -388,9 +389,51 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
+  ["Sandy Hospital"] = {
+    coords = vector3(1843.3864, 3669.3853, 34.0871),
+    spawn = vector4(1835.5785, 3664.4282, 34.1081, 208.7340),
+    distance = 3.0,
+    type = "car",
+    hideBlip = false,
+    blip = {
+      id = 357,
+      color = 0,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Paleto Hospital"] = {
+    coords = vector3(-256.5836, 6349.3579, 32.4263),
+    spawn = vector4(-261.1917, 6341.5771, 32.4261, 318.0630),
+    distance = 3.0,
+    type = "car",
+    hideBlip = false,
+    blip = {
+      id = 357,
+      color = 0,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
   ["Market Garage"] = {
-    coords = vector3(355.8200, -1301.2476, 32.2320),
-    spawn = vector4(353.4180, -1308.0892, 32.3449, 138.2324),
+    coords = vector3(168.85, 6631.12, 31.57),
+    spawn = vector4(168.85, 6631.12, 31.57, 134.33),
+    distance = 3.0,
+    type = "car",
+    hideBlip = false,
+    blip = {
+      id = 357,
+      color = 0,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Youtool Garage"] = {
+    coords = vector3(147.12, 6639.85, 31.57),
+    spawn = vector4(147.12, 6639.85, 31.57, 141.74),
     distance = 3.0,
     type = "car",
     hideBlip = false,
@@ -405,20 +448,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
   ["PG Top Garage"] = {
     coords = vector3(636.0460, 200.7011, 97.0902),
     spawn = vector4(641.0535, 193.6051, 96.2119, 345.2906),
-    distance = 3.0,
-    type = "car",
-    hideBlip = false,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
-  ["Youtool Garage"] = {
-    coords = vector3(2766.4248, 3460.3589, 55.6846),
-    spawn = vector4(2773.6360, 3455.4341, 55.6165, 161.7788),
     distance = 3.0,
     type = "car",
     hideBlip = false,
@@ -542,20 +571,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
-  ["LJH Garage"] = {
-    coords = vector3(-1884.5050, -342.0347, 49.2605),
-    spawn = vector4(-1884.5050, -342.0347, 49.2605, 224.3533),
-    distance = 3.0,
-    type = "car",
-    hideBlip = true,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
   ["RBM Garage"] = {
     coords = vector3(-617.9207, -1589.3998, 26.7511),
     spawn = vector4(-617.9207, -1589.3998, 26.7511, 142.4371),
@@ -584,20 +599,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
-  ["Sindicaterz Garage"] = {
-    coords = vector3(-1520.1040, 865.1870, 181.6932),
-    spawn = vector4(-1520.1040, 865.1870, 181.6932, 35.4367),
-    distance = 3.0,
-    type = "car",
-    hideBlip = true,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
   ["SIS Garage"] = {
     coords = vector3(386.3988, 16.9611, 91.3205),
     spawn = vector4(386.3988, 16.9611, 91.3205, 54.9199),
@@ -615,20 +616,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
   ["Naughty Boys Garage"] = {
     coords = vector3(111.7439, 286.1402, 109.9738),
     spawn = vector4(111.7439, 286.1402, 109.9738, 334.3685),
-    distance = 3.0,
-    type = "car",
-    hideBlip = true,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
-  ["The Day Ones Garage"] = {
-    coords = vector3(115.5593, -1942.3342, 20.6454),
-    spawn = vector4(115.5593, -1942.3342, 20.6454, 74.1569),
     distance = 3.0,
     type = "car",
     hideBlip = true,
@@ -671,20 +658,6 @@ Config.GarageLocations = { -- IMPORTANT - Every garage name must be unique
   ["La Fuente Garage"] = {
     coords = vector3(-342.2380, -1366.1277, 31.3652),
     spawn = vector4(-338.2546, -1371.3997, 31.2946, 215.3201),
-    distance = 3.0,
-    type = "car",
-    hideBlip = true,
-    blip = {
-      id = 357,
-      color = 0,
-      scale = 0.7
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-  },
-  ["Slime Garage"] = {
-    coords = vector3(-684.7036, -887.9055, 24.4991),
-    spawn = vector4(-681.6671, -892.7160, 24.4991, 270.9319),
     distance = 3.0,
     type = "car",
     hideBlip = true,
@@ -749,32 +722,35 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     coords = vector3(-1030.4906, -1415.4324, 5.4256),
     spawn = {
       vector4(-1035.8992, -1421.0535, 5.4292, 66.2173),
+      vector4(-1039.80, -1427.10, 5.4292, 66.2173),
+      vector4(-1043.50, -1433.20, 5.4292, 66.2173),
     },
-    distance = 3.0,
+    distance = 8.0,
     type = "car",
     job = {"ambulance", "sambulance", "pambulance"},
     vehiclesType = "spawner",
+    takeOutCost = 0,
     showLiveriesExtrasMenu = true,
     vehicles = {
       [1] = {
         model = "ambulance",
-        plate = "EMS",
+        plate = "EMSAMB",
         minJobGrade = 0,
         nickname = "Ambulance",
         maxMods = true,
       },
       [2] = {
-        model = "dodgeEMS",
-        plate = "EMS",
+        model = "dodgeems",
+        plate = "EMSDOG",
         minJobGrade = 0,
         nickname = "Dodge EMS",
         maxMods = true,
       },
       [3] = {
         model = "lguard",
-        plate = "EMS",
+        plate = "EMSRES",
         minJobGrade = 0,
-        nickname = "Lifeguard SUV",
+        nickname = "Rescue",
         maxMods = true,
       },
     },
@@ -792,31 +768,32 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     spawn = {
       vector4(-268.4462, 6309.9468, 32.3824, 215.0898),
     },
-    distance = 3.0,
+    distance = 8.0,
     type = "car",
     job = {"pambulance", "sambulance", "ambulance"},
     vehiclesType = "spawner",
+    takeOutCost = 0,
     showLiveriesExtrasMenu = true,
     vehicles = {
       [1] = {
         model = "ambulance",
-        plate = "PAMS",
+        plate = "PAMB",
         minJobGrade = 0,
         nickname = "Ambulance",
         maxMods = true,
       },
       [2] = {
-        model = "dodgeEMS",
-        plate = "PAMS",
+        model = "dodgeems",
+        plate = "PDOG",
         minJobGrade = 0,
         nickname = "Dodge EMS",
         maxMods = true,
       },
       [3] = {
         model = "lguard",
-        plate = "PAMS",
+        plate = "PRES",
         minJobGrade = 0,
-        nickname = "Lifeguard SUV",
+        nickname = "Rescue",
         maxMods = true,
       },
     },
@@ -829,14 +806,128 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
-  ["Police Garage"] = {
-    coords = vector3(443.6784, -1020.9938, 28.5566),
-    spawn = vector4(435.8250, -1022.2808, 28.6763, 98.7247),
-    distance = 3.0,
+  ["EMS Helipad"] = {
+    coords = vector3(-1036.1455, -1347.8751, 21.5959),
+    spawn = {
+      vector4(-1036.1455, -1347.8751, 21.5959, 170.2800),
+    },
+    distance = 5.0,
+    type = "air",
+    job = {"ambulance", "sambulance", "pambulance"},
+    vehiclesType = "spawner",
+    takeOutCost = 0,
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "polmav",
+        plate = "EMSHELI",
+        minJobGrade = 0,
+        nickname = "EMS Maverick",
+        maxMods = true,
+        livery = 1, -- Air ambulance
+      },
+    },
+    hideBlip = false,
+    blip = {
+      id = 43,
+      color = 1,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Sandy EMS Garage"] = {
+    coords = vector3(1844.5409, 3635.6526, 34.2286),
+    spawn = {
+      vector4(1843.8750, 3644.0823, 34.2248, 358.1708),
+    },
+    distance = 8.0,
     type = "car",
-    job = {"police", "lspd", "bcso", "sheriff"},
-    vehiclesType = "owned",
+    job = {"ambulance", "sambulance", "pambulance"},
+    vehiclesType = "spawner",
+    takeOutCost = 0,
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "ambulance",
+        plate = "SAMB",
+        minJobGrade = 0,
+        nickname = "Ambulance",
+        maxMods = true,
+      },
+      [2] = {
+        model = "dodgeems",
+        plate = "SDOG",
+        minJobGrade = 0,
+        nickname = "Dodge EMS",
+        maxMods = true,
+      },
+      [3] = {
+        model = "lguard",
+        plate = "SRES",
+        minJobGrade = 0,
+        nickname = "Rescue",
+        maxMods = true,
+      },
+    },
     hideBlip = true,
+    blip = {
+      id = 357,
+      color = 1,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Sandy EMS Helipad"] = {
+    coords = vector3(1810.6118, 3606.9382, 34.2953),
+    spawn = {
+      vector4(1810.6118, 3606.9382, 34.2953, 38.8812),
+    },
+    distance = 5.0,
+    type = "air",
+    job = {"ambulance", "sambulance", "pambulance"},
+    vehiclesType = "spawner",
+    takeOutCost = 0,
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "polmav",
+        plate = "SAMBHELI",
+        minJobGrade = 0,
+        nickname = "EMS Maverick",
+        maxMods = true,
+        livery = 1, -- Air ambulance
+      },
+    },
+    hideBlip = true,
+    blip = {
+      id = 43,
+      color = 1,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
+  ["Police Garage"] = {
+    coords = vector3(112.8899, -394.3368, 40.3253),
+    spawn = vector4(123.5052, -399.6405, 40.3253, 242.6202),
+    distance = 15.0,
+    type = "car",
+    job = {"police", "lspd"},
+    vehiclesType = "spawner",
+    takeOutCost = 1000,
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "ghispo2",
+        plate = "LSPD",
+        minJobGrade = 0,
+        nickname = "Police Ghispo",
+        maxMods = true,
+      },
+    },
+    hideBlip = false,
     blip = {
       id = 357,
       color = 3,
@@ -845,9 +936,50 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     hideMarkers = false,
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
+  ["Police Helipad"] = {
+    coords = vector3(74.3532, -414.7925, 55.3262),
+    spawn = vector4(86.7077, -404.2123, 55.3262, 69.1803),
+    distance = 15.0,
+    type = "air",
+    job = {"police", "lspd"},
+    vehiclesType = "spawner",
+    showLiveriesExtrasMenu = true,
+    vehicles = {
+      [1] = {
+        model = "polmav",
+        plate = "LSPD",
+        minJobGrade = 0,
+        nickname = "Police Maverick",
+        maxMods = true,
+        livery = 0, -- LSPD (vanilla polmav 1 = EMS air ambulance)
+      },
+      [2] = {
+        model = "cargobob",
+        plate = "LSPD",
+        minJobGrade = 0,
+        nickname = "Police Cargobob",
+        maxMods = true,
+      },
+      [3] = {
+        model = "seasparrow",
+        plate = "LSPD",
+        minJobGrade = 0,
+        nickname = "Police Sea Sparrow",
+        maxMods = true,
+      },
+    },
+    hideBlip = false,
+    blip = {
+      id = 43,
+      color = 3,
+      scale = 0.7
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+  },
   ["Sheriff Helipad"] = {
     coords = vector3(1883.4827, 3659.4534, 40.8335),
-    spawn = vector4(1892.9338, 3664.7878, 40.8335, 119.3511),
+    spawn = vector4(1893.0033, 3666.2625, 40.8335, 190.9078),
     distance = 3.0,
     type = "air",
     job = {"sheriff", "bcso", "police"},
@@ -861,6 +993,20 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
         nickname = "Sheriff Maverick",
         maxMods = true,
       },
+      [2] = {
+        model = "cargobob",
+        plate = "BCSO",
+        minJobGrade = 0,
+        nickname = "Sheriff Cargobob",
+        maxMods = true,
+      },
+      [3] = {
+        model = "seasparrow",
+        plate = "BCSO",
+        minJobGrade = 0,
+        nickname = "Sheriff Sea Sparrow",
+        maxMods = true,
+      },
     },
     hideBlip = true,
     blip = {
@@ -872,14 +1018,9 @@ Config.JobGarageLocations = { -- IMPORTANT - Every garage name must be unique
     markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
   },
   ["Sheriff Garage"] = {
-    coords = vector3(1905.4390, 3653.8381, 33.5470),
-    spawn = {
-      vector4(1909.2976, 3662.1689, 33.5957, 220.0816),
-      vector4(1912.3215, 3663.3765, 33.5945, 275.5710),
-      vector4(1914.9451, 3664.5029, 33.5897, 235.3427),
-      vector4(1917.3188, 3666.3179, 33.5876, 236.6252),
-    },
-    distance = 3.0,
+    coords = vector3(1909.2863, 3662.5608, 33.5966),
+    spawn = vector4(1912.4501, 3663.4399, 33.5944, 204.4072),
+    distance = 8.0,
     type = "car",
     job = {"sheriff", "bcso", "police"},
     vehiclesType = "owned",
@@ -912,8 +1053,8 @@ Config.ImpoundUniqueBlips = false
 Config.ImpoundTimeOptions = {0, 1, 4, 12, 24, 72, 168} -- in hours
 Config.ImpoundLocations = { -- IMPORTANT - Every impound name must be unique
   ["Police Impound"] = {
-    coords = vector3(408.8, -1625.2, 29.29),
-    spawn = vector4(416.58, -1635.87, 29.29, 229.32),
+    coords = vector3(51.6447, -381.1395, 39.1266),
+    spawn = vector4(39.1655, -377.1685, 39.1266, 70.5076),
     distance = 3.0,
     type = "car",
     job = {"police", "lspd", "bcso", "sheriff"},
@@ -956,6 +1097,9 @@ Config.ReturnVehicleToGarage = "vreturn" -- admin only
 -- Add your import vehicle's spawn name and desired label here for pretty vehicle names in the garage
 -- This is mainly designed for ESX - if you are using QB, do this in shared!
 Config.VehicleLabels = {
+  ["ghispo2"] = "Police Ghispo",
+  ["cargobob"] = "Cargobob",
+  ["seasparrow"] = "Sea Sparrow",
   ["oycdefenderp"] = "Defender Police",
   ["polgs350"] = "Lexus GS350 Police",
   ["pranger"] = "Police Ranger SUV",

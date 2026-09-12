@@ -18,6 +18,16 @@ local function openRegistrar()
     local c = cfg()
     if c.Enabled == false then return end
     if isOpen then return end
+    if not canUseSchool() then
+        lib.notify({
+            title = c.Label or 'ULS Registrar',
+            description = (ConfigServerLocations and ConfigServerLocations.WrongServerMessage)
+                and ConfigServerLocations.WrongServerMessage('school')
+                or 'University is only available on Region 2.',
+            type = 'error',
+        })
+        return
+    end
 
     local payload = lib.callback.await('cfx-keydi-university:registrar:open', false)
     if not payload or not payload.ok then
@@ -37,10 +47,30 @@ local function openRegistrar()
     })
 end
 
+local function canUseSchool()
+    if not ConfigServerLocations or not ConfigServerLocations.CanUseFunction then
+        return false
+    end
+    return ConfigServerLocations.CanUseFunction('school')
+end
+
+local function deleteRegistrar()
+    if registrarPed and DoesEntityExist(registrarPed) then
+        if GetResourceState('ox_target') == 'started' then
+            pcall(function()
+                exports.ox_target:removeLocalEntity(registrarPed)
+            end)
+        end
+        DeleteEntity(registrarPed)
+        registrarPed = nil
+    end
+end
+
 local function spawnRegistrar()
     local c = cfg()
     local reg = c.Registrar
     if not reg or reg.enabled == false then return end
+    if not canUseSchool() then return end
     if registrarPed and DoesEntityExist(registrarPed) then return end
 
     local model = reg.model or `a_f_y_business_02`
@@ -72,12 +102,25 @@ local function spawnRegistrar()
     end
 end
 
+local function syncRegistrarForRegion()
+    if canUseSchool() then
+        spawnRegistrar()
+    else
+        deleteRegistrar()
+    end
+end
+
 CreateThread(function()
     while not NetworkIsPlayerActive(PlayerId()) do Wait(250) end
     Wait(1500)
     if cfg().Enabled ~= false then
-        spawnRegistrar()
+        syncRegistrarForRegion()
     end
+end)
+
+AddEventHandler('cfx-keydi-serverlocations:changed', function()
+    Wait(200)
+    syncRegistrarForRegion()
 end)
 
 RegisterNUICallback('cfx-keydi-university:registrar:close', function(_, cb)

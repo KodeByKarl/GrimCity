@@ -57,7 +57,7 @@ end)
 -- Sheriff Coin Harvest Server Callback
 local lastHarvest = {}
 
-lib.callback.register('kodebykarl-sheriff:server:harvestCoins', function(source)
+lib.callback.register('kodebykarl-sheriff:server:harvestCoins', function(source, spotIndex)
     local src = source
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer or not xPlayer.job then
@@ -75,14 +75,19 @@ lib.callback.register('kodebykarl-sheriff:server:harvestCoins', function(source)
     end
 
     local harvestCfg = ConfigSheriff.CoinHarvest
-    if not harvestCfg or not harvestCfg.location then
+    if not harvestCfg or not harvestCfg.locations then
+        return false
+    end
+
+    local spot = harvestCfg.locations[spotIndex]
+    if not spot then
         return false
     end
 
     -- Distance check (anti-exploit)
     local ped = GetPlayerPed(src)
     local pCoords = GetEntityCoords(ped)
-    local targetCoords = vector3(harvestCfg.location.x, harvestCfg.location.y, harvestCfg.location.z)
+    local targetCoords = vector3(spot.x, spot.y, spot.z)
     if #(pCoords - targetCoords) > 4.5 then
         return false
     end

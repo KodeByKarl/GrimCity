@@ -1,7 +1,7 @@
 CREATE TABLE `k5_documents` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `data` longtext,
-  `ownerId` varchar(50),
+  `ownerId` varchar(100),
   `isCopy` tinyint,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

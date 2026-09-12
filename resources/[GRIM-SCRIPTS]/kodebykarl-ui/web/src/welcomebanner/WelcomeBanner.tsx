@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import pandoraLogo from "@/assets/pandora-city-logo.png";
+import grimLogo from "@/assets/grim-city-logo.png";
 
 interface WelcomeBannerData {
   duration: number;
@@ -141,17 +141,14 @@ export default function WelcomeBanner() {
         style={{ width: "100%", height: "100%" }}
       >
         <div
-          className="relative h-full w-full overflow-hidden rounded-xl border"
+          className="relative h-full w-full overflow-hidden rounded-xl border-2 border-[#ff3a3a]"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(10, 40, 70, 0.96) 0%, rgba(5, 25, 47, 0.98) 100%)",
-            borderColor: "rgba(255, 122, 181, 0.4)",
-            boxShadow:
-              "0 10px 24px rgba(0, 0, 0, 0.7), 0 0 18px rgba(255, 61, 150, 0.28)",
+            background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)",
+            boxShadow: "0 10px 24px rgba(0, 0, 0, 0.85)",
           }}
         >
           <img
-            src={customImage || pandoraLogo}
+            src={customImage || grimLogo}
             alt="Welcome"
             decoding="async"
             draggable={false}
@@ -166,7 +163,7 @@ export default function WelcomeBanner() {
             <div
               className="absolute inset-x-0 bottom-0 px-2 py-1.5 text-center"
               style={{
-                background: "linear-gradient(180deg, transparent 0%, rgba(5, 25, 47, 0.92) 100%)",
+                background: "linear-gradient(180deg, transparent 0%, rgba(13, 13, 18, 0.95) 100%)",
               }}
             >
               <p className="truncate text-[11px] font-bold leading-tight text-white">

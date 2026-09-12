@@ -180,7 +180,7 @@ ConfigComServ.Outfit = {
     },
 }
 
-ConfigComServ.Brand = "PANDORA CITY"
+ConfigComServ.Brand = "GRIM CITY"
 ConfigComServ.OfflineSearchLimit = 30
 
 --[[

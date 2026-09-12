@@ -77,26 +77,38 @@ local function setupWardrobe()
         })
     end
 
+    local wardrobePrompt = '[E] - Sheriff Wardrobe'
+
+    local function hideWardrobeText()
+        local open, text = lib.isTextUIOpen()
+        if open and text == wardrobePrompt then
+            lib.hideTextUI()
+        end
+    end
+
     local point = lib.points.new({
         coords = wardrobeCfg.coords,
-        distance = 1.8,
+        distance = 2.4,
     })
 
     function point:onEnter()
         if isSheriff() then
-            lib.showTextUI('[E] - Sheriff Wardrobe', { icon = 'tshirt', position = 'right-center' })
+            lib.showTextUI(wardrobePrompt, { icon = 'tshirt', position = 'right-center' })
         end
     end
 
     function point:onExit()
-        lib.hideTextUI()
+        hideWardrobeText()
     end
 
     function point:nearby()
-        if isSheriff() then
-            if IsControlJustReleased(0, 38) then -- E key
-                openSheriffWardrobe()
-            end
+        if not isSheriff() then return end
+        local open, text = lib.isTextUIOpen()
+        if not open or text ~= wardrobePrompt then
+            lib.showTextUI(wardrobePrompt, { icon = 'tshirt', position = 'right-center' })
+        end
+        if IsControlJustReleased(0, 38) then
+            openSheriffWardrobe()
         end
     end
 end
@@ -189,23 +201,30 @@ end
 
 local isFarming = false
 local farmTextState = nil
-local spawnedBox = nil
+
+local FARM_TEXT = {
+    start = '[E] - Start Auto-Farming Sheriff Coins',
+    stop = '[E] or [X] - Stop Auto-Farming Sheriff Coins',
+}
 
 local function updateCoinFarmText(state)
     if farmTextState == state then return end
     farmTextState = state
     if state == 'start' then
-        lib.showTextUI('[E] - Start Auto-Farming Sheriff Coins', {
+        lib.showTextUI(FARM_TEXT.start, {
             icon = 'coins',
             position = 'right-center'
         })
     elseif state == 'stop' then
-        lib.showTextUI('[E] or [X] - Stop Auto-Farming Sheriff Coins', {
+        lib.showTextUI(FARM_TEXT.stop, {
             icon = 'hand',
             position = 'right-center'
         })
     else
-        lib.hideTextUI()
+        local open, text = lib.isTextUIOpen()
+        if open and (text == FARM_TEXT.start or text == FARM_TEXT.stop) then
+            lib.hideTextUI()
+        end
     end
 end
 
@@ -226,10 +245,11 @@ local function stopAutoFarm(notifyUser)
     end
 end
 
-local function startAutoFarm()
+local function startAutoFarm(spotIndex)
     if isFarming then return end
     local harvestCfg = ConfigSheriff.CoinHarvest
-    if not harvestCfg or not harvestCfg.enabled or not harvestCfg.location then return end
+    local spot = harvestCfg and harvestCfg.locations and harvestCfg.locations[spotIndex]
+    if not harvestCfg or not harvestCfg.enabled or not spot then return end
 
     if not isSheriff() then
         lib.notify({
@@ -261,7 +281,6 @@ local function startAutoFarm()
             lib.requestAnimDict(animConfig.dict)
         end
 
-        local loc = harvestCfg.location
         while isFarming do
             local ped = cache.ped or PlayerPedId()
             if IsEntityDead(ped) then
@@ -270,11 +289,11 @@ local function startAutoFarm()
             end
 
             local pCoords = GetEntityCoords(ped)
-            local targetCoords = vector3(loc.x, loc.y, loc.z)
-            if #(pCoords - targetCoords) > ((harvestCfg.interactDistance or 1.8) + 1.2) then
+            local targetCoords = vector3(spot.x, spot.y, spot.z)
+            if #(pCoords - targetCoords) > ((harvestCfg.interactDistance or 1.5) + 1.2) then
                 lib.notify({
                     title = 'Sheriff Station',
-                    description = 'You moved away from the carton. Auto-farming stopped.',
+                    description = 'You moved away from the station. Auto-farming stopped.',
                     type = 'warning',
                     duration = 4000
                 })
@@ -282,8 +301,8 @@ local function startAutoFarm()
                 break
             end
 
-            if loc.w then
-                SetEntityHeading(ped, loc.w)
+            if spot.w then
+                SetEntityHeading(ped, spot.w)
             end
 
             local success = lib.progressBar({
@@ -305,7 +324,7 @@ local function startAutoFarm()
             })
 
             if success and isFarming then
-                local awarded = lib.callback.await('kodebykarl-sheriff:server:harvestCoins', false)
+                local awarded = lib.callback.await('kodebykarl-sheriff:server:harvestCoins', false, spotIndex)
                 if not awarded then
                     stopAutoFarm(false)
                     break
@@ -327,67 +346,52 @@ end
 
 local function setupCoinHarvest()
     local harvestCfg = ConfigSheriff.CoinHarvest
-    if not harvestCfg or not harvestCfg.enabled or not harvestCfg.location then return end
+    if not harvestCfg or not harvestCfg.enabled or not harvestCfg.locations then return end
 
-    local loc = harvestCfg.location
-    local propModel = harvestCfg.prop or 'prop_cs_cardbox_01'
-
-    -- Spawn the physical carton box prop
-    CreateThread(function()
-        local modelHash = GetHashKey(propModel)
-        lib.requestModel(modelHash)
-        spawnedBox = CreateObject(modelHash, loc.x, loc.y, loc.z, false, false, false)
-        SetEntityHeading(spawnedBox, loc.w or 0.0)
-        PlaceObjectOnGroundProperly(spawnedBox)
-        FreezeEntityPosition(spawnedBox, true)
-        SetEntityInvincible(spawnedBox, true)
-        SetModelAsNoLongerNeeded(modelHash)
-    end)
-
-    -- ox_target interaction on the carton box
     if GetResourceState('ox_target') == 'started' then
-        exports.ox_target:addBoxZone({
-            name = 'sheriff_coin_cartoon_harvest',
-            coords = vector3(loc.x, loc.y, loc.z),
-            size = vector3(1.2, 1.2, 1.2),
-            rotation = loc.w or 0.0,
-            debug = false,
-            options = {
-                {
-                    name = 'sheriff_coin_harvest_start',
-                    icon = 'fas fa-coins',
-                    label = 'Start Auto-Farming Sheriff Coins',
-                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0 },
-                    canInteract = function()
-                        return not isFarming
-                    end,
-                    onSelect = function()
-                        startAutoFarm()
-                    end,
-                    distance = harvestCfg.interactDistance or 1.8
-                },
-                {
-                    name = 'sheriff_coin_harvest_stop',
-                    icon = 'fas fa-hand',
-                    label = 'Stop Auto-Farming Sheriff Coins',
-                    groups = { ['sheriff'] = 0, ['offsheriff'] = 0 },
-                    canInteract = function()
-                        return isFarming
-                    end,
-                    onSelect = function()
-                        stopAutoFarm(true)
-                    end,
-                    distance = harvestCfg.interactDistance or 1.8
+        for i = 1, #harvestCfg.locations do
+            local loc = harvestCfg.locations[i]
+            exports.ox_target:addBoxZone({
+                name = 'sheriff_coin_harvest_' .. i,
+                coords = vector3(loc.x, loc.y, loc.z),
+                size = vector3(1.2, 1.2, 1.5),
+                rotation = loc.w or 0.0,
+                debug = false,
+                options = {
+                    {
+                        name = 'sheriff_coin_harvest_start_' .. i,
+                        icon = 'fas fa-coins',
+                        label = 'Start Auto-Farming Sheriff Coins',
+                        groups = { ['sheriff'] = 0 },
+                        canInteract = function()
+                            return not isFarming
+                        end,
+                        onSelect = function()
+                            startAutoFarm(i)
+                        end,
+                        distance = harvestCfg.interactDistance or 1.5
+                    },
+                    {
+                        name = 'sheriff_coin_harvest_stop_' .. i,
+                        icon = 'fas fa-hand',
+                        label = 'Stop Auto-Farming Sheriff Coins',
+                        groups = { ['sheriff'] = 0 },
+                        canInteract = function()
+                            return isFarming
+                        end,
+                        onSelect = function()
+                            stopAutoFarm(true)
+                        end,
+                        distance = harvestCfg.interactDistance or 1.5
+                    }
                 }
-            }
-        })
+            })
+        end
     end
 
-    -- Proximity marker and [E] prompt loop
     CreateThread(function()
         local drawDist = harvestCfg.drawDistance or 6.0
-        local interactDist = harvestCfg.interactDistance or 1.8
-        local locVec = vector3(loc.x, loc.y, loc.z)
+        local interactDist = harvestCfg.interactDistance or 1.5
 
         while true do
             local sleep = 1000
@@ -395,40 +399,45 @@ local function setupCoinHarvest()
 
             if isSheriff() and not IsEntityDead(ped) then
                 local pCoords = GetEntityCoords(ped)
-                local dist = #(pCoords - locVec)
+                local nearestSpotIndex = nil
+                local nearestDist = 999.0
 
-                if dist <= drawDist then
+                for i = 1, #harvestCfg.locations do
+                    local loc = harvestCfg.locations[i]
+                    local dist = #(pCoords - vector3(loc.x, loc.y, loc.z))
+                    if dist < nearestDist then
+                        nearestDist = dist
+                        nearestSpotIndex = i
+                    end
+                end
+
+                if nearestSpotIndex and nearestDist <= drawDist then
                     sleep = 0
-                    DrawMarker(2, loc.x, loc.y, loc.z + 0.3, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 0.25, 0.25, 0.25, 255, 215, 0, 180, false, true, 2, false, nil, nil, false)
+                    local loc = harvestCfg.locations[nearestSpotIndex]
+                    DrawMarker(2, loc.x, loc.y, loc.z + 0.1, 0.0, 0.0, 0.0, 0.0, 180.0, 0.0, 0.25, 0.25, 0.25, 255, 215, 0, 160, false, true, 2, false, nil, nil, false)
 
-                    if dist <= interactDist then
+                    if nearestDist <= interactDist then
                         if isFarming then
                             updateCoinFarmText('stop')
                         else
                             updateCoinFarmText('start')
                         end
 
-                        if IsControlJustReleased(0, 38) then -- E key
+                        if IsControlJustReleased(0, 38) then
                             if isFarming then
                                 stopAutoFarm(true)
                             else
-                                startAutoFarm()
+                                startAutoFarm(nearestSpotIndex)
                             end
                         end
-                    else
-                        if not isFarming then
-                            updateCoinFarmText(nil)
-                        end
-                    end
-                else
-                    if not isFarming then
+                    elseif not isFarming then
                         updateCoinFarmText(nil)
                     end
-                end
-            else
-                if not isFarming then
+                elseif not isFarming then
                     updateCoinFarmText(nil)
                 end
+            elseif not isFarming then
+                updateCoinFarmText(nil)
             end
 
             Wait(sleep)
@@ -445,9 +454,6 @@ AddEventHandler('onResourceStop', function(res)
             end
         end
         lib.hideTextUI()
-        if spawnedBox and DoesEntityExist(spawnedBox) then
-            DeleteEntity(spawnedBox)
-        end
     end
 end)
 

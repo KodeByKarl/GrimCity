@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'kodebykarl-gangsystem'
 author 'KodeByKarl'
-description 'Keydi gang system — ESX gangs, stashes, crafting, Region 3/4'
+description 'Keydi gang system — ESX gangs, stashes, crafting (Region 1)'
 version '1.0.0'
 
 dependencies {

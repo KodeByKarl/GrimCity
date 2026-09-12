@@ -1,8 +1,10 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import Index from "./routes/index";
 import Scoreboard from "./cfx-keydi-scoreboard/Scoreboard";
 import IndicatorConfig from "./cfx-keydi-indicator/IndicatorConfig";
 import DamageOverlay from "./cfx-keydi-indicator/DamageOverlay";
 import Chat from "./cfx-keydi-chat/Chat";
+import Me3D from "./cfx-keydi-chat/Me3D";
 import ModulesMenu from "./cfx-keydi-modules/ModulesMenu";
 import FpsOptimizer, { FpsPreset } from "./cfx-keydi-fps/FpsOptimizer";
 import ReportSystem, { OpenReport, ReportCategory } from "./cfx-keydi-report/ReportSystem";
@@ -29,34 +31,21 @@ import InvoiceMenu, { InvoiceData } from "./cfx-keydi-invoice/InvoiceMenu";
 import RegistrarMenu, { type RegistrarData } from "./cfx-keydi-university/RegistrarMenu";
 import type { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
 import type { UniversityRole } from "./cfx-keydi-ipad/universityTypes";
-import type { PhonePlayerData } from "./cfx-keydi-phone/Phone";
+import type { PhonePlayerData, PhoneCallSeed } from "./cfx-keydi-phone/Phone";
 import PartyHud from "./cfx-keydi-ipad/PartyHud";
 import PlaytimeShop, { PlaytimeShopData } from "./cfx-keydi-playtimeshop/PlaytimeShop";
 import { Toaster } from "sonner";
 import { AlertTriangle } from "lucide-react";
+import { isBrowserEnv } from "./lib/nui";
+import {
+  DEFAULT_INDICATOR_SETTINGS,
+  mergeIndicatorSettings,
+  type IndicatorSettings,
+} from "./cfx-keydi-indicator/types";
 
 const Ipad = lazy(() => import("./cfx-keydi-ipad/Ipad"));
 const Phone = lazy(() => import("./cfx-keydi-phone/Phone"));
-
-interface IndicatorSettings {
-  deadText: string;
-  deadIcon: string;
-  fontFamily: string;
-  fontSize: number;
-  duration: number;
-  healthColor: string;
-  armorColor: string;
-}
-
-const DEFAULT_INDICATOR_SETTINGS: IndicatorSettings = {
-  deadText: "Dead",
-  deadIcon: "skull",
-  fontFamily: "JetBrains Mono",
-  fontSize: 18,
-  duration: 3.0,
-  healthColor: "#f87171",
-  armorColor: "#60a5fa"
-};
+const LoadingScreen = lazy(() => import("./cfx-keydi-loadingscreen/LoadingScreen"));
 
 // Cinematic Purge Siren Audio Synthesizer (City-Wide Alert Horn)
 function playPurgeSirenAudio(durationMs = 12000) {
@@ -152,6 +141,7 @@ function playPurgeSirenAudio(durationMs = 12000) {
 }
 
 export default function App() {
+  const [identityVisible, setIdentityVisible] = useState(false);
   const [badgeVisible, setBadgeVisible] = useState(false);
   const [badgeData, setBadgeData] = useState<BadgeData | null>(null);
   
@@ -194,6 +184,7 @@ export default function App() {
 
   const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [welcomeData, setWelcomeData] = useState<any>({});
+  const [loadingScreenVisible, setLoadingScreenVisible] = useState(false);
 
   const [marketVisible, setMarketVisible] = useState(false);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
@@ -218,6 +209,7 @@ export default function App() {
   const [phoneVisible, setPhoneVisible] = useState(false);
   const [phoneData, setPhoneData] = useState<PhonePlayerData | null>(null);
   const [phoneMsgToast, setPhoneMsgToast] = useState<{ from: string; body: string } | null>(null);
+  const [phoneCallSeed, setPhoneCallSeed] = useState<PhoneCallSeed | null>(null);
   const [playtimeVisible, setPlaytimeVisible] = useState(false);
   const [playtimeData, setPlaytimeData] = useState<PlaytimeShopData | null>(null);
 
@@ -235,9 +227,56 @@ export default function App() {
   }, [announcementVisible]);
 
   useEffect(() => {
+    if (isBrowserEnv()) return;
+    let cancelled = false;
+    let interval = 0;
+    const postReady = () => {
+      if (cancelled) return;
+      const resourceName = (window as any).GetParentResourceName
+        ? (window as any).GetParentResourceName()
+        : "kodebykarl-ui";
+      fetch(`https://${resourceName}/cfx-keydi-welcome:nuiReady`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=UTF-8" },
+        body: JSON.stringify({}),
+      })
+        .then(() => {
+          if (!cancelled) window.clearInterval(interval);
+        })
+        .catch(() => {
+          if (!cancelled) window.setTimeout(postReady, 400);
+        });
+    };
+    postReady();
+    interval = window.setInterval(postReady, 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const postWelcomeShown = () => {
+    if (isBrowserEnv()) return;
+    const resourceName = (window as any).GetParentResourceName
+      ? (window as any).GetParentResourceName()
+      : "kodebykarl-ui";
+    fetch(`https://${resourceName}/cfx-keydi-welcome:shown`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({}),
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!welcomeVisible) return;
+    postWelcomeShown();
+  }, [welcomeVisible]);
+
+  useEffect(() => {
     // Determine if we are running in the browser dev environment
     const isBrowser = !(window as any).invokeNative && !navigator.userAgent.includes("FiveM");
     if (isBrowser) {
+      setIdentityVisible(false);
       setScoreboardVisible(false); 
       setIndicatorConfigVisible(false); 
       setModulesVisible(false);
@@ -249,7 +288,16 @@ export default function App() {
       // University: ?preview=university|student|teacher|dean|director|registrar
       // Playtime shop: ?preview=shop | Autofarm: ?preview=autofarm | Modules: ?preview=modules | Death: ?preview=deathscreen
       // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip | Phone: ?preview=phone
+      // Loading screen: ?preview=loadingscreen
       const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
+      if (preview === "identity") {
+        setIpadVisible(false);
+        setIdentityVisible(true);
+      }
+      if (preview === "loadingscreen" || preview === "loading") {
+        setIpadVisible(false);
+        setLoadingScreenVisible(true);
+      }
       if (preview === "registrar") {
         setIpadVisible(false);
         setRegistrarVisible(true);
@@ -308,6 +356,7 @@ export default function App() {
         canSheriffBoss: isOwner || preview === "sheriff",
         canAmbulanceBoss: isOwner || preview === "ems" || preview === "ambulance",
         canPambulanceBoss: isOwner || preview === "pambulance" || preview === "paletoems",
+        canSambulanceBoss: isOwner || preview === "sambulance" || preview === "sandyems",
         canDojBoss: isOwner || preview === "doj",
         canPoliceMdt: isPolice || isOwner || preview === "doj",
         canSheriffMdt: isOwner || preview === "sheriff",
@@ -409,6 +458,9 @@ export default function App() {
         setIpadVisible(false);
         setVipVisible(true);
       }
+      if (preview === "me3d" || preview === "me") {
+        setIpadVisible(false);
+      }
       if (preview === "modules") {
         setIpadVisible(false);
         setModulesVisible(true);
@@ -451,6 +503,13 @@ export default function App() {
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data || typeof data !== "object") return;
+
+      // Identity UI Handlers
+      if (data.action === "show" || data.action === "showIdentity") {
+        setIdentityVisible(true);
+      } else if (data.action === "hide" || data.action === "hideIdentity") {
+        setIdentityVisible(false);
+      }
 
       // Scoreboard UI Handlers
       if (data.action === "scoreboard:show") {
@@ -506,10 +565,12 @@ export default function App() {
 
       // Indicator UI Handlers
       if (data.action === "indicator:showConfig") {
-        if (data.settings) setIndicatorSettings(data.settings);
+        if (data.settings) setIndicatorSettings(mergeIndicatorSettings(data.settings));
         setIndicatorConfigVisible(true);
       } else if (data.action === "indicator:hideConfig") {
         setIndicatorConfigVisible(false);
+      } else if (data.action === "indicator:syncSettings") {
+        if (data.settings) setIndicatorSettings(mergeIndicatorSettings(data.settings));
       }
 
       // Modules Menu UI Handlers
@@ -597,6 +658,16 @@ export default function App() {
       if (data.action === "cfx-keydi-welcome:show") {
         if (data.data) setWelcomeData(data.data);
         setWelcomeVisible(true);
+        postWelcomeShown();
+      } else if (data.action === "cfx-keydi-welcome:ping") {
+        const resourceName = (window as any).GetParentResourceName
+          ? (window as any).GetParentResourceName()
+          : "kodebykarl-ui";
+        fetch(`https://${resourceName}/cfx-keydi-welcome:nuiReady`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=UTF-8" },
+          body: JSON.stringify({}),
+        }).catch(() => {});
       } else if (data.action === "cfx-keydi-welcome:hide") {
         setWelcomeVisible(false);
       } else if (data.action === "cfx-keydi-admin:announcementReceived") {
@@ -651,6 +722,26 @@ export default function App() {
         setPhoneVisible(true);
       } else if (data.action === "cfx-keydi-phone:close") {
         setPhoneVisible(false);
+        setPhoneCallSeed(null);
+      } else if (data.action === "cfx-keydi-phone:call:incoming") {
+        setPhoneVisible(true);
+        setPhoneCallSeed({
+          action: "incoming",
+          data: data.data || {},
+          nonce: data.data?.nonce || Date.now(),
+        });
+      } else if (data.action === "cfx-keydi-phone:call:accepted") {
+        setPhoneCallSeed({
+          action: "accepted",
+          data: data.data || {},
+          nonce: data.data?.nonce || Date.now(),
+        });
+      } else if (data.action === "cfx-keydi-phone:call:ended") {
+        setPhoneCallSeed({
+          action: "ended",
+          data: data.data || {},
+          nonce: Date.now(),
+        });
       } else if (data.action === "cfx-keydi-phone:message") {
         if (data.showToast === false) return;
         const payload = data.data || {};
@@ -855,6 +946,16 @@ export default function App() {
 
   return (
     <>
+      {loadingScreenVisible && (
+        <Suspense fallback={null}>
+          <LoadingScreen
+            onClose={() => {
+              if (isBrowserPreview) setLoadingScreenVisible(false);
+            }}
+          />
+        </Suspense>
+      )}
+      {identityVisible && <Index />}
       {scoreboardVisible && <Scoreboard data={scoreboardData} />}
       {comServMenuVisible && (
         <ComServMenu
@@ -920,7 +1021,8 @@ export default function App() {
       )}
       {indicatorConfigVisible && (
         <IndicatorConfig 
-          settings={indicatorSettings} 
+          settings={indicatorSettings}
+          onChange={setIndicatorSettings}
           onClose={() => {
             if (isBrowserPreview) {
               setIndicatorConfigVisible(false);
@@ -1245,6 +1347,17 @@ export default function App() {
       {/* Chat overlay container */}
       <Chat />
 
+      {/* Grim City 3D /me above players */}
+      <Me3D
+        previewBubbles={
+          isBrowserPreview && new URLSearchParams(window.location.search).get("preview") === "me3d"
+            ? [
+                { id: "preview", text: "scratches his nose", x: 0.5, y: 0.42, scale: 1, opacity: 1 },
+              ]
+            : undefined
+        }
+      />
+
       {/* Auto Farm HUD (shown while standing in a farm marker) */}
       <AutofarmHud />
 
@@ -1287,7 +1400,12 @@ export default function App() {
       {/* Companion iPhone — Dynamic Island shell */}
       {phoneVisible ? (
         <Suspense fallback={null}>
-          <Phone visible={phoneVisible} data={phoneData} onClose={() => setPhoneVisible(false)} />
+          <Phone
+            visible={phoneVisible}
+            data={phoneData}
+            callSeed={phoneCallSeed}
+            onClose={() => setPhoneVisible(false)}
+          />
         </Suspense>
       ) : null}
 

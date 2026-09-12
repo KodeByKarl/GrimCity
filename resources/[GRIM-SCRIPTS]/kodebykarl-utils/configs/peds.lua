@@ -275,12 +275,12 @@ return {
     {
         -- Sell Market NPC (coords must match kodebykarl-ui ConfigMarket.Locations)
         model = 'a_m_m_business_01',
-        coords = vec4(342.9301, -1298.0554, 32.55, 154.4067),
+        coords = vec4(162.0263, 6636.6411, 31.5562, 134.3263),
         minusOne = false,
         freeze = true,
         invincible = true,
         blockevents = true,
-        scenario = 'WORLD_HUMAN_CLIPBOARD',
+        scenario = false,
         currentpednumber = 0,
         blip = {
             sprite = 78,
@@ -307,7 +307,7 @@ return {
         }
     },
     {
-        -- Free Sunrise1 after 6h total playtime
+        -- Free Neon (immediate) + Sunrise1 after 6h total playtime
         model = 'a_m_y_business_03',
         coords = vec4(-260.5113, -965.4332, 31.2244, 116.3138),
         minusOne = false,
@@ -327,9 +327,76 @@ return {
             options = {
                 {
                     icon = 'fa-solid fa-car',
+                    label = 'Claim Free Neon (New Player)',
+                    onSelect = function()
+                        TriggerServerEvent('cfx-keydi-utils:playtimereward:server:claim', 'neon')
+                    end,
+                    distance = 2.5
+                },
+                {
+                    icon = 'fa-solid fa-car-side',
                     label = 'Claim Free Sunrise (6h Playtime)',
                     onSelect = function()
-                        TriggerServerEvent('cfx-keydi-utils:playtimereward:server:claim')
+                        TriggerServerEvent('cfx-keydi-utils:playtimereward:server:claim', 'sunrise')
+                    end,
+                    distance = 2.5
+                }
+            },
+        }
+    },
+    {
+        -- YouTool NPC (coords must match ox_inventory YouTool location)
+        model = 's_m_m_lathandy_01',
+        coords = vec4(153.3959, 6645.4497, 31.5720, 141.7415),
+        minusOne = false,
+        freeze = true,
+        invincible = true,
+        blockevents = true,
+        scenario = false,
+        currentpednumber = 0,
+        blip = {
+            sprite = 402,
+            color = 69,
+            scale = 0.8,
+            label = 'YouTool',
+            data = 0,
+        },
+        target = {
+            options = {
+                {
+                    icon = 'fa-solid fa-screwdriver-wrench',
+                    label = 'Open YouTool',
+                    onSelect = function()
+                        if GetResourceState('ox_inventory') ~= 'started' then
+                            return lib.notify({ title = 'YouTool', description = 'Shop is unavailable right now.', type = 'error' })
+                        end
+                        local opened = exports.ox_inventory:openInventory('shop', { type = 'YouTool', id = 1 })
+                        if opened == false then
+                            lib.notify({ title = 'YouTool', description = 'Could not open shop. Step closer and try again.', type = 'error' })
+                        end
+                    end,
+                    distance = 2.5
+                }
+            },
+        }
+    },
+    {
+        -- Weed Farm Shop NPC (coords must match ox_inventory WeedFarmShop location)
+        model = 'a_m_m_hillbilly_01',
+        coords = vec4(2224.7139, 5604.8462, 54.9226, 286.7909),
+        minusOne = false,
+        freeze = true,
+        invincible = true,
+        blockevents = true,
+        scenario = 'WORLD_HUMAN_SMOKING',
+        currentpednumber = 0,
+        target = {
+            options = {
+                {
+                    icon = 'fa-solid fa-cannabis',
+                    label = 'Open Weed Farm Shop',
+                    onSelect = function()
+                        exports.ox_inventory:openInventory('shop', { type = 'WeedFarmShop', id = 1 })
                     end,
                     distance = 2.5
                 }

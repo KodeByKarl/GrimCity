@@ -6,14 +6,14 @@ local ox_inventory      = exports.ox_inventory
 local globalState       = GlobalState
 local confiscated       = {}
 
-local function savePlayerJailTime(src)
+local function savePlayerJailTime(src, returnInv)
     local state = Player(src).state
     local jailTime = state and state.jailTime or 0
     local cid = getCharID(src) or state and state.xtprison_identifier
     if not cid then return lib.print.debug('player core identifier not found, not saving jailtime') end
     MySQL.insert.await(db.UPDATE_JAILTIME, { cid, jailTime })
 
-    if confiscated[src] then
+    if returnInv ~= false and confiscated[src] then
         ox_inventory:ReturnInventory(src)
         confiscated[src] = nil
     end
@@ -39,6 +39,10 @@ end)
 RegisterNetEvent('xt-prison:server:saveJailTime', function()
     local src = source
     savePlayerJailTime(src)
+end)
+
+RegisterNetEvent('xt-prison:server:persistJailTime', function()
+    savePlayerJailTime(source, false)
 end)
 
 -- Remove Player Job --
@@ -102,7 +106,7 @@ end)
 RegisterNetEvent('xt-prison:server:returnItems', function()
     local src = source
     local cid = getCharID(src)
-    if Player(src).state.jailTime > 0 then
+    if Player(src).state.jailTime > 0 and Player(src).state.inJail then
         utils.banPlayer(src, cid)
         return
     end

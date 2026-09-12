@@ -34,6 +34,7 @@ export interface InvoiceRecord {
   createdAt?: string | null;
   canPay?: boolean;
   canCancel?: boolean;
+  canReject?: boolean;
 }
 
 export interface InvoiceData {
@@ -41,6 +42,7 @@ export interface InvoiceData {
   jobName?: string;
   jobLabel?: string;
   canJobInvoice?: boolean;
+  forceSocietyInvoice?: boolean;
   jobInvoiceLabel?: string;
   isStaff?: boolean;
   canInspect?: boolean;
@@ -191,7 +193,7 @@ export default function InvoiceMenu({ visible = true, data, onClose }: InvoiceMe
     setSelected(data?.selected || null);
     setScreenshotOpen(false);
     setPayPrompt(null);
-    if (data?.canJobInvoice) {
+    if (data?.canJobInvoice || data?.forceSocietyInvoice) {
       setKind("job");
     } else {
       setKind("personal");
@@ -249,7 +251,7 @@ export default function InvoiceMenu({ visible = true, data, onClose }: InvoiceMe
     setBusy(true);
     const result = await fetchNui("cfx-keydi-invoice:create", {
       targetId,
-      kind: kind === "job" && data?.canJobInvoice ? "job" : "personal",
+      kind: data?.forceSocietyInvoice || (kind === "job" && data?.canJobInvoice) ? "job" : "personal",
       title: title.trim(),
       price: amount,
       dueDate,
@@ -313,7 +315,9 @@ export default function InvoiceMenu({ visible = true, data, onClose }: InvoiceMe
       return;
     }
     const docName = isPersonalRecord(invoice) ? "Receipt" : "Invoice";
-    toast.success(`${docName} rejected.`);
+    toast.success(result?.refunded
+      ? `${docName} rejected. $${Number(result.refunded).toLocaleString()} refunded.`
+      : `${docName} rejected.`);
     handleClose();
   };
 
@@ -583,18 +587,24 @@ export default function InvoiceMenu({ visible = true, data, onClose }: InvoiceMe
               {kind === "personal" ? "CREATE RECEIPT" : "CREATE INVOICE"}
             </h2>
 
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <ToggleChip active={kind === "personal"} onClick={() => setKind("personal")}>
-                Personal Receipt
-              </ToggleChip>
-              <ToggleChip
-                active={kind === "job"}
-                disabled={!data?.canJobInvoice}
-                onClick={() => data?.canJobInvoice && setKind("job")}
-              >
-                Job Invoice
-              </ToggleChip>
-            </div>
+            {data?.forceSocietyInvoice ? (
+              <p className="mb-3 rounded-lg bg-[#3A86FF]/15 px-3 py-2 text-center text-[12px] font-semibold text-[#7eb3ff]">
+                Paid funds go to {data?.jobInvoiceLabel || data?.jobLabel || "department"} society
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <ToggleChip active={kind === "personal"} onClick={() => setKind("personal")}>
+                  Personal Receipt
+                </ToggleChip>
+                <ToggleChip
+                  active={kind === "job"}
+                  disabled={!data?.canJobInvoice}
+                  onClick={() => data?.canJobInvoice && setKind("job")}
+                >
+                  Job Invoice
+                </ToggleChip>
+              </div>
+            )}
 
             <div className="space-y-2.5">
               <CitizenDropdown value={targetId} nearby={nearby} onChange={setTargetId} />
@@ -1017,6 +1027,7 @@ function InvoiceDetail({
   const jobLabel = getJobLabel(invoice);
   const unpaid = invoice.status !== "paid";
   const canPay = unpaid && invoice.canPay === true;
+  const canReject = incoming && (canPay || invoice.canReject === true);
   const statusLabel = invoice.status === "paid" ? "Paid" : incoming ? "Pending" : "Unpaid";
   const docType = isPersonal ? "RECEIPT" : "INVOICE";
   const docTypeTitle = isPersonal ? "Receipt" : "Invoice";
@@ -1146,6 +1157,14 @@ function InvoiceDetail({
                 REJECT {docType}
               </button>
             </>
+          ) : canReject ? (
+            <button
+              disabled={busy}
+              onClick={onReject}
+              className="flex-1 rounded-lg bg-white hover:bg-zinc-100 py-3 text-sm font-bold tracking-wide text-rose-600 disabled:opacity-50"
+            >
+              REJECT {docType}
+            </button>
           ) : canPay ? (
             <button
               disabled={busy}

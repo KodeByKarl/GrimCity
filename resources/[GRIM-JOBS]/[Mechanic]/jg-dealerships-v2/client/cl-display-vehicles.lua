@@ -223,6 +223,8 @@ RegisterNUICallback("create-display-vehicle", function(data, cb)
 
   SetNuiFocus(false, false)
 
+  lib.callback.await('jg-dealerships:server:fg-display', false, dealershipId)
+
   local coords = Interactions.Client.Vehicle.StartCreator(
 
     spawnCode,
