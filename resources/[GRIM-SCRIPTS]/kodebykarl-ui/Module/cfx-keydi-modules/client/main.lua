@@ -51,21 +51,55 @@ exports('OpenRentalMenu', function(location)
     TriggerEvent('cfx-keydi-utils:rental:open', location)
 end)
 
--- Identification & Name change exports (redirect — City Hall is no longer free)
+-- Identification & Name change exports
 exports('RequestLicense', function()
     lib.notify({
         title = 'DOJ',
-        description = 'Citizen IDs are issued by on-duty DOJ staff ($250,000).',
-        type = 'error',
+        description = 'Buy a Citizen ID at the DOJ Shop ($250,000). Fees go to DOJ funds.',
+        type = 'inform',
     })
 end)
 
 exports('OpenChangeNameMenu', function()
     lib.notify({
         title = 'DOJ',
-        description = 'Legal name changes are processed by on-duty DOJ staff ($500,000).',
-        type = 'error',
+        description = 'Buy a Name Change Certificate at the DOJ Shop ($500,000), then use it from your inventory.',
+        type = 'inform',
     })
+end)
+
+--- Use DOJ Name Change Certificate (ox_inventory client export)
+exports('UseChangeNameCertificate', function(data, slotData)
+    local slot = slotData and slotData.slot
+    if not slot and data and data.slot then
+        slot = data.slot
+    end
+    if not slot then
+        lib.notify({ title = 'DOJ', description = 'Certificate not found.', type = 'error' })
+        return
+    end
+
+    local input = lib.inputDialog('DOJ — Legal Name Change', {
+        { type = 'input', label = 'First Name', required = true, min = 2, max = 24 },
+        { type = 'input', label = 'Last Name', required = true, min = 2, max = 24 },
+    })
+    if not input or not input[1] or not input[2] then return end
+
+    local result = lib.callback.await('cfx-keydi-doj:useChangeNameItem', false, {
+        slot = slot,
+        firstName = input[1],
+        lastName = input[2],
+    })
+
+    if not result or not result.ok then
+        local err = result and result.error
+        local msg = ({
+            offline = 'Player not found.',
+            no_item = 'You need a Name Change Certificate.',
+            invalid = 'Invalid name. Use 2–24 letters.',
+        })[err] or 'Name change failed.'
+        lib.notify({ title = 'DOJ', description = msg, type = 'error' })
+    end
 end)
 
 local function isOnDutyDoj()

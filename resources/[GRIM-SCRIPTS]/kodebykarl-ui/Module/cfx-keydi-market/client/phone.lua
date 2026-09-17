@@ -8,7 +8,7 @@ local phoneCfg = ConfigMarket.PhoneApp or {}
 if phoneCfg.Enabled == false then return end
 
 local ox_inventory = exports.ox_inventory
-local APP_ID = phoneCfg.Identifier or 'pandora-market'
+local APP_ID = phoneCfg.Identifier or 'grim-market'
 
 local function decorateCatalog(catalog)
     if type(catalog) ~= 'table' then
@@ -74,6 +74,11 @@ local function addApp()
     end
 end
 
+RegisterNUICallback('grim-market:getCatalog', function(_, cb)
+    cb(fetchCatalog())
+end)
+
+-- Legacy alias (old Pandora id)
 RegisterNUICallback('pandora-market:getCatalog', function(_, cb)
     cb(fetchCatalog())
 end)
@@ -87,6 +92,9 @@ CreateThread(function()
         Wait(500)
     end
     Wait(500)
+    pcall(function()
+        exports['lb-phone']:RemoveCustomApp('pandora-market')
+    end)
     addApp()
     Wait(2000)
     addApp()

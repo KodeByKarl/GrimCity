@@ -20,7 +20,7 @@ local function templateBackground(data, fallback)
 end
 
 --- Compact for short messages; grows so long /wl /ems /gang text stays fully readable.
-local ANNOUNCE_CARD_STYLE = "min-height: 52px; height: auto; max-height: none; overflow: visible; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-family: 'Outfit', sans-serif; position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: 3px; max-width: 100%; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"
+local ANNOUNCE_CARD_STYLE = "min-height: 40px; height: auto; max-height: none; overflow: visible; box-sizing: border-box; border-radius: 6px; padding: 5px 9px; margin-bottom: 4px; font-family: 'Outfit', sans-serif; position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; max-width: 100%; flex-shrink: 0; box-shadow: 0 3px 12px rgba(0,0,0,0.45);"
 
 --- Freestyle job banner. Per-job colors/gifs override default.
 function ResolveJobTemplate(jobName, jobLabel)
@@ -89,14 +89,14 @@ function BuildAnnouncementHtml(data, headerLeft, fallbackBg, borderColor)
     local backgroundStyle = templateBackground(data, fallbackBg)
     local border = borderColor or "rgba(255, 255, 255, 0.08)"
     local overlay = (data and data.gif) and "" or "box-shadow: inset 0 0 40px rgba(0,0,0,0.45), 0 4px 15px rgba(0,0,0,0.5);"
-    local gifPad = (data and data.gif) and "padding-right: 72px;" or ""
+    local gifPad = (data and data.gif) and "padding-right: 54px;" or ""
 
     return '<div style="' .. backgroundStyle .. ' color: ' .. color .. '; border: 1px solid ' .. border .. '; ' .. ANNOUNCE_CARD_STYLE .. ' ' .. gifPad .. ' ' .. overlay .. '">'
-        .. '  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 10px; color: ' .. headerColor .. '; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.2;">'
+        .. '  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; font-size: 8.5px; color: ' .. headerColor .. '; font-weight: 600; text-transform: uppercase; letter-spacing: 0.25px; line-height: 1.15;">'
         .. '    <span style="min-width: 0; flex: 1; word-break: break-word; overflow-wrap: anywhere;">' .. headerLeft .. '</span>'
         .. '    <span style="flex-shrink: 0; opacity: 0.9;">{2}</span>'
         .. '  </div>'
-        .. '  <div style="color: ' .. color .. '; font-size: 12px; font-weight: 700; text-transform: uppercase; line-height: 1.35; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; overflow: visible;">{1}</div>'
+        .. '  <div style="color: ' .. color .. '; font-size: 10.5px; font-weight: 700; text-transform: uppercase; line-height: 1.3; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; overflow: visible;">{1}</div>'
         .. '</div>'
 end
 
@@ -400,8 +400,8 @@ if ConfigChat.jobTemplate and ConfigChat.jobTemplate.enabled then
     end
 end
 
--- Gang announcement styling is enabled; the slash command is /gang only (kodebykarl-gangsystem).
-if ConfigChat.gangTemplate.enabled and type(ConfigChat.gangTemplate.command) == 'string' and ConfigChat.gangTemplate.command ~= '' and ConfigChat.gangTemplate.command ~= 'gang' then
+-- Gang freestyle announcement (/gang)
+if ConfigChat.gangTemplate.enabled and type(ConfigChat.gangTemplate.command) == 'string' and ConfigChat.gangTemplate.command ~= '' then
     RegisterCommand(ConfigChat.gangTemplate.command, function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
         if not xPlayer then return end
@@ -566,8 +566,7 @@ if ConfigChat.staffTemplate and ConfigChat.staffTemplate.enabled then
         end
 
         local data = ConfigChat.staffTemplate
-        local rankLabel = (xPlayer.getGroup() or "staff"):gsub("^%l", string.upper)
-        local template = BuildAnnouncementHtml(data, 'FEED • STAFF | {0} | ' .. rankLabel, "#7C3AED")
+        local template = BuildAnnouncementHtml(data, 'FEED • STAFF | {0}', "#7C3AED")
 
         TriggerClientEvent('chat:addMessage', -1, {
             template = template,
@@ -607,8 +606,7 @@ if ConfigChat.staffOnlyTemplate and ConfigChat.staffOnlyTemplate.enabled then
         end
 
         local data = ConfigChat.staffOnlyTemplate
-        local rankLabel = (xPlayer.getGroup() or "staff"):gsub("^%l", string.upper)
-        local template = BuildAnnouncementHtml(data, 'STAFF ONLY • {0} | ' .. rankLabel, "#1E3A5F", "rgba(96, 165, 250, 0.35)")
+        local template = BuildAnnouncementHtml(data, 'STAFF ONLY • {0}', "#1E3A5F", "rgba(96, 165, 250, 0.35)")
 
         local staffSources = getStaffSources(ConfigChat.staffOnlyTemplate.groups)
         for i = 1, #staffSources do

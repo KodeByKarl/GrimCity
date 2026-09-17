@@ -3,6 +3,8 @@ ESX = ESX or exports["es_extended"]:getSharedObject()
 local activeChops = {} -- [src] = session
 local plateLocks = {} -- [plate] = src
 local cooldowns = {} -- [src] = unix
+-- Plates disabled until server/resource restart (row stays in owned_vehicles).
+local choppedUntilRestart = {} -- [normalizedPlate] = { plate, owner, at }
 
 local function Notify(src, msg, nType)
     TriggerClientEvent("ox_lib:notify", src, {
@@ -278,7 +280,7 @@ end
 local function LookupOwnedVehicle(plate)
     local ok, row = pcall(function()
         return MySQL.single.await([[
-            SELECT owner, plate, job_vehicle
+            SELECT owner, plate, job_vehicle, garage_id
             FROM owned_vehicles
             WHERE UPPER(REPLACE(TRIM(plate), ' ', '')) = ?
             LIMIT 1
@@ -294,9 +296,42 @@ local function LookupOwnedVehicle(plate)
     ]], { plate })
 end
 
-local function DeleteOwnedVehicle(dbPlate)
-    MySQL.update.await("DELETE FROM owned_vehicles WHERE plate = ?", { dbPlate })
+local function IsPlateChopped(plate)
+    plate = NormalizePlate(plate)
+    return plate ~= "" and choppedUntilRestart[plate] ~= nil
 end
+
+--- Disable vehicle until server restart. Does NOT delete the owned_vehicles row.
+local function DisableChoppedVehicle(dbPlate, owner)
+    local plateKey = NormalizePlate(dbPlate)
+    if plateKey == "" then return false end
+
+    choppedUntilRestart[plateKey] = {
+        plate = dbPlate,
+        owner = owner,
+        at = os.time(),
+    }
+
+    -- Keep ownership; just mark it parked so garage lists it as stored.
+    pcall(function()
+        MySQL.update.await([[
+            UPDATE owned_vehicles
+            SET in_garage = 1, stored = 1
+            WHERE plate = ?
+        ]], { dbPlate })
+    end)
+
+    return true
+end
+
+exports("IsPlateChopped", IsPlateChopped)
+exports("GetChoppedPlates", function()
+    local list = {}
+    for plate in pairs(choppedUntilRestart) do
+        list[#list + 1] = plate
+    end
+    return list
+end)
 
 local function ClearVehicleInventories(plate)
     if GetResourceState("ox_inventory") ~= "started" then return end
@@ -476,6 +511,10 @@ lib.callback.register("cfx-keydi-chopshop:server:request", function(src, netId, 
         return { ok = false, reason = "in_use" }
     end
 
+    if IsPlateChopped(veh.plate) then
+        return { ok = false, reason = "already_chopped" }
+    end
+
     -- Must exist in owned_vehicles BEFORE any progress bar.
     local row = LookupOwnedVehicle(veh.plate)
     if not row or not row.owner then
@@ -560,7 +599,8 @@ RegisterNetEvent("cfx-keydi-chopshop:server:complete", function()
     end
 
     local dbPlate = row.plate or session.dbPlate
-    DeleteOwnedVehicle(dbPlate)
+    -- Do not delete from DB — disable until server restart only.
+    DisableChoppedVehicle(dbPlate, row.owner or session.owner)
     ClearVehicleInventories(dbPlate)
     ClearVehicleInventories(session.plate)
     DeleteWorldVehicle(session.netId)
@@ -628,15 +668,17 @@ RegisterNetEvent("cfx-keydi-chopshop:server:complete", function()
     ClearSession(src, false)
 
     if #given > 0 then
-        Notify(src, ("Illegal chop done. Loot: %s"):format(table.concat(given, ", ")), "success")
+        Notify(src, ("Illegal chop done. Loot: %s. Vehicle disabled until server restart."):format(table.concat(given, ", ")), "success")
     else
-        Notify(src, "Vehicle chopped. Inventory was full — payout lost.", "error")
+        Notify(src, "Vehicle chopped (disabled until restart). Inventory was full — payout lost.", "error")
     end
 
-    if not session.isOwner and session.owner then
+    if session.owner then
         local xOwner = ESX.GetPlayerFromIdentifier(session.owner)
-        if xOwner then
-            Notify(xOwner.source, ("Your vehicle %s was chopped up."):format(session.plate), "error")
+        if xOwner and xOwner.source ~= src then
+            Notify(xOwner.source, ("Your vehicle %s was chopped. It is disabled until server restart."):format(session.plate), "error")
+        elseif xOwner and xOwner.source == src then
+            Notify(src, ("Your vehicle %s is disabled until server restart."):format(session.plate), "inform")
         end
     end
 end)

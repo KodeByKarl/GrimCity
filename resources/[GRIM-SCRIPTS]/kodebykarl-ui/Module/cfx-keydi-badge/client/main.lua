@@ -16,22 +16,56 @@ local function ClearBadgeProp()
     currentBadgeProp = nil
 end
 
-local function GetPlayerPedHeadshotUrl()
-    ClearBadgeHeadshot()
-    local ped = PlayerPedId()
-    if not ped or not DoesEntityExist(ped) then return "" end
-
-    local handle = RegisterPedheadshot(ped)
-    local timeout = 2500
-    while not IsPedheadshotReady(handle) and timeout > 0 do
-        Wait(50)
-        timeout = timeout - 50
+-- Pedheadshot TXDs are local to each client. Never reuse another player's nui-img URL.
+local function GetPedFromServerId(serverId)
+    local sid = tonumber(serverId)
+    if not sid then return PlayerPedId() end
+    if sid == GetPlayerServerId(PlayerId()) then
+        return PlayerPedId()
     end
 
-    if IsPedheadshotValid(handle) and IsPedheadshotReady(handle) then
-        currentBadgeHeadshotHandle = handle
-        local txd = GetPedheadshotTxdString(handle)
-        return ("https://nui-img/%s/%s"):format(txd, txd)
+    for _, player in ipairs(GetActivePlayers()) do
+        if GetPlayerServerId(player) == sid then
+            local ped = GetPlayerPed(player)
+            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                return ped
+            end
+        end
+    end
+
+    return nil
+end
+
+local function GetPedHeadshotUrl(ped)
+    ClearBadgeHeadshot()
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return "" end
+
+    for _ = 1, 2 do
+        local handle = RegisterPedheadshot(ped)
+        if not handle or handle == 0 then
+            handle = RegisterPedheadshotTransparent(ped)
+        end
+
+        if handle and handle ~= 0 then
+            local timeout = 2500
+            while not IsPedheadshotReady(handle) and timeout > 0 do
+                Wait(50)
+                timeout = timeout - 50
+            end
+
+            if IsPedheadshotValid(handle) and IsPedheadshotReady(handle) then
+                local txd = GetPedheadshotTxdString(handle)
+                if txd and txd ~= "" then
+                    currentBadgeHeadshotHandle = handle
+                    -- Cache-bust so NUI does not reuse a HUD mugshot with the same TXD name
+                    return ("https://nui-img/%s/%s?t=%s"):format(txd, txd, GetGameTimer())
+                end
+            end
+
+            UnregisterPedheadshot(handle)
+        end
+
+        Wait(100)
     end
 
     return ""
@@ -112,10 +146,8 @@ local function TriggerShowBadge()
         -- Play realistic badge holding emote
         PlayBadgeEmote()
 
-        -- Get live 1x1 character ped mugshot
-        result.photoUrl = GetPlayerPedHeadshotUrl()
-
-        -- Broadcast to nearby players and display for self
+        -- Do not send a local nui-img URL. Each nearby client captures the officer ped.
+        result.photoUrl = nil
         TriggerServerEvent("cfx-keydi-badge:server:showBadgeToNearby", result)
     end)
 end
@@ -130,7 +162,10 @@ RegisterCommand(ConfigBadge.Command or "badge", function()
 end, false)
 
 -- Client events
-RegisterNetEvent("cfx-keydi-badge:client:displayBadgeUI", function(badgeData)
+RegisterNetEvent("cfx-keydi-badge:client:displayBadgeUI", function(badgeData, officerServerId)
+    if type(badgeData) ~= "table" then return end
+    local officerPed = GetPedFromServerId(officerServerId)
+    badgeData.photoUrl = GetPedHeadshotUrl(officerPed)
     DisplayBadgeUI(badgeData)
 end)
 

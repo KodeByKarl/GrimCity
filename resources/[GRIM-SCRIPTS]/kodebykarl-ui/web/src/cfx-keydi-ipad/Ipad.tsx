@@ -35,6 +35,7 @@ const PartyApp = lazy(() => import("./PartyApp"));
 const PvpApp = lazy(() => import("./PvpApp"));
 const UniversityPortalApp = lazy(() => import("./UniversityPortalApp"));
 const BusinessBossApp = lazy(() => import("./BusinessBossApp"));
+const OrganizationApp = lazy(() => import("./OrganizationApp"));
 
 type IpadView = "lock" | "home" | "app";
 
@@ -56,6 +57,7 @@ export interface IpadPlayerData {
   canPoliceMdt?: boolean;
   canSheriffMdt?: boolean;
   canBusinessBoss?: boolean;
+  canOrgBoss?: boolean;
   /** University portal role — visitor if unset */
   universityRole?: UniversityRole;
 }
@@ -92,6 +94,7 @@ const APPS: AppDef[] = [
   { id: "pvp", label: "PvP", icon: Zap, color: "#f97316" },
   { id: "university", label: "ULS Portal", icon: GraduationCap, color: "#9a7b4f" },
   { id: "business", label: "Business", icon: Store, color: "#d97706" },
+  { id: "organization", label: "Organization", icon: Users, color: "#0369a1" },
 ];
 
 const HOME_APPS = ["university", "party", "pvp", "leaderboard"] as const;
@@ -105,6 +108,7 @@ const HOME_APPS_DOJ_BOSS = ["dojboss"] as const;
 const HOME_APPS_POLICE_MDT = ["policemdt"] as const;
 const HOME_APPS_SHERIFF_MDT = ["sheriffmdt"] as const;
 const HOME_APPS_BUSINESS = ["business"] as const;
+const HOME_APPS_ORG = ["organization"] as const;
 const DOCK = ["party", "pvp", "leaderboard", "grim"] as const;
 
 async function fetchNui(event: string, data: Record<string, unknown> = {}) {
@@ -381,6 +385,7 @@ function HomeScreen({
     if (player?.canSambulanceBoss) apps.unshift(...HOME_APPS_SAMBULANCE_BOSS);
     if (player?.canDojBoss) apps.unshift(...HOME_APPS_DOJ_BOSS);
     if (player?.canBusinessBoss) apps.unshift(...HOME_APPS_BUSINESS);
+    if (player?.canOrgBoss) apps.unshift(...HOME_APPS_ORG);
     if (player?.canEditEconomy) apps.unshift(...HOME_APPS_OWNER);
     return apps;
   }, [
@@ -394,6 +399,7 @@ function HomeScreen({
     player?.canPoliceMdt,
     player?.canSheriffMdt,
     player?.canBusinessBoss,
+    player?.canOrgBoss,
   ]);
 
   return (
@@ -649,6 +655,14 @@ function AppScreen({
     return (
       <Suspense fallback={fallback}>
         <BusinessBossApp player={player} />
+      </Suspense>
+    );
+  }
+  if (appId === "organization") {
+    if (!player?.canOrgBoss) return null;
+    return (
+      <Suspense fallback={fallback}>
+        <OrganizationApp player={player} />
       </Suspense>
     );
   }

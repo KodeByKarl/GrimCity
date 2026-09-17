@@ -20,17 +20,38 @@ local function FormatChannel(channel)
     if ConfigRadioList and type(ConfigRadioList.FormatFrequency) == 'function' then
         return ConfigRadioList.FormatFrequency(channel)
     end
+    channel = tonumber(channel)
     if not channel or channel == 0 then return nil end
-    return ('%.2f MHz'):format(tonumber(channel) or 0.0)
+    if channel == math.floor(channel) then
+        return ('%.2f MHz'):format(channel / 100)
+    end
+    return ('%.2f MHz'):format(channel)
 end
 
-local function getRadioResourceFrequency()
+local function toVoiceChannel(freqOrChannel)
+    if ConfigRadioList and type(ConfigRadioList.ToVoiceChannel) == 'function' then
+        return ConfigRadioList.ToVoiceChannel(freqOrChannel)
+    end
+    local n = tonumber(freqOrChannel) or 0
+    if n <= 0 then return 0 end
+    if n == math.floor(n) then return n end
+    return math.floor(n * 100 + 0.5)
+end
+
+local function getRadioResourceChannel()
     if GetResourceState('cfx-keydi-radio') ~= 'started' then return 0 end
-    local ok, freq = pcall(function()
+    local ok, channel = pcall(function()
+        return exports['cfx-keydi-radio']:getChannel()
+    end)
+    if ok and tonumber(channel) and tonumber(channel) > 0 then
+        return tonumber(channel)
+    end
+    local okFreq, freq = pcall(function()
         return exports['cfx-keydi-radio']:getFrequency()
     end)
-    if ok then
-        return tonumber(freq) or 0
+    freq = okFreq and tonumber(freq) or 0
+    if freq > 0 then
+        return math.floor(freq * 100 + 0.5)
     end
     return 0
 end
@@ -116,7 +137,7 @@ local function refreshRadioRoster()
 end
 
 local function setRadioChannel(channel)
-    channel = tonumber(channel) or 0
+    channel = toVoiceChannel(channel)
     currentRadioChannel = channel
 
     if channel <= 0 then
@@ -280,12 +301,12 @@ AddEventHandler('cfx-keydi-radiolist:setChannel', setRadioChannel)
 -- Restore HUD if already on a channel after resource restart
 CreateThread(function()
     Wait(1500)
-    local fromRadio = getRadioResourceFrequency()
+    local fromRadio = getRadioResourceChannel()
     if fromRadio > 0 then
         setRadioChannel(fromRadio)
         return
     end
-    local channel = tonumber(LocalPlayer.state.radioChannel) or 0
+    local channel = toVoiceChannel(LocalPlayer.state.radioChannel)
     if channel > 0 then
         setRadioChannel(channel)
     end

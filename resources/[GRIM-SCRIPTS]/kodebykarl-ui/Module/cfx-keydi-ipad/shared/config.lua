@@ -90,6 +90,8 @@ ConfigIpad.PoliceJobs = {
 ConfigIpad.PoliceBossMinGrade = 5
 ConfigIpad.BusinessBossMinGrade = nil -- nil = highest grade or grade_name boss
 
+-- Organization app: gang bosses, plus owner / developer (full iPad visibility).
+
 -- Jobs that get the Business Boss iPad app (grade_name boss / highest grade)
 ConfigIpad.BusinessJobs = {
     uwu = { label = 'UwU Cafe', invoiceJobs = { 'uwu' } },
@@ -108,6 +110,7 @@ ConfigIpad.Party = {
     MinNameLength = 3,
     MaxNameLength = 24,
     MaxPasswordLength = 16,
+    EditPosCommand = 'movesquad', -- Drag the squad health/armor HUD
 }
 
 -- University Portal (iPad app) — job names that map into campus roles

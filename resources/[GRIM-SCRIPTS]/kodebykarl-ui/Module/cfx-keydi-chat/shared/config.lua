@@ -7,8 +7,8 @@ ConfigChat = {
     allowPersonalChat = false,
     personalChatBlockedMessage = '[SYSTEM] Personal chat is disabled. Use your job command (example: /pol message).',
 
-    -- Hide staff-only clutter from chat autocomplete (e.g. /Gv give-item).
-    hiddenSuggestions = { '/gv', '/Gv', '/gc', '/additem', '/giveitem', '/setitem' },
+    -- Hide staff-only clutter from chat autocomplete.
+    hiddenSuggestions = { '/gc', '/additem', '/giveitem', '/giveallitem', '/setitem' },
 
     -- Freestyle only: type your own message. No fixed Auto Templates picker.
     -- Job announcement suggestions are built from jobTemplate.jobs command assignments.
@@ -93,7 +93,7 @@ ConfigChat = {
             },
             ["sambulance"] = {
                 command = "sems",
-                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/01_EMS.png",
+                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/sandyambulance.png",
                 background = nil,
                 color = "#ffffff",
                 headerColor = "#ffffff",
@@ -195,8 +195,8 @@ ConfigChat = {
 
     gangTemplate = {
         enabled = true,
-        -- Slash command is registered by kodebykarl-gangsystem as /gang only. Do not set this to gc/gang.
-        command = false,
+        -- Freestyle gang announcement. Registered here as /gang.
+        command = "gang",
         -- Any assigned ESX gang can /gang (Freestyle).
         allowAnyGang = true,
         default = {
@@ -213,6 +213,62 @@ ConfigChat = {
                 background = "#1a0a0a",
                 color = "#ffffff",
                 headerColor = "#e8b4b4",
+            },
+            ["alaskador"] = {
+                label = "Alaskador",
+                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/alaskador_template.png",
+                background = nil,
+                color = "#ffffff",
+                headerColor = "#7ec8e8",
+            },
+            ["westside"] = {
+                label = "Westside",
+                gif = nil,
+                background = "#160a1c",
+                color = "#ffffff",
+                headerColor = "#d8b4fe",
+            },
+            ["mellysyndicate"] = {
+                label = "Melly Syndicate",
+                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/melly.png",
+                background = nil,
+                color = "#ffffff",
+                headerColor = "#ff69b4",
+            },
+            ["ghettosyndicate"] = {
+                label = "Ghetto Syndicate",
+                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/ghetto.png",
+                background = nil,
+                color = "#ffffff",
+                headerColor = "#6ee7a0",
+            },
+            ["deuscartel"] = {
+                label = "Deus Cartel",
+                gif = nil,
+                background = "#1a120a",
+                color = "#ffffff",
+                headerColor = "#c4a484",
+            },
+            ["npa"] = {
+                label = "NPA",
+                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/npa.png",
+                background = nil,
+                color = "#ffffff",
+                headerColor = "#ffffff",
+            },
+            ["tdc"] = {
+                label = "Tropa de Calle",
+                gif = "https://r2.fivemanage.com/jWHtKTIB2qDgmUWvaXcm9/tdc.png",
+                background = nil,
+                color = "#ffffff",
+                headerColor = "#7eb6ff",
+            },
+            ["tbs"] = {
+                label = "The Boneless",
+                gif = nil,
+                background = "#1a0808",
+                color = "#ffffff",
+                headerColor = "#ff6b6b",
             },
         }
     },

@@ -8,6 +8,20 @@ ESX.RegisterServerCallback('cfx-keydi-radiolist:getRadioPlayers', function(sourc
         return cb(playersInChannel)
     end
 
+    if channel ~= math.floor(channel) then
+        channel = math.floor(channel * 100 + 0.5)
+    end
+
+    -- Only members of the channel can pull the roster (blocks encrypted peeking)
+    local requesterChannel = 0
+    local ply = Player(source)
+    if ply and ply.state then
+        requesterChannel = tonumber(ply.state.radioChannel) or 0
+    end
+    if requesterChannel ~= channel then
+        return cb(playersInChannel)
+    end
+
     local ok, radioChannelPlayers = pcall(function()
         return exports['pma-voice']:getPlayersInRadioChannel(channel)
     end)

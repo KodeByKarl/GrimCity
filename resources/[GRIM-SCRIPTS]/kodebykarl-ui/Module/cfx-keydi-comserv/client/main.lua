@@ -298,6 +298,9 @@ local function applyComServOutfit()
     if clothes.bproof_1 ~= nil then
         SetPedComponentVariation(ped, 9, clothes.bproof_1, clothes.bproof_2 or 0, 0) -- Armor
     end
+    if clothes.decals_1 ~= nil then
+        SetPedComponentVariation(ped, 10, clothes.decals_1, clothes.decals_2 or 0, 0) -- Decals
+    end
     if clothes.torso_1 ~= nil then
         SetPedComponentVariation(ped, 11, clothes.torso_1, clothes.torso_2 or 0, 0) -- Jacket
     end

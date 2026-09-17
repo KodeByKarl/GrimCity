@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { X, ShieldCheck, Award } from "lucide-react";
-import pandoraLogo from "@/assets/pandora-city-logo.png";
+import grimLogo from "@/assets/grim-city-logo.png";
 import defaultAvatar from "@/assets/default-avatar.png";
 
 export interface BadgeData {
@@ -182,12 +182,12 @@ export const Badge: React.FC<BadgeProps> = ({
             </div>
           </div>
 
-          {/* Card Footer Section - Pandora Law Enforcement */}
+          {/* Card Footer Section - Grim City Law Enforcement */}
           <div className="pt-2 border-t border-[#35c7f2]/25 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src={pandoraLogo} alt="Pandora City" className="h-4.5 w-4.5 object-contain" />
+              <img src={grimLogo} alt="Grim City" className="h-4.5 w-4.5 object-contain" />
               <span className="text-[10px] font-black text-[#8fe4ff] tracking-[0.18em]">
-                PANDORA CITY LAW ENFORCEMENT
+                GRIM CITY LAW ENFORCEMENT
               </span>
             </div>
 

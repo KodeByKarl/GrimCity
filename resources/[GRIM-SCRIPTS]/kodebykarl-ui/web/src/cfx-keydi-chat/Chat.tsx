@@ -28,10 +28,10 @@ interface Suggestion {
 }
 
 const DEFAULT_TEMPLATES: Record<string, string> = {
-  default: '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.82) 0%, rgba(15, 10, 14, 0.9) 100%); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.4;"><b style="color: #ff8080; letter-spacing: 0.3px;">{0}</b><span style="color: rgba(255,255,255,0.4); margin: 0 6px;">•</span><span style="color: #ffffff; font-weight: 500;">{1}</span></div>',
-  defaultAlt: "<div style='word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; flex-shrink: 0; min-height: min-content; line-height: 1.4;'>{0}</div>",
-  print: "<pre style='text-align: left; font-family: monospace; font-size: 13px; color: #ff8080; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; margin: 0; flex-shrink: 0; min-height: min-content; line-height: 1.4;'>{0}</pre>",
-  "example:important": "<h1 style='text-align: left; color: #ff3a3a; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; line-height: 1.4;'>^2{0}</h1>"
+  default: '<div style="background: linear-gradient(135deg, rgba(28, 14, 18, 0.82) 0%, rgba(15, 10, 14, 0.9) 100%); border-radius: 6px; padding: 5px 9px; margin-bottom: 4px; border-left: 2px solid #ff3a3a; border-top: 1px solid rgba(255, 58, 58, 0.12); box-shadow: 0 3px 12px rgba(0,0,0,0.45); text-align: left; font-family: \'Outfit\', sans-serif; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: min-content; line-height: 1.3; font-size: 12px;"><b style="color: #ff8080; letter-spacing: 0.2px;">{0}</b><span style="color: rgba(255,255,255,0.4); margin: 0 5px;">•</span><span style="color: #ffffff; font-weight: 500;">{1}</span></div>',
+  defaultAlt: "<div style='word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; flex-shrink: 0; min-height: min-content; line-height: 1.3; font-size: 12px;'>{0}</div>",
+  print: "<pre style='text-align: left; font-family: monospace; font-size: 11px; color: #ff8080; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; box-sizing: border-box; margin: 0; flex-shrink: 0; min-height: min-content; line-height: 1.3;'>{0}</pre>",
+  "example:important": "<h1 style='text-align: left; color: #ff3a3a; word-break: break-word; overflow-wrap: anywhere; flex-shrink: 0; line-height: 1.3; font-size: 14px;'>^2{0}</h1>"
 };
 
 const MAX_MESSAGES = 80;
@@ -110,7 +110,7 @@ function formatMessage(msg: Message, templates: Record<string, string>): string 
 const MessageRow = memo(function MessageRow({ html }: { html: string }) {
   return (
     <div
-      className="grim-chat-msg shrink-0 min-h-min text-[14px] leading-normal break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_4px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-x-hidden overflow-y-visible"
+      className="grim-chat-msg shrink-0 min-h-min text-[12px] leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word] font-medium antialiased text-white [text-shadow:_0_1px_3px_rgba(0,0,0,0.9)] text-left w-full max-w-full overflow-x-hidden overflow-y-visible"
       style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "pre-wrap", flexShrink: 0, minHeight: "min-content" }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -457,7 +457,7 @@ export default function Chat() {
     <>
       {/* Full Chat Console (when typing) */}
       <div
-        className={`pandora grim-chat-console fixed top-[4%] left-[24px] w-[430px] z-40 rounded-2xl border-2 border-[#ff3a3a] shadow-2xl p-4 flex flex-col font-sans backdrop-blur-xl transition-all duration-300 ${isOpen
+        className={`pandora grim-chat-console fixed top-[4%] left-[20px] w-[360px] z-40 rounded-xl border-2 border-[#ff3a3a] shadow-2xl p-3 flex flex-col font-sans backdrop-blur-xl transition-all duration-300 ${isOpen
             ? "opacity-100 translate-x-0 pointer-events-auto scale-100"
             : "opacity-0 -translate-x-6 pointer-events-none scale-95"
           }`}
@@ -492,7 +492,7 @@ export default function Chat() {
         </div>
 
         {/* Messages List Area */}
-        <div ref={openListRef} className="h-[280px] overflow-y-auto overflow-x-hidden pr-1 my-3 flex flex-col gap-2.5 no-scrollbar w-full max-w-full">
+        <div ref={openListRef} className="h-[230px] overflow-y-auto overflow-x-hidden pr-1 my-2 flex flex-col gap-1.5 no-scrollbar w-full max-w-full">
           {isOpen ? messageNodes : null}
         </div>
 
@@ -583,10 +583,10 @@ export default function Chat() {
       {/* Overlay: only mount when closed + visible so new chats aren't stuck off-screen */}
       {!isOpen && showWindow && (
         <div
-          className="grim-chat-overlay fixed top-[5%] left-[25px] w-[400px] max-w-[calc(100vw-50px)] z-30 font-sans opacity-100 overflow-x-hidden"
+          className="grim-chat-overlay fixed top-[5%] left-[20px] w-[340px] max-w-[calc(100vw-40px)] z-30 font-sans opacity-100 overflow-x-hidden"
           style={{ transition: "opacity 200ms ease" }}
         >
-          <div ref={overlayListRef} className="max-h-[380px] overflow-y-auto overflow-x-hidden pr-1 flex flex-col gap-2.5 no-scrollbar w-full max-w-full">
+          <div ref={overlayListRef} className="max-h-[320px] overflow-y-auto overflow-x-hidden pr-1 flex flex-col gap-1.5 no-scrollbar w-full max-w-full">
             {messageNodes}
           </div>
         </div>

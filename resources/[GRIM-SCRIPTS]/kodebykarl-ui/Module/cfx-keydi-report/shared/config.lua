@@ -20,3 +20,15 @@ ConfigReport.StaffGroups = {
     superadmin = true,
     mod = true,
 }
+
+-- Alert staff when a report is submitted / player replies
+ConfigReport.StaffAlert = {
+    enabled = true,
+    -- PlaySoundFrontend name + set (loud / hard to miss)
+    soundName = 'Event_Message_Purple',
+    soundSet = 'GTAO_FM_Events_Soundset',
+    -- Extra beeps so admins notice even if looking away
+    repeats = 3,
+    repeatDelayMs = 450,
+    notifyDuration = 10000,
+}

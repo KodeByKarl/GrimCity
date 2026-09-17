@@ -160,28 +160,40 @@ ConfigComServ.InventorySwap = {
 }
 
 -- Outfit applied while serving (restored when sentence ends)
+-- Same orange prison clothes as xt-prison jail outfit
 ConfigComServ.Outfit = {
     Enabled = true,
     male = {
-        ["torso_1"] = 582, ["torso_2"] = 0,   -- Jackets
+        ["torso_1"] = 146, ["torso_2"] = 7,   -- Jackets
         ["tshirt_1"] = 15, ["tshirt_2"] = 0,  -- Shirt
         ["bproof_1"] = 0,  ["bproof_2"] = 0,  -- Body armor
         ["bags_1"] = 0,    ["bags_2"] = 0,    -- Bags
-        ["arms"] = 0,                        -- Hands
-        ["pants_1"] = 219, ["pants_2"] = 0,   -- Legs
-        ["shoes_1"] = 7,   ["shoes_2"] = 0,   -- Shoes
+        ["arms"] = 0,      ["arms_2"] = 0,    -- Hands
+        ["pants_1"] = 5,   ["pants_2"] = 7,   -- Legs
+        ["shoes_1"] = 5,   ["shoes_2"] = 1,   -- Shoes
+        ["decals_1"] = 0,  ["decals_2"] = 0,  -- Decals
     },
     female = {
         ["torso_1"] = 15, ["torso_2"] = 0,
         ["tshirt_1"] = 15, ["tshirt_2"] = 0,
-        ["arms"] = 15,
-        ["pants_1"] = 15, ["pants_2"] = 0,
-        ["shoes_1"] = 35, ["shoes_2"] = 0,
+        ["bproof_1"] = 0,  ["bproof_2"] = 0,
+        ["bags_1"] = 0,    ["bags_2"] = 0,
+        ["arms"] = 15,     ["arms_2"] = 0,
+        ["pants_1"] = 15,  ["pants_2"] = 0,
+        ["shoes_1"] = 35,  ["shoes_2"] = 0,
+        ["decals_1"] = 0,  ["decals_2"] = 0,
     },
 }
 
 ConfigComServ.Brand = "GRIM CITY"
 ConfigComServ.OfflineSearchLimit = 30
+
+-- City-wide chat banner when someone is sentenced (same card as EMS bodybag).
+ConfigComServ.ChatAnnounce = {
+    Enabled = true,
+    Job = "police", -- uses the GCPD chat banner
+    Header = "FEED • COMSERV | SYSTEM",
+}
 
 --[[
     Discord logs (same bot as cfx-keydi-utils disconnectlogs).
@@ -237,4 +249,5 @@ ConfigComServ.Locale = {
     endedOk = "Community service ended.",
     sentOk = "Player sent to community service.",
     newTask = "New task: %s — go to the marked location.",
+    chatAnnounce = "%s has been sentenced to community service. Reason: %s",
 }

@@ -229,18 +229,13 @@ if IsDuplicityVersion() then
             return nil
         end
 
-        SetEntityAsMissionEntity(ped, true, true)
+        -- Ped behavior natives are client-only. Keep the entity on the server, then
+        -- let clients apply wander / flee / mission-entity after they resolve the netId.
         pcall(SetEntityOrphanMode, ped, 2)
-        SetEntityRoutingBucket(ped, sessionBucket or 0)
-        SetPedFleeAttributes(ped, 0, false)
-        SetBlockingOfNonTemporaryEvents(ped, true)
-        pcall(SetPedSuffersCriticalHits, ped, false)
-        SetEntityInvincible(ped, false)
+        pcall(SetEntityRoutingBucket, ped, sessionBucket or 0)
+        pcall(SetEntityInvincible, ped, false)
         local health = math.max(200, tonumber(ConfigRaven.Pig.health) or 200)
-        pcall(SetPedMaxHealth, ped, health)
-        SetEntityHealth(ped, health)
-        SetPedArmour(ped, 0)
-        TaskWanderInArea(ped, HuntCenter().x, HuntCenter().y, HuntCenter().z, ConfigRaven.Pig.spawnRadius or 10.0, 2.0, 3.0)
+        pcall(SetEntityHealth, ped, health)
 
         local netId = NetworkGetNetworkIdFromEntity(ped)
         if not netId or netId == 0 then
@@ -255,13 +250,20 @@ if IsDuplicityVersion() then
             dead = false,
             harvester = nil,
         }
+        TriggerClientEvent("cfx-keydi-raven:setupPig", -1, netId)
         return netId
+    end
+
+    local function EntityIsDead(entity)
+        if not entity or entity == 0 then return true end
+        local ok, dead = pcall(IsEntityDead, entity)
+        return ok and dead == true
     end
 
     local function CountLivingPigs()
         local n = 0
         for _, pig in pairs(pigs) do
-            if pig.entity and DoesEntityExist(pig.entity) and not pig.dead and not IsEntityDead(pig.entity) then
+            if pig.entity and DoesEntityExist(pig.entity) and not pig.dead and not EntityIsDead(pig.entity) then
                 n = n + 1
             end
         end
@@ -412,11 +414,11 @@ if IsDuplicityVersion() then
         local needed = math.max(1, tonumber(ConfigRaven.Pig.hitsToKill) or 2)
         if pig.hits >= needed then
             pig.dead = true
-            SetEntityHealth(pig.entity, 0)
+            pcall(SetEntityHealth, pig.entity, 0)
             TriggerClientEvent("cfx-keydi-raven:pigDead", -1, netId)
         else
             local health = math.max(200, tonumber(ConfigRaven.Pig.health) or 200)
-            SetEntityHealth(pig.entity, health)
+            pcall(SetEntityHealth, pig.entity, health)
         end
     end)
 
@@ -431,7 +433,7 @@ if IsDuplicityVersion() then
         if not pig or not pig.entity or not DoesEntityExist(pig.entity) then
             return false, "gone"
         end
-        if not pig.dead and not IsEntityDead(pig.entity) then
+        if not pig.dead and not EntityIsDead(pig.entity) then
             return false, "alive"
         end
         if pig.harvester and pig.harvester ~= src then
@@ -547,7 +549,7 @@ if IsDuplicityVersion() then
                 for netId, pig in pairs(pigs) do
                     if not pig.entity or not DoesEntityExist(pig.entity) then
                         pigs[netId] = nil
-                    elseif not pig.dead and IsEntityDead(pig.entity) then
+                    elseif not pig.dead and EntityIsDead(pig.entity) then
                         pig.dead = true
                         TriggerClientEvent("cfx-keydi-raven:pigDead", -1, netId)
                     end
@@ -845,6 +847,35 @@ else
 
     RegisterNetEvent("cfx-keydi-raven:syncPigs", function(netIds)
         SyncPigList(netIds)
+    end)
+
+    RegisterNetEvent("cfx-keydi-raven:setupPig", function(netId)
+        netId = tonumber(netId)
+        if not netId then return end
+        CreateThread(function()
+            local timeout = GetGameTimer() + 5000
+            local entity = 0
+            while GetGameTimer() < timeout do
+                entity = ResolvePigEntity(netId)
+                if entity ~= 0 then break end
+                Wait(50)
+            end
+            if entity == 0 or not DoesEntityExist(entity) then return end
+
+            SetEntityAsMissionEntity(entity, true, true)
+            SetPedFleeAttributes(entity, 0, false)
+            SetBlockingOfNonTemporaryEvents(entity, true)
+            pcall(SetPedSuffersCriticalHits, entity, false)
+            SetEntityInvincible(entity, false)
+            local health = math.max(200, tonumber(ConfigRaven.Pig.health) or 200)
+            pcall(SetPedMaxHealth, entity, health)
+            if not IsEntityDead(entity) then
+                SetEntityHealth(entity, health)
+                SetPedArmour(entity, 0)
+                local center = HuntCenter()
+                TaskWanderInArea(entity, center.x, center.y, center.z, ConfigRaven.Pig.spawnRadius or 10.0, 2.0, 3.0)
+            end
+        end)
     end)
 
     RegisterNetEvent("cfx-keydi-raven:pigDead", function(netId)

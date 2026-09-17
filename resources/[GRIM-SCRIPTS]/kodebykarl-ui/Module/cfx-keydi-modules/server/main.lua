@@ -219,3 +219,138 @@ lib.callback.register('cfx-keydi-doj:changeName', function(source, data)
     notify(source, 'DOJ', ('Processed name change. $%s deposited to DOJ funds.'):format(formatMoney(price)), 'success')
     return { ok = true, price = price, name = ('%s %s'):format(firstName, lastName) }
 end)
+
+-- Self-serve: use purchased Name Change Certificate
+lib.callback.register('cfx-keydi-doj:useChangeNameItem', function(source, data)
+    local cfg = dojCfg()
+    local itemName = cfg.ChangeNameItem or 'change_name'
+
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer then
+        return { ok = false, error = 'offline' }
+    end
+
+    data = type(data) == 'table' and data or {}
+    local slot = tonumber(data.slot)
+    if not slot then
+        return { ok = false, error = 'invalid' }
+    end
+
+    local slotItem = exports.ox_inventory:GetSlot(source, slot)
+    if not slotItem or slotItem.name ~= itemName then
+        return { ok = false, error = 'no_item' }
+    end
+
+    local ok, firstName, lastName = applyNameChange(xPlayer, data.firstName, data.lastName)
+    if not ok then
+        return { ok = false, error = 'invalid' }
+    end
+
+    local removed = exports.ox_inventory:RemoveItem(source, itemName, 1, nil, slot)
+    if not removed then
+        -- Name already applied; still report success but warn inventory
+        notify(source, 'DOJ', 'Name updated but certificate could not be removed. Contact staff.', 'error')
+        return { ok = true, name = ('%s %s'):format(firstName, lastName), warn = 'item' }
+    end
+
+    notify(source, 'DOJ', ('Legal name updated to %s %s.'):format(firstName, lastName), 'success')
+    return { ok = true, name = ('%s %s'):format(firstName, lastName) }
+end)
+
+-- DOJ shop purchases → society_doj (shows on DOJ boss iPad)
+local dojShopHookRegistered = false
+
+local function registerDojShopHooks()
+    if dojShopHookRegistered then return end
+    if GetResourceState('ox_inventory') ~= 'started' then return end
+
+    local shopType = (dojCfg().Shop and dojCfg().Shop.type) or 'DOJ'
+
+    -- Block duplicate citizen ID / license at checkout
+    exports.ox_inventory:registerHook('buyItem', function(payload)
+        if payload.shopType ~= shopType then return end
+
+        local src = payload.source
+        local itemName = payload.itemName
+        if itemName == 'identification' then
+            local count = exports.ox_inventory:Search(src, 'count', 'identification') or 0
+            if count > 0 then
+                notify(src, 'DOJ', 'You already have a Citizen ID.', 'error')
+                return false
+            end
+        elseif itemName == 'driver_license' then
+            local count = exports.ox_inventory:Search(src, 'count', 'driver_license') or 0
+            if count > 0 then
+                notify(src, 'DOJ', 'You already have a Driver License.', 'error')
+                return false
+            end
+        end
+    end, {
+        print = false,
+        typeFilter = { [shopType] = true },
+    })
+
+    -- Deposit purchase total after a successful buy
+    local buyId = exports.ox_inventory:registerHook('buyItem', nil, {
+        print = false,
+        typeFilter = { [shopType] = true },
+    })
+
+    AddEventHandler(buyId, function(success, payload)
+        if not success or not payload or payload.shopType ~= shopType then return end
+
+        local total = math.floor(tonumber(payload.totalPrice) or 0)
+        if total <= 0 then return end
+
+        local src = payload.source
+        local xPlayer = ESX.GetPlayerFromId(src)
+        local identifier = xPlayer and xPlayer.identifier or tostring(src)
+        local itemLabel = tostring(payload.itemName or 'item')
+        local count = tonumber(payload.count) or 1
+
+        depositSociety(
+            total,
+            identifier,
+            ('DOJ shop — %sx %s'):format(count, itemLabel)
+        )
+    end)
+
+    -- Stamp owner on driver licenses created into a player inventory
+    exports.ox_inventory:registerHook('createItem', function(payload)
+        if not payload.item or payload.item.name ~= 'driver_license' then return end
+
+        local metadata = payload.metadata or {}
+        if type(payload.inventoryId) == 'number' then
+            local xPlayer = ESX.GetPlayerFromId(payload.inventoryId)
+            if xPlayer then
+                if not metadata.owner then
+                    metadata.owner = xPlayer.identifier
+                end
+                if metadata.issuedBy == 'DOJ' and not metadata.description then
+                    metadata.description = ('Issued to %s by DOJ'):format(xPlayer.getName() or 'Citizen')
+                end
+            end
+        end
+        return metadata
+    end, {
+        itemFilter = { driver_license = true },
+    })
+
+    dojShopHookRegistered = true
+end
+
+CreateThread(function()
+    local deadline = GetGameTimer() + 60000
+    while GetResourceState('ox_inventory') ~= 'started' and GetGameTimer() < deadline do
+        Wait(500)
+    end
+    Wait(1500)
+    registerDojShopHooks()
+end)
+
+AddEventHandler('onResourceStart', function(res)
+    if res == 'ox_inventory' then
+        dojShopHookRegistered = false
+        SetTimeout(1500, registerDojShopHooks)
+    end
+end)

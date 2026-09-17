@@ -52,7 +52,7 @@ ConfigServerLocations.PublicServers = {
         spawn = vec4(2004.3286, 4902.1523, 42.7468, 58.4939),
         functions = {
             "main", "jobs", "housing",
-            "grind", "autofarm", "raven", "weedfarm", "job_orange",
+            "grind", "autofarm", "raven", "weedfarm", "methfarm", "job_orange",
             "illegal", "turfwar", "gangbase", "safezone",
         },
         status = "ONLINE",

@@ -177,6 +177,75 @@ local function isNearPlayer(src, targetId)
     return #(GetEntityCoords(ped) - GetEntityCoords(tped)) <= HIRE_DISTANCE
 end
 
+--- Persist job + multijob so promote/hire apply instantly (no reconnect needed).
+local function syncMultijobGrade(identifier, primaryJob, grade, isActive)
+    if not identifier or not primaryJob or primaryJob == 'unemployed' then return end
+    local jobs = ESX.GetJobs and ESX.GetJobs() or ESX.Jobs or {}
+    local jobObj = jobs[primaryJob]
+    local gradeKey = tostring(grade)
+    local gradeObj = jobObj and jobObj.grades and (jobObj.grades[gradeKey] or jobObj.grades[grade])
+    local label = (jobObj and jobObj.label) or primaryJob
+    local gradeLabel = (gradeObj and gradeObj.label) or ('Grade ' .. tostring(grade))
+    MySQL.query.await([[
+        INSERT INTO `player_multijobs` (`identifier`, `job`, `grade`, `label`, `grade_label`, `is_active`)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE `grade` = VALUES(`grade`), `label` = VALUES(`label`),
+            `grade_label` = VALUES(`grade_label`), `is_active` = VALUES(`is_active`)
+    ]], { identifier, primaryJob, grade, label, gradeLabel, isActive and 1 or 0 })
+end
+
+--- Apply dept job grade live + DB. Keeps off-duty job name when already off duty.
+local function applyDeptJob(xTarget, cfg, grade, notifyMsg)
+    if not xTarget or not cfg then return false, 'offline' end
+    grade = math.floor(tonumber(grade) or 0)
+    local primary = cfg.primaryJob
+    local current = xTarget.job and xTarget.job.name
+    local jobName = primary
+    local onDuty = true
+
+    if current and jobInList(current, cfg.jobs) then
+        jobName = current
+        if type(current) == 'string' and current:sub(1, 3) == 'off' then
+            onDuty = false
+        else
+            onDuty = xTarget.job.onDuty
+            if onDuty == nil then onDuty = true end
+        end
+    end
+
+    if ESX.DoesJobExist and not ESX.DoesJobExist(jobName, grade) then
+        if jobName ~= primary and ESX.DoesJobExist(primary, grade) then
+            jobName = primary
+            onDuty = true
+        else
+            return false, 'invalid_grade'
+        end
+    end
+
+    xTarget.setJob(jobName, grade, onDuty)
+
+    local identifier = xTarget.identifier or (xTarget.getIdentifier and xTarget.getIdentifier())
+    if identifier then
+        MySQL.update.await('UPDATE `users` SET `job` = ?, `job_grade` = ? WHERE `identifier` = ?', {
+            jobName, grade, identifier
+        })
+        -- Always keep the on-duty job row grade in sync (duty toggle reads this).
+        syncMultijobGrade(identifier, primary, grade, jobName == primary)
+        if type(current) == 'string' and current:sub(1, 3) == 'off' and jobName ~= primary then
+            MySQL.update.await('UPDATE `player_multijobs` SET `is_active` = 0 WHERE `identifier` = ?', { identifier })
+        end
+    end
+
+    if Core and Core.SavePlayer then
+        pcall(Core.SavePlayer, xTarget)
+    end
+
+    if notifyMsg and xTarget.source then
+        TriggerClientEvent('esx:showNotification', xTarget.source, notifyMsg, 'success')
+    end
+    return true
+end
+
 local function employees(cfg)
     local jobs = cfg.jobs or { cfg.primaryJob }
     if #jobs < 1 then return {}, jobGrades(cfg.primaryJob) end
@@ -198,13 +267,19 @@ local function employees(cfg)
     for i = 1, #rows do
         local row = rows[i]
         local xTarget = ESX.GetPlayerFromIdentifier(row.identifier)
+        -- Prefer live ESX job so roster matches promote/hire without waiting for autosave.
+        local jobName = row.job
         local grade = tonumber(row.job_grade) or 0
+        if xTarget and xTarget.job and jobInList(xTarget.job.name, jobs) then
+            jobName = xTarget.job.name
+            grade = tonumber(xTarget.job.grade) or grade
+        end
         local name = (('%s %s'):format(row.firstname or '', row.lastname or '')):gsub('^%s+', ''):gsub('%s+$', '')
         if name == '' then name = 'Unknown' end
         out[#out + 1] = {
             identifier = row.identifier,
             name = name,
-            job = row.job,
+            job = jobName,
             grade = grade,
             gradeLabel = gradeLabel[grade] or ('Grade ' .. grade),
             online = xTarget ~= nil,
@@ -433,7 +508,8 @@ lib.callback.register('cfx-keydi-ipad:dept:hire', function(source, data)
     if not xTarget then return { ok = false, error = 'offline' } end
     if not isNearPlayer(source, targetId) then return { ok = false, error = 'far' } end
 
-    xTarget.setJob(cfg.primaryJob, grade)
+    local ok, err = applyDeptJob(xTarget, cfg, grade, ('You were hired into %s.'):format(cfg.label or cfg.primaryJob))
+    if not ok then return { ok = false, error = err or 'failed' } end
     local staff, grades = employees(cfg)
     return { ok = true, employees = staff, grades = grades }
 end)
@@ -470,7 +546,13 @@ lib.callback.register('cfx-keydi-ipad:dept:setGrade', function(source, data)
         if (tonumber(xTarget.job.grade) or 0) >= yourGrade then
             return { ok = false, error = 'grade' }
         end
-        xTarget.setJob(cfg.primaryJob, grade)
+        local ok, err = applyDeptJob(
+            xTarget,
+            cfg,
+            grade,
+            ('Your %s rank is now grade %s.'):format(cfg.label or cfg.primaryJob, grade)
+        )
+        if not ok then return { ok = false, error = err or 'failed' } end
     else
         local row = MySQL.single.await('SELECT job, job_grade FROM users WHERE identifier = ? LIMIT 1', { identifier })
         if not row or not jobInList(row.job, cfg.jobs) then
@@ -479,7 +561,13 @@ lib.callback.register('cfx-keydi-ipad:dept:setGrade', function(source, data)
         if (tonumber(row.job_grade) or 0) >= yourGrade then
             return { ok = false, error = 'grade' }
         end
-        MySQL.update.await('UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?', { cfg.primaryJob, grade, identifier })
+        -- Keep offline players on their current on/off job; only bump grade.
+        local jobName = row.job
+        if ESX.DoesJobExist and not ESX.DoesJobExist(jobName, grade) then
+            jobName = cfg.primaryJob
+        end
+        MySQL.update.await('UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?', { jobName, grade, identifier })
+        syncMultijobGrade(identifier, cfg.primaryJob, grade, false)
     end
 
     local staff, grades = employees(cfg)
@@ -514,7 +602,20 @@ lib.callback.register('cfx-keydi-ipad:dept:fire', function(source, data)
         if (tonumber(xTarget.job.grade) or 0) >= yourGrade then
             return { ok = false, error = 'grade' }
         end
-        xTarget.setJob('unemployed', 0)
+        xTarget.setJob('unemployed', 0, false)
+        local tid = xTarget.identifier or (xTarget.getIdentifier and xTarget.getIdentifier())
+        if tid then
+            MySQL.update.await('UPDATE `users` SET `job` = ?, `job_grade` = ? WHERE `identifier` = ?', {
+                'unemployed', 0, tid
+            })
+            MySQL.update.await('DELETE FROM `player_multijobs` WHERE `identifier` = ? AND `job` = ?', {
+                tid, cfg.primaryJob
+            })
+        end
+        if Core and Core.SavePlayer then
+            pcall(Core.SavePlayer, xTarget)
+        end
+        TriggerClientEvent('esx:showNotification', xTarget.source, ('You were removed from %s.'):format(cfg.label or cfg.primaryJob), 'error')
     else
         local row = MySQL.single.await('SELECT job, job_grade FROM users WHERE identifier = ? LIMIT 1', { identifier })
         if not row or not jobInList(row.job, cfg.jobs) then
@@ -524,6 +625,9 @@ lib.callback.register('cfx-keydi-ipad:dept:fire', function(source, data)
             return { ok = false, error = 'grade' }
         end
         MySQL.update.await('UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?', { 'unemployed', 0, identifier })
+        MySQL.update.await('DELETE FROM `player_multijobs` WHERE `identifier` = ? AND `job` = ?', {
+            identifier, cfg.primaryJob
+        })
     end
 
     local staff, grades = employees(cfg)

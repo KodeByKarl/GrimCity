@@ -57,7 +57,10 @@ local function resolvePlayerGang(xPlayer)
 end
 
 --- System job announcement without a player source (drop-in for cfx-cs-chat JobTemplateWithoutID)
-function JobTemplateWithoutID(jobName, message)
+---@param jobName string job banner to use (police, ambulance, …)
+---@param message string body text
+---@param headerLeft string|nil override FEED header (e.g. FEED • COMSERV | SYSTEM)
+function JobTemplateWithoutID(jobName, message, headerLeft)
     if type(jobName) ~= 'string' or jobName == '' or type(message) ~= 'string' or message == '' then
         return
     end
@@ -65,7 +68,11 @@ function JobTemplateWithoutID(jobName, message)
     local jobLabel = getJobLabel(jobName)
     local jobData = resolveSystemJobData(jobName, jobLabel)
     local time = os.date('%H:%M')
-    local template = BuildAnnouncementHtml(jobData, 'FEED • ' .. jobLabel .. ' | SYSTEM')
+    local header = headerLeft
+    if type(header) ~= 'string' or header == '' then
+        header = 'FEED • ' .. jobLabel .. ' | SYSTEM'
+    end
+    local template = BuildAnnouncementHtml(jobData, header)
 
     TriggerClientEvent('chat:addMessage', -1, {
         template = template,

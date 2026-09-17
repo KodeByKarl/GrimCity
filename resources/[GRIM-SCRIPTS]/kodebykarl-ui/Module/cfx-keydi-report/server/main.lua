@@ -81,12 +81,24 @@ local function GetConvarWebhook()
     return GetConvar(ConfigReport.WebhookConvar, "")
 end
 
-local function NotifyStaff(category, playerName, src)
+local function NotifyStaff(category, playerName, src, kind)
+    kind = kind or 'new'
+    local title = kind == 'reply' and 'REPORT REPLY' or 'NEW REPORT'
+    local message = kind == 'reply'
+        and ('%s (ID %d) replied on their report [%s]. Open /report.'):format(playerName, src, category)
+        or ('New [%s] report from %s (ID %d). Open /report.'):format(category, playerName, src)
+
     local xPlayers = ESX.GetExtendedPlayers()
     for _, xAdmin in ipairs(xPlayers) do
         if ConfigReport.StaffGroups[xAdmin.getGroup()] then
-            TriggerClientEvent("esx:showNotification", xAdmin.source,
-                ("New [ %s ] Report from %s (ID %d)"):format(category, playerName, src), "warning", 8000)
+            TriggerClientEvent('cfx-keydi-report:client:staffAlert', xAdmin.source, {
+                title = title,
+                message = message,
+                kind = kind,
+                category = category,
+                playerName = playerName,
+                playerId = src,
+            })
         end
     end
 end
@@ -267,7 +279,7 @@ RegisterNetEvent("cfx-keydi-report:submitReport", function(data)
     print("==================================================\n")
 
     if not isUpdate then
-        NotifyStaff(category, xPlayer.getName(), src)
+        NotifyStaff(category, xPlayer.getName(), src, 'new')
         SendDiscordWebhook(xPlayer, src, category, title, description)
     end
 
@@ -347,12 +359,16 @@ RegisterNetEvent("cfx-keydi-report:server:sendMessage", function(playerIdentifie
         end
     end
 
-    -- Broadcast to admins
+    -- Broadcast to admins (+ sound when the player replies)
     local xPlayers = ESX.GetExtendedPlayers()
     for _, xAdmin in ipairs(xPlayers) do
         if ConfigReport.StaffGroups[xAdmin.getGroup()] then
             TriggerClientEvent("cfx-keydi-report:client:adminUpdateReports", xAdmin.source, playerIdentifier, payload)
         end
+    end
+
+    if senderType == "player" then
+        NotifyStaff(report.category or "other", xPlayer.getName(), src, 'reply')
     end
 end)
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Users, Move } from "lucide-react";
+import { Users, Move, Radio } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface RadioPlayer {
   id: number;
@@ -17,23 +18,31 @@ interface RadioListHudProps {
   onExitEdit?: () => void;
 }
 
+const POS_KEY = "grim_radio_pos";
+const LEGACY_POS_KEY = "pandora_radio_pos";
+
+function loadPos() {
+  const saved = localStorage.getItem(POS_KEY) || localStorage.getItem(LEGACY_POS_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {
+      /* ignore */
+    }
+  }
+  return {
+    x: window.innerWidth - 228,
+    y: window.innerHeight / 2 - 100,
+  };
+}
+
 export const RadioListHud: React.FC<RadioListHudProps> = ({
   channel = "100.0 MHz",
   players = [],
   editMode = false,
   hudVisible = true,
-  onExitEdit
 }) => {
-  const [pos, setPos] = useState(() => {
-    const saved = localStorage.getItem("pandora_radio_pos");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return {
-      x: window.innerWidth - 220,
-      y: window.innerHeight / 2 - 100,
-    };
-  });
+  const [pos, setPos] = useState(loadPos);
 
   const dragRef = useRef({
     down: false,
@@ -63,7 +72,7 @@ export const RadioListHud: React.FC<RadioListHudProps> = ({
     const onMouseUp = () => {
       if (!dragRef.current.down) return;
       dragRef.current.down = false;
-      localStorage.setItem("pandora_radio_pos", JSON.stringify(pos));
+      localStorage.setItem(POS_KEY, JSON.stringify(pos));
     };
 
     window.addEventListener("mousemove", onMouseMove);
@@ -81,82 +90,74 @@ export const RadioListHud: React.FC<RadioListHudProps> = ({
   return (
     <div
       style={{ left: pos.x, top: pos.y }}
-      className={`pandora fixed z-[9990] select-none transition-shadow ${
-        editMode ? "cursor-grab ring-2 ring-[#ff3d96] ring-offset-2 ring-offset-black/50" : ""
-      }`}
+      className={cn(
+        "pandora fixed z-[9990] w-48 select-none font-sans transition-shadow",
+        editMode && "cursor-grab ring-2 ring-[#ff3a3a] ring-offset-2 ring-offset-black/50",
+      )}
       onMouseDown={startDrag}
     >
-      {/* Pandora City Radio HUD Card */}
-      <div 
-        className="w-44 rounded-xl border overflow-hidden text-white font-sans shadow-[0_12px_30px_rgba(0,0,0,0.85),0_0_20px_rgba(255,61,150,0.18)]"
-        style={{
-          background: "linear-gradient(180deg, #082645 0%, #04182b 100%)",
-          borderColor: "rgba(255, 122, 181, 0.35)"
-        }}
+      <div
+        className="relative overflow-hidden rounded-xl border-2 border-[#ff3a3a] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]"
+        style={{ background: "linear-gradient(180deg, #140d11 0%, #0d0d12 100%)" }}
       >
-        {/* Top Glow Accent Bar */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-[#ff3d96] via-[#35c7f2] to-[#ffd24c]" />
+        <div className="panel-grid pointer-events-none absolute inset-0 opacity-30" />
 
-        {/* HEADER */}
-        <div className="py-2 px-3 border-b border-[#ff3d96]/20 flex items-center justify-between">
-          {/* Signal Indicator Bars */}
-          <div className="flex items-end gap-[2px]">
-            <div className="w-1 h-1.5 bg-[#35c7f2]/50 rounded-sm" />
-            <div className="w-1 h-2 bg-[#35c7f2]/70 rounded-sm" />
-            <div className="w-1 h-2.5 bg-[#35c7f2]/90 rounded-sm" />
-            <div className="w-1 h-3 bg-[#ff3d96] rounded-sm shadow-[0_0_6px_#ff3d96]" />
+        <div
+          className="relative flex items-center justify-between gap-2 px-3 py-2"
+          style={{ borderBottom: "1px solid rgba(255, 58, 58, 0.25)" }}
+        >
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#ff3a3a] bg-[#ff3a3a]/15">
+            <Radio className="h-3 w-3 text-white" />
           </div>
-
-          <h3 className="text-xs font-black tracking-wider text-[#35c7f2] uppercase">
-            RADIO
-          </h3>
-
-          {/* Channel Frequency Badge */}
-          <span className="text-[10px] font-black text-[#ffa6ce] bg-[#ff3d96]/20 border border-[#ff3d96]/40 px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(255,61,150,0.2)]">
-            {channel || "—"}
-          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#ff4d4d]">Radio</p>
+            <p className="truncate text-[8px] font-bold uppercase tracking-wider text-[#a08890]">
+              {channel || "—"}
+            </p>
+          </div>
         </div>
 
-        {/* ACTIVE TALKERS */}
-        <div className="py-2 px-3 space-y-1.5 min-h-[36px] max-h-36 overflow-y-auto">
+        <div className="relative space-y-1.5 px-3 py-2 min-h-[36px] max-h-36 overflow-y-auto">
           {activeTalkers.length > 0 ? (
             activeTalkers.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="relative flex items-center justify-center shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-[#ff3d96] shadow-[0_0_8px_#ff3d96]" />
-                    <div className="absolute w-4 h-4 rounded-full border border-[#ff3d96]/60 animate-ping" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="relative flex shrink-0 items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-[#ff3a3a] shadow-[0_0_8px_#ff3a3a]" />
+                    <div className="absolute h-4 w-4 rounded-full border border-[#ff3a3a]/70 animate-ping" />
                   </div>
-                  <span className="text-[11px] font-bold text-white truncate max-w-[95px]">
+                  <span className="max-w-[95px] truncate text-[11px] font-bold text-white">
                     {p.name}
                   </span>
                 </div>
-                <span className="text-[9px] font-black text-[#ff3d96] tracking-wider uppercase shrink-0">
+                <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-[#ff4d4d]">
                   TNC
                 </span>
               </div>
             ))
           ) : (
-            <div className="text-[10px] font-semibold text-[#9cc3e6]/60 text-center py-1 italic">
+            <div className="py-1 text-center text-[10px] font-semibold italic text-[#a08890]">
               {editMode ? "Drag to reposition HUD" : "No active talkers"}
             </div>
           )}
         </div>
 
-        {/* FOOTER */}
-        <div className="py-1.5 px-3 border-t border-[#ff3d96]/20 flex items-center justify-between text-[10px]">
+        <div
+          className="relative flex items-center justify-between px-3 py-1.5 text-[10px]"
+          style={{ borderTop: "1px solid rgba(255, 58, 58, 0.25)" }}
+        >
           {editMode ? (
-            <span className="text-[9px] font-black text-[#ffd24c] uppercase tracking-wider flex items-center gap-1">
-              <Move className="w-3 h-3" /> DRAG MODE
+            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-[#ff4d4d]">
+              <Move className="h-3 w-3" /> Drag mode
             </span>
           ) : (
-            <span className="text-[9px] font-bold text-[#8fe4ff]/70 tracking-widest uppercase">
-              PANDORA
+            <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[#a08890]">
+              Grim City
             </span>
           )}
 
-          <div className="flex items-center gap-1 text-[#ffa6ce] font-extrabold">
-            <Users className="w-3 h-3 text-[#35c7f2]" />
+          <div className="flex items-center gap-1 font-extrabold text-[#ff4d4d]">
+            <Users className="h-3 w-3" />
             <span>{players.length}</span>
           </div>
         </div>

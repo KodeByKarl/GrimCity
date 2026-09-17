@@ -95,6 +95,58 @@ RegisterNetEvent("cfx-keydi-report:client:adminRemoveReport", function(playerIde
     })
 end)
 
+local function playStaffAlertSound()
+    local cfg = ConfigReport.StaffAlert or {}
+    if cfg.enabled == false then return end
+
+    local soundName = cfg.soundName or 'Event_Message_Purple'
+    local soundSet = cfg.soundSet or 'GTAO_FM_Events_Soundset'
+    local repeats = math.max(1, math.floor(tonumber(cfg.repeats) or 3))
+    local delayMs = math.max(100, math.floor(tonumber(cfg.repeatDelayMs) or 450))
+
+    CreateThread(function()
+        for i = 1, repeats do
+            PlaySoundFrontend(-1, soundName, soundSet, true)
+            -- Backup beep if the first set fails to load on some clients
+            PlaySoundFrontend(-1, 'TIMER_STOP', 'HUD_FRONTEND_DEFAULT_SOUNDSET', true)
+            if i < repeats then
+                Wait(delayMs)
+            end
+        end
+    end)
+end
+
+RegisterNetEvent('cfx-keydi-report:client:staffAlert', function(data)
+    data = type(data) == 'table' and data or {}
+    local cfg = ConfigReport.StaffAlert or {}
+    local duration = math.floor(tonumber(cfg.notifyDuration) or 10000)
+    local title = data.title or 'NEW REPORT'
+    local message = data.message or 'A player submitted a report. Open /report.'
+
+    playStaffAlertSound()
+
+    if lib and lib.notify then
+        lib.notify({
+            title = title,
+            description = message,
+            type = 'warning',
+            duration = duration,
+            position = 'top',
+            icon = 'triangle-exclamation',
+        })
+    else
+        TriggerEvent('esx:showNotification', message, 'warning', duration)
+    end
+
+    -- Also ping the report NUI if it's open
+    SendNUIMessage({
+        action = 'cfx-keydi-report:staffAlert',
+        title = title,
+        message = message,
+        kind = data.kind or 'new',
+    })
+end)
+
 RegisterCommand(ConfigReport.OpenCommand, function()
     if isVisible then
         ToggleReport(false)

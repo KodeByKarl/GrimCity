@@ -31,7 +31,6 @@ import InvoiceMenu, { InvoiceData } from "./cfx-keydi-invoice/InvoiceMenu";
 import RegistrarMenu, { type RegistrarData } from "./cfx-keydi-university/RegistrarMenu";
 import type { IpadPlayerData } from "./cfx-keydi-ipad/Ipad";
 import type { UniversityRole } from "./cfx-keydi-ipad/universityTypes";
-import type { PhonePlayerData, PhoneCallSeed } from "./cfx-keydi-phone/Phone";
 import PartyHud from "./cfx-keydi-ipad/PartyHud";
 import PlaytimeShop, { PlaytimeShopData } from "./cfx-keydi-playtimeshop/PlaytimeShop";
 import { Toaster } from "sonner";
@@ -44,7 +43,6 @@ import {
 } from "./cfx-keydi-indicator/types";
 
 const Ipad = lazy(() => import("./cfx-keydi-ipad/Ipad"));
-const Phone = lazy(() => import("./cfx-keydi-phone/Phone"));
 const LoadingScreen = lazy(() => import("./cfx-keydi-loadingscreen/LoadingScreen"));
 
 // Cinematic Purge Siren Audio Synthesizer (City-Wide Alert Horn)
@@ -150,6 +148,7 @@ export default function App() {
   const [radioHudVisible, setRadioHudVisible] = useState(false);
   const [radioModalVisible, setRadioModalVisible] = useState(false);
   const [radioEditMode, setRadioEditMode] = useState(false);
+  const [partyEditMode, setPartyEditMode] = useState(false);
   const [scoreboardVisible, setScoreboardVisible] = useState(false);
   const [scoreboardData, setScoreboardData] = useState<any>({});
   
@@ -206,10 +205,6 @@ export default function App() {
 
   const [ipadVisible, setIpadVisible] = useState(false);
   const [ipadData, setIpadData] = useState<IpadPlayerData | null>(null);
-  const [phoneVisible, setPhoneVisible] = useState(false);
-  const [phoneData, setPhoneData] = useState<PhonePlayerData | null>(null);
-  const [phoneMsgToast, setPhoneMsgToast] = useState<{ from: string; body: string } | null>(null);
-  const [phoneCallSeed, setPhoneCallSeed] = useState<PhoneCallSeed | null>(null);
   const [playtimeVisible, setPlaytimeVisible] = useState(false);
   const [playtimeData, setPlaytimeData] = useState<PlaytimeShopData | null>(null);
 
@@ -287,7 +282,7 @@ export default function App() {
       setIpadVisible(true);
       // University: ?preview=university|student|teacher|dean|director|registrar
       // Playtime shop: ?preview=shop | Autofarm: ?preview=autofarm | Modules: ?preview=modules | Death: ?preview=deathscreen
-      // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip | Phone: ?preview=phone
+      // Scoreboard: ?preview=scoreboard | VIP: ?preview=vip
       // Loading screen: ?preview=loadingscreen
       const preview = new URLSearchParams(window.location.search).get("preview") || "citizen";
       if (preview === "identity") {
@@ -350,7 +345,7 @@ export default function App() {
                 : universityRole === "teacher"
                   ? "Professor"
                   : "Student",
-        gang: "None",
+        gang: preview === "org" || preview === "organization" ? "Alaskador" : "None",
         canEditEconomy: isOwner,
         canPoliceBoss: isBoss || isOwner,
         canSheriffBoss: isOwner || preview === "sheriff",
@@ -361,6 +356,7 @@ export default function App() {
         canPoliceMdt: isPolice || isOwner || preview === "doj",
         canSheriffMdt: isOwner || preview === "sheriff",
         canBusinessBoss: preview === "business" || isOwner,
+        canOrgBoss: preview === "org" || preview === "organization" || isOwner,
         universityRole: universityRole as UniversityRole,
       });
       if (preview === "scoreboard") {
@@ -404,17 +400,6 @@ export default function App() {
         setIpadVisible(false);
         setPlaytimeVisible(true);
         setPlaytimeData(null);
-      }
-      if (preview === "phone") {
-        setIpadVisible(false);
-        setPhoneVisible(true);
-        setPhoneData({
-          firstName: "Karl",
-          lastName: "Dev",
-          cash: 2450,
-          bank: 128400,
-          job: "Unemployed",
-        });
       }
       if (preview === "weedfarm" || preview === "weed") {
         setIpadVisible(false);
@@ -716,41 +701,6 @@ export default function App() {
         setIpadVisible(false);
       }
 
-      // Companion iPhone System
-      if (data.action === "cfx-keydi-phone:open") {
-        if (data.data) setPhoneData(data.data);
-        setPhoneVisible(true);
-      } else if (data.action === "cfx-keydi-phone:close") {
-        setPhoneVisible(false);
-        setPhoneCallSeed(null);
-      } else if (data.action === "cfx-keydi-phone:call:incoming") {
-        setPhoneVisible(true);
-        setPhoneCallSeed({
-          action: "incoming",
-          data: data.data || {},
-          nonce: data.data?.nonce || Date.now(),
-        });
-      } else if (data.action === "cfx-keydi-phone:call:accepted") {
-        setPhoneCallSeed({
-          action: "accepted",
-          data: data.data || {},
-          nonce: data.data?.nonce || Date.now(),
-        });
-      } else if (data.action === "cfx-keydi-phone:call:ended") {
-        setPhoneCallSeed({
-          action: "ended",
-          data: data.data || {},
-          nonce: Date.now(),
-        });
-      } else if (data.action === "cfx-keydi-phone:message") {
-        if (data.showToast === false) return;
-        const payload = data.data || {};
-        const from = String(payload.fromName || "Someone");
-        const body = String(payload.body || "");
-        setPhoneMsgToast({ from, body });
-        window.setTimeout(() => setPhoneMsgToast(null), 6500);
-      }
-
       // Playtime Shop
       if (data.action === "cfx-keydi-playtimeshop:open") {
         if (data.data) setPlaytimeData(data.data);
@@ -780,6 +730,8 @@ export default function App() {
         if (payload.modalVisible !== undefined) setRadioModalVisible(payload.modalVisible);
       } else if (data.action === "cfx-keydi-radiolist:startDrag") {
         setRadioEditMode(true);
+      } else if (data.action === "cfx-keydi-ipad:party:startDrag") {
+        setPartyEditMode(true);
       }
     };
 
@@ -1367,8 +1319,8 @@ export default function App() {
       {/* Community Service HUD */}
       <ComServHud />
 
-      {/* 4-man Party HUD (center-right) */}
-      <PartyHud />
+      {/* 4-man Party HUD (draggable via /movesquad) */}
+      <PartyHud editMode={partyEditMode} onExitEdit={() => setPartyEditMode(false)} />
 
       {/* Grind Sell Market UI */}
       <MarketMenu visible={marketVisible} data={marketData || undefined} onClose={() => setMarketVisible(false)} />
@@ -1395,32 +1347,6 @@ export default function App() {
         <Suspense fallback={null}>
           <Ipad visible={ipadVisible} data={ipadData} onClose={() => setIpadVisible(false)} />
         </Suspense>
-      ) : null}
-
-      {/* Companion iPhone — Dynamic Island shell */}
-      {phoneVisible ? (
-        <Suspense fallback={null}>
-          <Phone
-            visible={phoneVisible}
-            data={phoneData}
-            callSeed={phoneCallSeed}
-            onClose={() => setPhoneVisible(false)}
-          />
-        </Suspense>
-      ) : null}
-
-      {phoneMsgToast ? (
-        <div className="pointer-events-none fixed right-6 top-6 z-[100001] w-[min(320px,86vw)] animate-[phoneIn_320ms_cubic-bezier(0.32,0.72,0,1)]">
-          <div className="rounded-2xl border border-white/10 bg-[#12141c]/95 px-3.5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#f5c542]">
-              New Message
-            </p>
-            <p className="mt-1 truncate text-[13px] font-semibold text-[#f8f3e8]">{phoneMsgToast.from}</p>
-            <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-[#9a9386]">
-              {phoneMsgToast.body}
-            </p>
-          </div>
-        </div>
       ) : null}
 
       {announcementVisible && (

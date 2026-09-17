@@ -39,14 +39,15 @@ ConfigBanking.Logs = {
 }
 
 --[[
-    Periodic richest-player report (ESX users.accounts: money / bank / black_money).
+    Periodic richest-player report moved to kodebykarl-utils (modules/richest).
+    Keep Enabled = false here to avoid duplicate Discord posts / /topmoney conflict.
 ]]
 ConfigBanking.Richest = {
-    Enabled = true,
-    IntervalMinutes = 30,       -- auto-send interval
-    Top = 10,                   -- only top N (set OnlyTop = false to log all — not recommended)
+    Enabled = false,
+    IntervalMinutes = 30,
+    Top = 10,
     OnlyTop = true,
-    IncludeDirtyMoney = true,   -- black_money in total
-    AdminCommand = "topmoney",  -- ESX admin command to force-send
-    LogMessageType = "standard", -- "short" | "standard" | "full"
+    IncludeDirtyMoney = true,
+    AdminCommand = "topmoney",
+    LogMessageType = "standard",
 }

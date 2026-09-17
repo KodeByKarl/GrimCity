@@ -12,7 +12,7 @@ ConfigWelcomeBanner = {
 
     -- Only these ESX groups can open .wcb
     AllowedGroups = {
-        owner = false,
+        owner = true,
         developer = true,
     },
 

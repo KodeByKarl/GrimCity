@@ -129,7 +129,7 @@ function applyCatalog(data) {
 
 async function loadCatalog() {
     try {
-        const data = await fetchNui('pandora-market:getCatalog');
+        const data = await fetchNui('grim-market:getCatalog');
         applyCatalog(data);
     } catch (err) {
         listEl.innerHTML = '<div class="empty">Could not load prices.</div>';

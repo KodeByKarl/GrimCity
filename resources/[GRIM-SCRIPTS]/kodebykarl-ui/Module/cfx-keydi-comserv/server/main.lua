@@ -455,6 +455,37 @@ local function reduceSentenceByIdentifier(identifier, amount)
     return true, entry.remaining
 end
 
+local function escapeChatText(text)
+    return tostring(text or "")
+        :gsub("&", "&amp;")
+        :gsub("<", "&lt;")
+        :gsub(">", "&gt;")
+end
+
+--- City-wide chat card, same style as EMS bodybag (FEED banner + name + reason).
+local function broadcastComservChat(playerName, reason)
+    local cfg = ConfigComServ.ChatAnnounce
+    if cfg and cfg.Enabled == false then return end
+
+    local name = escapeChatText(playerName or "Unknown")
+    local why = escapeChatText(reason or "Community Service")
+    local locale = ConfigComServ.Locale and ConfigComServ.Locale.chatAnnounce
+    local message = locale and locale:format(name, why)
+        or ("%s has been sentenced to community service. Reason: %s"):format(name, why)
+
+    local jobName = (cfg and cfg.Job) or "police"
+    local header = (cfg and cfg.Header) or "FEED • COMSERV | SYSTEM"
+
+    if type(JobTemplateWithoutID) == "function" then
+        JobTemplateWithoutID(jobName, message, header)
+        return
+    end
+
+    pcall(function()
+        exports["kodebykarl-ui"]:JobTemplateWithoutID(jobName, message, header)
+    end)
+end
+
 local function startSentence(opts)
     opts = opts or {}
     local actions = clampActions(opts.actions)
@@ -545,6 +576,8 @@ local function startSentence(opts)
             mode = mode,
         })
     end
+
+    broadcastComservChat(playerName, reason)
 
     return true, mode
 end

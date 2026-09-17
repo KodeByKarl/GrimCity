@@ -455,6 +455,41 @@ export async function fetchNui<T = unknown>(eventName: string, data?: unknown): 
       }
       return { ok: true, mine: mock.mine, list: mock.list } as T;
     }
+    if (eventName.startsWith("cfx-keydi-ipad:org:")) {
+      const members = [
+        { identifier: "char1", name: "Karl Dev", grade: 3, gradeLabel: "Boss", online: true, serverId: 1 },
+        { identifier: "char2", name: "Mia Storm", grade: 2, gradeLabel: "Underboss", online: true, serverId: 12 },
+        { identifier: "char3", name: "Rico Vale", grade: 0, gradeLabel: "Member", online: false, serverId: null },
+      ];
+      const grades = [
+        { grade: 0, name: "member", label: "Member" },
+        { grade: 1, name: "enforcer", label: "Enforcer" },
+        { grade: 2, name: "underboss", label: "Underboss" },
+        { grade: 3, name: "boss", label: "Boss" },
+      ];
+      if (eventName === "cfx-keydi-ipad:org:nearby") {
+        return { ok: true, players: [{ id: 18, name: "Alex Cruz" }] } as T;
+      }
+      if (eventName === "cfx-keydi-ipad:org:hireDiscord") {
+        return { ok: true, pending: true } as T;
+      }
+      return {
+        ok: true,
+        gang: "alaskador",
+        label: "Alaskador",
+        staff: true,
+        gangs: [
+          { name: "alaskador", label: "Alaskador" },
+          { name: "westside", label: "Westside" },
+          { name: "grimgang", label: "GrimGang" },
+        ],
+        yourGrade: 4,
+        members,
+        grades,
+        memberCount: members.length,
+        onlineCount: 2,
+      } as T;
+    }
     return {} as T;
   }
 

@@ -72,3 +72,61 @@ Config.WeedFarm = {
         },
     },
 }
+
+--[[
+  Meth farm / cook benches (O'Neil ranch redzone).
+]]
+Config.MethFarm = {
+    HarvestDuration = 4000,
+    ProcessDuration = 5000,
+
+    PlantModel = `prop_barrel_02a`,
+    ItemName = "stoned_meth",
+    ItemLabel = "Stoned Meth",
+    MinReward = 2,
+    MaxReward = 5,
+    RegrowDuration = 0,
+
+    Locations = {
+        vector3(2433.12, 4967.41, 46.81),
+        vector3(2435.04, 4969.18, 46.81),
+        vector3(2436.88, 4971.02, 46.81),
+        vector3(2438.71, 4966.22, 46.81),
+        vector3(2440.55, 4968.08, 46.81),
+        vector3(2442.40, 4969.91, 46.81),
+        vector3(2434.22, 4964.55, 46.81),
+        vector3(2436.10, 4962.70, 46.81),
+        vector3(2444.18, 4967.15, 46.81),
+        vector3(2446.02, 4968.98, 46.81),
+        vector3(2441.22, 4964.40, 46.81),
+        vector3(2439.35, 4962.52, 46.81),
+    },
+
+    CollectStations = {},
+
+    ProcessStations = {
+        {
+            id = "meth_cook",
+            label = "Cook Meth",
+            progressLabel = "COOKING METH",
+            coords = vector4(2438.62, 4963.41, 46.81, 315.0),
+            interactionDistance = 2.0,
+            input = { item = "stoned_meth", amount = 5, label = "Stoned Meth" },
+            requires = {},
+            output = { item = "cracked_meth", amount = 5, label = "Cracked Meth" },
+        },
+        {
+            id = "meth_pack",
+            label = "Pack Meth",
+            progressLabel = "PACKING METH",
+            coords = vector4(2443.15, 4971.55, 46.81, 135.0),
+            interactionDistance = 2.0,
+            input = { item = "cracked_meth", amount = 5, label = "Cracked Meth" },
+            require = { item = "zipper_bag", amount = 1, label = "Zip-lock Bag" },
+            requires = {
+                { item = "zipper_bag", amount = 1, label = "Zip-lock Bag" },
+            },
+            output = { item = "meth", amount = 5, label = "Meth" },
+        },
+    },
+}

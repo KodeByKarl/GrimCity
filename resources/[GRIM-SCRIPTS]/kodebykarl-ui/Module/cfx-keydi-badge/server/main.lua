@@ -34,6 +34,11 @@ end)
 -- Event to show badge to nearby players
 RegisterNetEvent("cfx-keydi-badge:server:showBadgeToNearby", function(badgeData)
     local src = source
+    if type(badgeData) ~= "table" then return end
+
+    -- Local nui-img mugshots cannot be shared. Viewers capture the officer ped themselves.
+    badgeData.photoUrl = nil
+
     local srcPed = GetPlayerPed(src)
     local srcCoords = GetEntityCoords(srcPed)
 
@@ -41,7 +46,7 @@ RegisterNetEvent("cfx-keydi-badge:server:showBadgeToNearby", function(badgeData)
         local targetPed = GetPlayerPed(playerId)
         local targetCoords = GetEntityCoords(targetPed)
         if #(srcCoords - targetCoords) <= 5.0 then
-            TriggerClientEvent("cfx-keydi-badge:client:displayBadgeUI", playerId, badgeData)
+            TriggerClientEvent("cfx-keydi-badge:client:displayBadgeUI", playerId, badgeData, src)
         end
     end
 end)

@@ -201,6 +201,7 @@ ConfigDeathScreen.Weapons = {
     [`WEAPON_COMBATPISTOL`] = "Combat Pistol",
     [`WEAPON_APPISTOL`] = "AP Pistol",
     [`WEAPON_PISTOL50`] = "Pistol .50",
+    [`WEAPON_DEAGLE`] = "Desert Eagle",
     [`WEAPON_SNSPISTOL`] = "SNS Pistol",
     [`WEAPON_HEAVYPISTOL`] = "Heavy Pistol",
     [`WEAPON_VINTAGEPISTOL`] = "Vintage Pistol",

@@ -76,3 +76,22 @@ end)
 RegisterNUICallback('cfx-keydi-ipad:party:disband', function(_, cb)
     cb(partyCb('cfx-keydi-ipad:party:disband'))
 end)
+
+RegisterNUICallback('cfx-keydi-ipad:party:stopDrag', function(_, cb)
+    SetNuiFocus(false, false)
+    if cb then cb('ok') end
+end)
+
+--- Drag / reposition squad HUD (health + armor). ESC or release finishes.
+RegisterCommand(ConfigIpad.Party and ConfigIpad.Party.EditPosCommand or 'movesquad', function()
+    SetNuiFocus(true, true)
+    SendNUIMessage({
+        action = 'cfx-keydi-ipad:party:startDrag',
+        data = {},
+    })
+    if ESX and ESX.Notify then
+        ESX.Notify('Squad', 'Drag the squad HUD. Press ESC when done.', 'info', 5000)
+    end
+end, false)
+
+TriggerEvent('chat:addSuggestion', '/' .. (ConfigIpad.Party and ConfigIpad.Party.EditPosCommand or 'movesquad'), 'Move / drag the squad HUD')

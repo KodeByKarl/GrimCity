@@ -7,10 +7,12 @@ if not ConfigLockScript or not ConfigLockScript.Enabled then return end
 
 local cachedLocks = {}
 local myIdentifier = nil
+local myIdentifiers = {}
 local myJob = nil
 local lastNotifyAt = 0
 local lastNotifyKey = nil
 local enforcing = false
+local enforcePausedUntil = 0
 
 local FALLBACK_COMPONENT = {
     ["1"] = 0, ["3"] = 0, ["4"] = 0, ["5"] = 0, ["6"] = 0,
@@ -42,13 +44,27 @@ local function isExpired(expiresAt)
     return false -- server filters; client trusts cache without expired rows
 end
 
+local function identifierInMine(value)
+    if not value or value == "" then return false end
+    if ConfigLockScript.IdentifiersMatch(value, myIdentifier) then return true end
+    for i = 1, #myIdentifiers do
+        if ConfigLockScript.IdentifiersMatch(value, myIdentifiers[i]) then
+            return true
+        end
+    end
+    return false
+end
+
 local function canUseLock(lock)
     if not lock or lock.expired then return true end
-    if not myIdentifier then return false end
-    if lock.ownerIdentifier == myIdentifier then return true end
+    -- Never strip while identity is still loading (wake / spawn race).
+    if (not myIdentifier or myIdentifier == "") and #myIdentifiers == 0 then
+        return true
+    end
+    if identifierInMine(lock.ownerIdentifier) then return true end
     local shared = lock.sharedIdentifiers or {}
     for i = 1, #shared do
-        if shared[i] == myIdentifier then return true end
+        if identifierInMine(shared[i]) then return true end
     end
     if myJob and myJob ~= "" then
         local jobs = lock.sharedJobs or {}
@@ -88,6 +104,36 @@ local function notifyExclusive(lock, key)
         type = "error",
         position = "top-center",
     })
+end
+
+local function applyIdentifierPayload(payload)
+    myIdentifiers = {}
+    myIdentifier = nil
+    if type(payload) == "table" then
+        for i = 1, #payload do
+            if type(payload[i]) == "string" and payload[i] ~= "" then
+                myIdentifiers[#myIdentifiers + 1] = payload[i]
+            end
+        end
+        myIdentifier = myIdentifiers[1]
+    elseif type(payload) == "string" and payload ~= "" then
+        myIdentifier = payload
+        myIdentifiers[1] = payload
+    end
+end
+
+local function refreshMyIdentity()
+    local payload = lib.callback.await("cfx-keydi-lockscript:getMyIdentifier", false)
+    applyIdentifierPayload(payload)
+    myJob = lib.callback.await("cfx-keydi-lockscript:getMyJob", false) or myJob
+    debugPrint("Identity:", myIdentifier, "aliases:", #myIdentifiers, "job:", myJob)
+end
+
+local function PauseEnforce(ms)
+    local untilAt = GetGameTimer() + (tonumber(ms) or 2500)
+    if untilAt > enforcePausedUntil then
+        enforcePausedUntil = untilAt
+    end
 end
 
 local function refreshLocks()
@@ -218,8 +264,12 @@ end
 
 local function EnforcePedNow(silent)
     if enforcing then return false end
+    if GetGameTimer() < enforcePausedUntil then return false end
     if #cachedLocks == 0 then return false end
     if not appearanceReady() then return false end
+    if (not myIdentifier or myIdentifier == "") and #myIdentifiers == 0 then
+        return false
+    end
     enforcing = true
 
     local ped = PlayerPedId()
@@ -512,6 +562,7 @@ exports("TryApplyEyeColor", TryApplyEyeColor)
 exports("SanitizeAppearance", SanitizeAppearance)
 exports("EnforcePedNow", EnforcePedNow)
 exports("GrabFromPed", GrabFromPed)
+exports("PauseEnforce", PauseEnforce)
 exports("ValidateAppearanceBeforeSave", function(appearance)
     local cleaned, denied = SanitizeAppearance(appearance)
     if denied then
@@ -522,16 +573,21 @@ exports("ValidateAppearanceBeforeSave", function(appearance)
 end)
 
 RegisterNetEvent("cfx-keydi-lockscript:client:locksChanged", function()
+    refreshMyIdentity()
     refreshLocks()
     EnforcePedNow(true)
 end)
 
 RegisterNetEvent("cfx-keydi-lockscript:client:playerReady", function()
+    PauseEnforce(4000)
+    refreshMyIdentity()
     refreshLocks()
     local timeout = GetGameTimer() + 10000
     while not appearanceReady() and GetGameTimer() < timeout do
         Wait(250)
     end
+    Wait(500)
+    refreshMyIdentity()
     if appearanceReady() then
         EnforcePedNow(false)
     end
@@ -552,12 +608,15 @@ RegisterNetEvent("cfx-keydi-lockscript:client:deniedLook", function(data)
 end)
 
 RegisterNetEvent("cfx-keydi-lockscript:client:applyAppearance", function(appearance)
+    PauseEnforce(4000)
     if type(appearance) == "table" and appearance.model then
         local res = ConfigLockScript.AppearanceResource or "illenium-appearance"
         if GetResourceState(res) == "started" then
             pcall(function() exports[res]:setPlayerAppearance(appearance) end)
         end
     end
+    Wait(400)
+    refreshMyIdentity()
     if appearanceReady() then
         EnforcePedNow(true)
     end
@@ -565,18 +624,23 @@ end)
 
 -- Framework load hooks
 RegisterNetEvent("esx:playerLoaded", function()
+    PauseEnforce(6000)
     local timeout = GetGameTimer() + 12000
     while not appearanceReady() and GetGameTimer() < timeout do
         Wait(250)
     end
+    refreshMyIdentity()
     refreshLocks()
+    Wait(750)
     if appearanceReady() then
         EnforcePedNow(false)
     end
 end)
 
 RegisterNetEvent("QBCore:Client:OnPlayerLoaded", function()
+    PauseEnforce(6000)
     Wait(2000)
+    refreshMyIdentity()
     refreshLocks()
     EnforcePedNow(false)
 end)
@@ -596,16 +660,16 @@ CreateThread(function()
         Wait(200)
     end
     Wait(500)
-    myIdentifier = lib.callback.await("cfx-keydi-lockscript:getMyIdentifier", false)
-    myJob = lib.callback.await("cfx-keydi-lockscript:getMyJob", false)
+    refreshMyIdentity()
     refreshLocks()
+    PauseEnforce(2500)
     if appearanceReady() then
         EnforcePedNow(true)
     end
 
     while true do
         local sleep = tonumber(ConfigLockScript.EnforceIntervalMs) or 750
-        if appearanceReady() and #cachedLocks > 0 and not enforcing then
+        if appearanceReady() and #cachedLocks > 0 and not enforcing and GetGameTimer() >= enforcePausedUntil then
             local stripped = EnforcePedNow(false)
             if IsNuiFocused() then
                 sleep = tonumber(ConfigLockScript.EnforceIntervalMenuMs) or 100
@@ -615,4 +679,12 @@ CreateThread(function()
         end
         Wait(sleep)
     end
+end)
+
+AddEventHandler("illenium-appearance:client:reloadSkin", function()
+    PauseEnforce(5000)
+    CreateThread(function()
+        Wait(1200)
+        refreshMyIdentity()
+    end)
 end)

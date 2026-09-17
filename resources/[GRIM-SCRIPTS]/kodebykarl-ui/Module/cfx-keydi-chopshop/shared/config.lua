@@ -1,8 +1,11 @@
 Config = Config or {}
 
 --[[
-  Illegal Chop (Chop2) — dismantle owned vehicles for dirty cash.
+  Illegal Chop — dismantle owned vehicles for dirty cash.
   Starts a police dispatch the moment a chop begins.
+
+  Chopped vehicles are NOT deleted from owned_vehicles.
+  They are disabled in-memory until server restart (alon), then usable again.
 ]]
 Config.ChopShop = {
     Label = "Illegal Chop",

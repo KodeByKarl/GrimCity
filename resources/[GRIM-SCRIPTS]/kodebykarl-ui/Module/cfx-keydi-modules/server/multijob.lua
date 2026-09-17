@@ -71,8 +71,28 @@ AddEventHandler('esx:setJob', function(source, job, lastJob)
             VALUES (?, ?, ?, ?, ?, 1)
             ON DUPLICATE KEY UPDATE `grade` = ?, `label` = ?, `grade_label` = ?, `is_active` = 1
         ]], { identifier, jobName, job.grade, job.label or jobName, job.grade_label or 'Member', job.grade, job.label or jobName, job.grade_label or 'Member' })
+    elseif jobName and string.find(jobName, '^off') then
+        -- Off-duty: keep primary job grade in sync so next clock-in uses the new rank.
+        local primary = jobName:sub(4)
+        if primary ~= '' then
+            MySQL.update('UPDATE `player_multijobs` SET `is_active` = 0 WHERE `identifier` = ?', { identifier })
+            MySQL.query([[
+                INSERT INTO `player_multijobs` (`identifier`, `job`, `grade`, `label`, `grade_label`, `is_active`)
+                VALUES (?, ?, ?, ?, ?, 0)
+                ON DUPLICATE KEY UPDATE `grade` = VALUES(`grade`), `label` = VALUES(`label`),
+                    `grade_label` = VALUES(`grade_label`), `is_active` = 0
+            ]], {
+                identifier,
+                primary,
+                job.grade,
+                job.label or primary,
+                job.grade_label or 'Member',
+            })
+        else
+            MySQL.update('UPDATE `player_multijobs` SET `is_active` = 0 WHERE `identifier` = ?', { identifier })
+        end
     else
-        -- If set off-duty or unemployed, mark all jobs inactive
+        -- Unemployed
         MySQL.update('UPDATE `player_multijobs` SET `is_active` = 0 WHERE `identifier` = ?', { identifier })
     end
 end)

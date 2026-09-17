@@ -340,18 +340,32 @@ function LockDB.SetShared(lockId, sharedIdentifiers, sharedJobs)
     return true
 end
 
+local function identifierAllowed(lock, identifier)
+    if type(identifier) == "table" then
+        for i = 1, #identifier do
+            if identifierAllowed(lock, identifier[i]) then
+                return true
+            end
+        end
+        return false
+    end
+    identifier = tostring(identifier or "")
+    if identifier == "" then return false end
+    local match = ConfigLockScript.IdentifiersMatch
+    if match(lock.ownerIdentifier, identifier) then return true end
+    for i = 1, #lock.sharedIdentifiers do
+        if match(lock.sharedIdentifiers[i], identifier) then
+            return true
+        end
+    end
+    return false
+end
+
 --- True if identifier (or their job) may use this lock row
 function LockDB.IdentifierCanUse(lock, identifier, jobName)
     if not lock then return true end
     if lock.expired then return true end -- treat expired as unlocked
-    identifier = tostring(identifier or "")
-    if identifier == "" then return false end
-    if lock.ownerIdentifier == identifier then return true end
-    for i = 1, #lock.sharedIdentifiers do
-        if lock.sharedIdentifiers[i] == identifier then
-            return true
-        end
-    end
+    if identifierAllowed(lock, identifier) then return true end
     if jobName and jobName ~= "" and type(lock.sharedJobs) == "table" then
         local j = tostring(jobName):lower()
         for i = 1, #lock.sharedJobs do

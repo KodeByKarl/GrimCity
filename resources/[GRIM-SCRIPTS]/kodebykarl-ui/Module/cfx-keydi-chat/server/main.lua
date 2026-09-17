@@ -50,9 +50,19 @@ AddEventHandler('_cfx-keydi-chat:messageEntered', function(author, color, messag
     if not message or not author then return end
     
     local src = source
+    local voteMsg = type(message) == 'string' and message:lower():gsub('^%s+', ''):gsub('%s+$', '') or ''
+    local isImpoundVote = (voteMsg == 'yes' or voteMsg == 'no' or voteMsg == 'y' or voteMsg == 'n')
+    local voteOpen = false
+    if isImpoundVote then
+        local ok, voting = pcall(function()
+            return exports['kodebykarl-utils']:IsMassImpoundVoting()
+        end)
+        voteOpen = ok and voting == true
+    end
 
     -- Block personal / OOC chat to prevent flooding. Commands go through ExecuteCommand.
-    if ConfigChat.allowPersonalChat == false then
+    -- Exception: yes / no during an active mass-impound vote.
+    if ConfigChat.allowPersonalChat == false and not voteOpen then
         TriggerClientEvent('chat:addMessage', src, {
             template = '<div style="color: #ff3b30; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,0,0,0.3); margin-bottom: 5px;">{0}</div>',
             args = { ConfigChat.personalChatBlockedMessage or '[SYSTEM] Personal chat is disabled. Use commands only.' }
@@ -61,9 +71,9 @@ AddEventHandler('_cfx-keydi-chat:messageEntered', function(author, color, messag
     end
 
     local now = os.time()
-    
-    -- Check message cooldown
-    if playerCooldowns[src] and now - playerCooldowns[src] < (ConfigChat.cooldownSeconds or 2) then
+
+    -- Check message cooldown (skip for impound votes so people can vote immediately)
+    if not voteOpen and playerCooldowns[src] and now - playerCooldowns[src] < (ConfigChat.cooldownSeconds or 2) then
         TriggerClientEvent('chat:addMessage', src, {
             template = '<div style="color: #ff3b30; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,0,0,0.3); margin-bottom: 5px;">[SYSTEM] Please wait before sending another message!</div>'
         })

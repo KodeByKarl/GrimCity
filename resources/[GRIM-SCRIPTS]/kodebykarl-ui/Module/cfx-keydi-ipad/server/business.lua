@@ -228,6 +228,9 @@ local function employees(jobName)
         local row = rows[i]
         local xTarget = ESX.GetPlayerFromIdentifier(row.identifier)
         local grade = tonumber(row.job_grade) or 0
+        if xTarget and xTarget.job and xTarget.job.name == jobName then
+            grade = tonumber(xTarget.job.grade) or grade
+        end
         out[#out + 1] = {
             identifier = row.identifier,
             name = (('%s %s'):format(row.firstname or '', row.lastname or '')):gsub('^%s+', ''):gsub('%s+$', ''),
@@ -241,6 +244,31 @@ local function employees(jobName)
         end
     end
     return out, grades
+end
+
+local function applyBusinessJob(xTarget, jobName, grade, notifyMsg)
+    if not xTarget then return false end
+    grade = math.floor(tonumber(grade) or 0)
+    if ESX.DoesJobExist and not ESX.DoesJobExist(jobName, grade) then
+        return false
+    end
+    local onDuty = xTarget.job and xTarget.job.onDuty
+    if onDuty == nil then onDuty = true end
+    xTarget.setJob(jobName, grade, onDuty)
+
+    local identifier = xTarget.identifier or (xTarget.getIdentifier and xTarget.getIdentifier())
+    if identifier then
+        MySQL.update.await('UPDATE `users` SET `job` = ?, `job_grade` = ? WHERE `identifier` = ?', {
+            jobName, grade, identifier
+        })
+    end
+    if Core and Core.SavePlayer then
+        pcall(Core.SavePlayer, xTarget)
+    end
+    if notifyMsg and xTarget.source then
+        TriggerClientEvent('esx:showNotification', xTarget.source, notifyMsg, 'success')
+    end
+    return true
 end
 
 local function isNearPlayer(src, targetId)
@@ -357,7 +385,8 @@ lib.callback.register('cfx-keydi-ipad:business:hire', function(source, data)
         return { ok = false, error = 'far' }
     end
 
-    xTarget.setJob(jobName, grade)
+    local okApply = applyBusinessJob(xTarget, jobName, grade, ('You were hired at %s.'):format(jobName))
+    if not okApply then return { ok = false, error = 'failed' } end
     local staff, grades = employees(jobName)
     return { ok = true, employees = staff, grades = grades }
 end)
@@ -391,7 +420,13 @@ lib.callback.register('cfx-keydi-ipad:business:setGrade', function(source, data)
         if (tonumber(xTarget.job.grade) or 0) >= yourGrade then
             return { ok = false, error = 'grade' }
         end
-        xTarget.setJob(jobName, grade)
+        local okApply = applyBusinessJob(
+            xTarget,
+            jobName,
+            grade,
+            ('Your rank is now grade %s.'):format(grade)
+        )
+        if not okApply then return { ok = false, error = 'failed' } end
     else
         local row = MySQL.single.await('SELECT job, job_grade FROM users WHERE identifier = ? LIMIT 1', { identifier })
         if not row or row.job ~= jobName then

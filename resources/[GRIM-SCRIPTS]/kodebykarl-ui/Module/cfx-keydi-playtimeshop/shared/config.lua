@@ -64,11 +64,11 @@ ConfigPlaytimeShop.Cars = {
     },
     {
         id = 'car_blueprint',
-        label = 'CAR BLUEPRINT',
+        label = 'PROJECT VEHICLE BLUEPRINT',
         kind = 'part',
         item = 'car_blueprint',
         amount = 1,
-        price = 10,
+        price = 500,
         stock = 100,
         image = 'car_blueprint',
     },

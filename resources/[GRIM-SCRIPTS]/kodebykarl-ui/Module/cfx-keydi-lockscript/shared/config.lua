@@ -135,3 +135,28 @@ ConfigLockScript.Genders = {
     { id = "female", label = "Female" },
     { id = "any", label = "Any" },
 }
+
+--- Strip charN: / license: / license2: so VIP owner checks survive ESX format drift.
+function ConfigLockScript.NormalizeIdentifier(id)
+    if type(id) ~= "string" then return "" end
+    id = id:gsub("^%s+", ""):gsub("%s+$", ""):lower()
+    if id == "" then return "" end
+    id = id:gsub("^char%d+:", "")
+    local prev
+    repeat
+        prev = id
+        id = id:gsub("^license2:", ""):gsub("^license:", "")
+    until id == prev
+    return id
+end
+
+function ConfigLockScript.IdentifiersMatch(a, b)
+    if type(a) ~= "string" or type(b) ~= "string" then return false end
+    if a == "" or b == "" then return false end
+    if a == b then return true end
+    if a:lower() == b:lower() then return true end
+    local ha = ConfigLockScript.NormalizeIdentifier(a)
+    local hb = ConfigLockScript.NormalizeIdentifier(b)
+    return ha ~= "" and ha == hb
+end
+

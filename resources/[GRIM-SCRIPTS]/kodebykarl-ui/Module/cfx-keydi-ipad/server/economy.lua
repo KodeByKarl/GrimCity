@@ -27,6 +27,36 @@ local function isPoliceBoss(xPlayer)
     return (tonumber(xPlayer.job.grade) or 0) >= minGrade
 end
 
+local function orgGangAllowed(gangName)
+    if not gangName or gangName == '' or gangName == 'none' then return false end
+    gangName = tostring(gangName):lower()
+    if GetResourceState('kodebykarl-gangsystem') ~= 'started' then return false end
+    local ok, gangs = pcall(function()
+        return exports['kodebykarl-gangsystem']:GetGangs()
+    end)
+    return ok and type(gangs) == 'table' and gangs[gangName] ~= nil
+end
+
+local function isOrgBoss(xPlayer)
+    if not xPlayer then return false end
+    local gang = xPlayer.getGang and xPlayer.getGang() or xPlayer.gang
+    if type(gang) ~= 'table' or not gang.name then return false end
+    if not orgGangAllowed(gang.name) then return false end
+
+    if GetResourceState('kodebykarl-gangsystem') == 'started' then
+        local ok, result = pcall(function()
+            return exports['kodebykarl-gangsystem']:IsBoss(xPlayer.source, gang.name)
+        end)
+        if ok then return result == true end
+    end
+
+    local gradeName = type(gang.grade_name) == 'string' and gang.grade_name:lower():gsub('%s+', '_') or ''
+    if gradeName == 'boss' or gradeName == 'underboss' or gradeName == 'patron' then
+        return true
+    end
+    return (tonumber(gang.grade) or 0) >= 3
+end
+
 local function isBusinessBoss(xPlayer)
     if not xPlayer or not xPlayer.job then return false end
     local jobs = ConfigIpad.BusinessJobs or {}
@@ -187,6 +217,7 @@ lib.callback.register('cfx-keydi-ipad:session', function(source)
             canPoliceMdt = false,
             canSheriffMdt = false,
             canBusinessBoss = false,
+            canOrgBoss = false,
             universityRole = 'visitor',
         }
     end
@@ -206,6 +237,7 @@ lib.callback.register('cfx-keydi-ipad:session', function(source)
             canPoliceMdt = true,
             canSheriffMdt = true,
             canBusinessBoss = true,
+            canOrgBoss = true,
             universityRole = uni,
         }
     end
@@ -222,6 +254,7 @@ lib.callback.register('cfx-keydi-ipad:session', function(source)
         canPoliceMdt = isDeptMemberFor(xPlayer, 'police') or isDeptMemberFor(xPlayer, 'doj'),
         canSheriffMdt = isDeptMemberFor(xPlayer, 'sheriff'),
         canBusinessBoss = isBusinessBoss(xPlayer),
+        canOrgBoss = isOrgBoss(xPlayer),
         universityRole = resolveUniversityRole(xPlayer),
         jobName = jobName,
     }

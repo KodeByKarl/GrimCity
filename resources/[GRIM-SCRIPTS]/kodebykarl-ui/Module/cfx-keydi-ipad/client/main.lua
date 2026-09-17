@@ -98,6 +98,7 @@ local function BuildLocalPayload()
         canPoliceMdt = false,
         canSheriffMdt = false,
         canBusinessBoss = false,
+        canOrgBoss = false,
         universityRole = 'visitor',
     }
 end
@@ -333,11 +334,7 @@ RegisterNUICallback('cfx-keydi-ipad:business:fire', function(data, cb)
     cb(businessCb('cfx-keydi-ipad:business:fire', data or {}) or { ok = false })
 end)
 
-RegisterNUICallback('cfx-keydi-ipad:business:nearby', function(_, cb)
-    if not isOpen then
-        cb({ ok = false, players = {} })
-        return
-    end
+local function nearbyPlayers(maxDist)
     local ped = PlayerPedId()
     local coords = GetEntityCoords(ped)
     local myId = PlayerId()
@@ -345,7 +342,7 @@ RegisterNUICallback('cfx-keydi-ipad:business:nearby', function(_, cb)
     for _, player in ipairs(GetActivePlayers()) do
         if player ~= myId then
             local tped = GetPlayerPed(player)
-            if tped ~= 0 and #(coords - GetEntityCoords(tped)) <= 5.0 then
+            if tped ~= 0 and #(coords - GetEntityCoords(tped)) <= (maxDist or 5.0) then
                 players[#players + 1] = {
                     id = GetPlayerServerId(player),
                     name = GetPlayerName(player) or 'Citizen',
@@ -353,7 +350,88 @@ RegisterNUICallback('cfx-keydi-ipad:business:nearby', function(_, cb)
             end
         end
     end
-    cb({ ok = true, players = players })
+    return players
+end
+
+RegisterNUICallback('cfx-keydi-ipad:business:nearby', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, players = {} })
+        return
+    end
+    cb({ ok = true, players = nearbyPlayers(5.0) })
+end)
+
+local function orgCb(name, data)
+    if GetResourceState('kodebykarl-gangsystem') ~= 'started' then
+        return { ok = false, error = 'offline' }
+    end
+    local ok, result = pcall(function()
+        return lib.callback.await(name, false, data)
+    end)
+    if not ok then
+        print(('[cfx-keydi-ipad] callback failed %s: %s'):format(name, tostring(result)))
+        return { ok = false, error = 'callback_missing', detail = tostring(result) }
+    end
+    if type(result) ~= 'table' then
+        return { ok = false, error = 'no_response' }
+    end
+    return result
+end
+
+RegisterNUICallback('cfx-keydi-ipad:org:dashboard', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(orgCb('cfx-keydi-gang:org:dashboard', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:org:hire', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(orgCb('cfx-keydi-gang:org:hire', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:org:hireDiscord', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    data = type(data) == 'table' and data or {}
+    local gang = data.gang
+    local discord = data.discord
+    if type(gang) ~= 'string' or type(discord) ~= 'string' or discord == '' then
+        cb({ ok = false, error = 'invalid' })
+        return
+    end
+    TriggerServerEvent('cfx-keydi-gang:server:hireByDiscord', gang, discord)
+    cb({ ok = true, pending = true })
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:org:setGrade', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(orgCb('cfx-keydi-gang:org:setGrade', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:org:fire', function(data, cb)
+    if not isOpen then
+        cb({ ok = false, error = 'closed' })
+        return
+    end
+    cb(orgCb('cfx-keydi-gang:org:fire', data or {}))
+end)
+
+RegisterNUICallback('cfx-keydi-ipad:org:nearby', function(_, cb)
+    if not isOpen then
+        cb({ ok = false, players = {} })
+        return
+    end
+    cb({ ok = true, players = nearbyPlayers(5.0) })
 end)
 
 local function deptCb(name, data)

@@ -91,6 +91,28 @@ local function getIdentifier(src)
     return GetPlayerIdentifier(src, 0)
 end
 
+local function collectIdentifierAliases(src)
+    local list, seen = {}, {}
+    local function add(value)
+        if type(value) ~= "string" or value == "" or seen[value] then return end
+        seen[value] = true
+        list[#list + 1] = value
+        local norm = ConfigLockScript.NormalizeIdentifier(value)
+        if norm ~= "" and not seen[norm] then
+            seen[norm] = true
+            list[#list + 1] = norm
+        end
+    end
+
+    add(getIdentifier(src))
+    if src then
+        for i = 0, GetNumPlayerIdentifiers(src) - 1 do
+            add(GetPlayerIdentifier(src, i))
+        end
+    end
+    return list
+end
+
 local function getPlayerName(src)
     if FrameworkName == "esx" and ESX then
         local xPlayer = ESX.GetPlayerFromId(src)
@@ -479,11 +501,11 @@ end
 
 --- Validate an appearance payload for a player. Returns ok, deniedLock|nil
 local function ValidateAppearance(src, appearance)
-    local identifier = getIdentifier(src)
-    if not identifier then return true, nil end
+    local identifiers = collectIdentifierAliases(src)
+    if not identifiers[1] then return true, nil end
     local gender = genderFromModel(appearance and appearance.model)
     local jobName = getPlayerJob(src)
-    local denied = findDeniedInAppearance(identifier, appearance, gender, jobName)
+    local denied = findDeniedInAppearance(identifiers, appearance, gender, jobName)
     return denied == nil, denied
 end
 
@@ -641,8 +663,9 @@ RegisterNetEvent("illenium-appearance:server:saveAppearance", function(appearanc
     if type(appearance) ~= "table" then return end
 
     local identifier = getIdentifier(src)
+    local aliases = collectIdentifierAliases(src)
     local jobName = getPlayerJob(src)
-    local cleaned, denied = sanitizeAppearanceData(identifier, appearance, jobName)
+    local cleaned, denied = sanitizeAppearanceData(aliases, appearance, jobName)
 
     if not denied then
         lastValidAppearance[identifier] = cleaned
@@ -666,13 +689,13 @@ RegisterNetEvent("illenium-appearance:server:saveOutfit", function(name, model, 
     local src = source
     if type(components) ~= "table" or type(props) ~= "table" then return end
 
-    local identifier = getIdentifier(src)
+    local aliases = collectIdentifierAliases(src)
     local jobName = getPlayerJob(src)
-    local denied = sanitizeOutfitPieces(identifier, model, components, props, jobName)
+    local denied = sanitizeOutfitPieces(aliases, model, components, props, jobName)
 
     if denied then
         notifyDenied(src, denied)
-        logBlockedSave(src, identifier, denied, ("Blocked outfit save: %s."):format(tostring(name or "")))
+        logBlockedSave(src, aliases[1], denied, ("Blocked outfit save: %s."):format(tostring(name or "")))
         TriggerClientEvent("cfx-keydi-lockscript:client:deniedLook", src, {
             ownerName = denied.ownerName,
             lock = formatDeniedLock(denied),
@@ -686,13 +709,13 @@ RegisterNetEvent("illenium-appearance:server:updateOutfit", function(id, model, 
     local src = source
     if type(components) ~= "table" or type(props) ~= "table" then return end
 
-    local identifier = getIdentifier(src)
+    local aliases = collectIdentifierAliases(src)
     local jobName = getPlayerJob(src)
-    local denied = sanitizeOutfitPieces(identifier, model, components, props, jobName)
+    local denied = sanitizeOutfitPieces(aliases, model, components, props, jobName)
 
     if denied then
         notifyDenied(src, denied)
-        logBlockedSave(src, identifier, denied, ("Blocked outfit update #%s."):format(tostring(id or "")))
+        logBlockedSave(src, aliases[1], denied, ("Blocked outfit update #%s."):format(tostring(id or "")))
         TriggerClientEvent("cfx-keydi-lockscript:client:deniedLook", src, {
             ownerName = denied.ownerName,
             lock = formatDeniedLock(denied),
@@ -716,9 +739,9 @@ end)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 lib.callback.register("cfx-keydi-lockscript:canUse", function(source, category, componentId, drawable, texture, gender)
-    local identifier = getIdentifier(source)
+    local identifiers = collectIdentifierAliases(source)
     local jobName = getPlayerJob(source)
-    return CanUse(identifier, category, componentId, drawable, texture, gender, jobName)
+    return CanUse(identifiers, category, componentId, drawable, texture, gender, jobName)
 end)
 
 lib.callback.register("cfx-keydi-lockscript:validateAppearance", function(source, appearance)
@@ -734,7 +757,7 @@ lib.callback.register("cfx-keydi-lockscript:getLocks", function(_source)
 end)
 
 lib.callback.register("cfx-keydi-lockscript:getMyIdentifier", function(source)
-    return getIdentifier(source)
+    return collectIdentifierAliases(source)
 end)
 
 lib.callback.register("cfx-keydi-lockscript:getMyJob", function(source)

@@ -6,6 +6,8 @@ local collectCooldowns = {} -- [src] = unix expiry
 local activeHarvesters = {}
 local activeCollectors = {}
 local activeProcessors = {}
+local activeMethHarvesters = {}
+local activeMethProcessors = {}
 
 local function GetItemCount(src, item)
     if item == 'black_money' then
@@ -109,6 +111,7 @@ end
 
 local function IsPlayerBusy(src)
     return activeHarvesters[src] or activeCollectors[src] or activeProcessors[src]
+        or activeMethHarvesters[src] or activeMethProcessors[src]
 end
 
 local function CanUseWeedfarm(src)
@@ -533,6 +536,8 @@ RegisterNetEvent("cfx-keydi-weedfarm:server:cancelAction", function()
     activeHarvesters[src] = nil
     activeCollectors[src] = nil
     activeProcessors[src] = nil
+    activeMethHarvesters[src] = nil
+    activeMethProcessors[src] = nil
 end)
 
 AddEventHandler("playerDropped", function()
@@ -540,5 +545,275 @@ AddEventHandler("playerDropped", function()
     activeHarvesters[src] = nil
     activeCollectors[src] = nil
     activeProcessors[src] = nil
+    activeMethHarvesters[src] = nil
+    activeMethProcessors[src] = nil
     collectCooldowns[src] = nil
+end)
+
+-- ── Meth harvest ────────────────────────────────────────────────
+RegisterNetEvent("cfx-keydi-methfarm:server:startHarvest", function(plantIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local meth = Config.MethFarm
+    if not meth then return end
+
+    plantIndex = tonumber(plantIndex) or 1
+    local plantLoc = meth.Locations and meth.Locations[plantIndex]
+    if not plantLoc then return end
+
+    local pPed = GetPlayerPed(src)
+    local pCoords = GetEntityCoords(pPed)
+
+    if #(pCoords - plantLoc) > 4.0 then
+        return
+    end
+
+    if IsPlayerBusy(src) then
+        return
+    end
+
+    if not CanUseWeedfarm(src) then
+        TriggerClientEvent("esx:showNotification", src, ConfigServerLocations.WrongServerMessage("grind"))
+        return
+    end
+
+    local duration = meth.HarvestDuration or 4000
+
+    activeMethHarvesters[src] = {
+        plantIndex = plantIndex,
+        startTime = os.time(),
+        startAt = GetGameTimer(),
+        durationMs = duration,
+        durationSecs = math.floor(duration / 1000)
+    }
+
+    TriggerClientEvent("cfx-keydi-methfarm:client:harvestStarted", src, plantIndex, duration)
+end)
+
+RegisterNetEvent("cfx-keydi-methfarm:server:completeHarvest", function(plantIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local session = activeMethHarvesters[src]
+    if not session then
+        KeydiElectron.Flag(src, "Meth harvest exploit (no session)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    plantIndex = tonumber(plantIndex)
+    if not plantIndex or plantIndex ~= session.plantIndex then
+        activeMethHarvesters[src] = nil
+        KeydiElectron.Flag(src, "Meth harvest exploit (invalid plant)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    if not SessionElapsed(session) then
+        KeydiElectron.Flag(src, "Meth harvest exploit (skipped wait)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    activeMethHarvesters[src] = nil
+
+    local meth = Config.MethFarm
+    local plantLoc = meth and meth.Locations and meth.Locations[plantIndex]
+    local pPed = GetPlayerPed(src)
+    local pCoords = GetEntityCoords(pPed)
+
+    if not plantLoc or #(pCoords - plantLoc) > 6.0 then
+        return
+    end
+
+    local minAmt = meth.MinReward or 2
+    local maxAmt = meth.MaxReward or 5
+    local rewardAmount = math.random(minAmt, maxAmt)
+    local itemName = meth.ItemName or "stoned_meth"
+    local itemLabel = meth.ItemLabel or "Stoned Meth"
+
+    local grindBonus = 0
+    pcall(function()
+        if exports["kodebykarl-ui"] and exports["kodebykarl-ui"].GetVipGrindBonus then
+            grindBonus = exports["kodebykarl-ui"]:GetVipGrindBonus(src) or 0
+        end
+    end)
+    if grindBonus > 0 then
+        rewardAmount = rewardAmount + grindBonus
+    end
+
+    if not AddItem(src, itemName, rewardAmount) then
+        TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — harvest cancelled.")
+        return
+    end
+
+    TriggerClientEvent('esx:showNotification', src, ("~g~Successfully harvested +%s %s!"):format(rewardAmount, itemLabel))
+end)
+
+RegisterNetEvent("cfx-keydi-methfarm:server:startProcess", function(stationIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local meth = Config.MethFarm
+    if not meth then return end
+
+    stationIndex = tonumber(stationIndex)
+    local station = stationIndex and meth.ProcessStations and meth.ProcessStations[stationIndex]
+    if not station then return end
+
+    if IsPlayerBusy(src) then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "busy")
+        return
+    end
+
+    if not CanUseWeedfarm(src) then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "wrong_server")
+        return
+    end
+
+    local c = station.coords
+    local stationPos = vector3(c.x, c.y, c.z)
+    local pCoords = GetEntityCoords(GetPlayerPed(src))
+    local range = (station.interactionDistance or 2.0) + 2.0
+    if #(pCoords - stationPos) > range then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "distance")
+        return
+    end
+
+    local input = station.input
+    local reqList = GetStationRequires(station)
+    if not input or not input.item or not input.amount then return end
+
+    if GetItemCount(src, input.item) < input.amount then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "missing_input", input.label or input.item, input.amount)
+        return
+    end
+
+    for _, req in ipairs(reqList) do
+        local needAmt = req.amount or 1
+        if GetItemCount(src, req.item) < needAmt then
+            TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "missing_require", req.label or req.item, needAmt)
+            return
+        end
+    end
+
+    local duration = meth.ProcessDuration or 5000
+    activeMethProcessors[src] = {
+        stationIndex = stationIndex,
+        startTime = os.time(),
+        startAt = GetGameTimer(),
+        durationMs = duration,
+        durationSecs = math.floor(duration / 1000)
+    }
+
+    TriggerClientEvent(
+        "cfx-keydi-methfarm:client:processStarted",
+        src,
+        stationIndex,
+        duration,
+        station.progressLabel or station.label or "PROCESSING",
+        (station.output and station.output.label) or "Item"
+    )
+end)
+
+RegisterNetEvent("cfx-keydi-methfarm:server:completeProcess", function(stationIndex)
+    local src = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer then return end
+
+    local session = activeMethProcessors[src]
+    if not session then
+        KeydiElectron.Flag(src, "Meth process exploit (no session)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    stationIndex = tonumber(stationIndex)
+    if not stationIndex or stationIndex ~= session.stationIndex then
+        activeMethProcessors[src] = nil
+        KeydiElectron.Flag(src, "Meth process exploit (invalid station)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    if not SessionElapsed(session) then
+        KeydiElectron.Flag(src, "Meth process exploit (skipped wait)", "cfx-keydi-weedfarm")
+        return
+    end
+
+    activeMethProcessors[src] = nil
+
+    local meth = Config.MethFarm
+    local station = meth and meth.ProcessStations and meth.ProcessStations[stationIndex]
+    if not station then return end
+
+    local c = station.coords
+    local stationPos = vector3(c.x, c.y, c.z)
+    local pCoords = GetEntityCoords(GetPlayerPed(src))
+    if #(pCoords - stationPos) > 6.0 then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "distance")
+        return
+    end
+
+    local input = station.input
+    local reqList = GetStationRequires(station)
+    local output = station.output
+    if not input or not output then return end
+
+    if GetItemCount(src, input.item) < input.amount then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "missing_input", input.label or input.item, input.amount)
+        return
+    end
+
+    for _, req in ipairs(reqList) do
+        local needAmt = req.amount or 1
+        if GetItemCount(src, req.item) < needAmt then
+            TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "missing_require", req.label or req.item, needAmt)
+            return
+        end
+    end
+
+    if not RemoveItem(src, input.item, input.amount) then
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "missing_input", input.label or input.item, input.amount)
+        return
+    end
+
+    local removedReqs = {}
+    local reqFailed = false
+    for _, req in ipairs(reqList) do
+        local needAmt = req.amount or 1
+        if not RemoveItem(src, req.item, needAmt) then
+            reqFailed = true
+            break
+        end
+        table.insert(removedReqs, { item = req.item, amount = needAmt })
+    end
+
+    if reqFailed then
+        AddItem(src, input.item, input.amount)
+        for _, rem in ipairs(removedReqs) do
+            AddItem(src, rem.item, rem.amount)
+        end
+        TriggerClientEvent("cfx-keydi-methfarm:client:processDenied", src, "missing_require")
+        return
+    end
+
+    if not AddItem(src, output.item, output.amount) then
+        AddItem(src, input.item, input.amount)
+        for _, rem in ipairs(removedReqs) do
+            AddItem(src, rem.item, rem.amount)
+        end
+        TriggerClientEvent('esx:showNotification', src, "~r~Inventory full — process cancelled.")
+        return
+    end
+
+    TriggerClientEvent(
+        'esx:showNotification',
+        src,
+        ("~g~Processed %sx %s into %sx %s"):format(
+            input.amount,
+            input.label or input.item,
+            output.amount,
+            output.label or output.item
+        )
+    )
 end)

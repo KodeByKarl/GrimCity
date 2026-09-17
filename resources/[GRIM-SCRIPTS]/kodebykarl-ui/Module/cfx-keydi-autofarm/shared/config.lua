@@ -123,15 +123,11 @@ ConfigAutofarm.Farms = {
     },
     {
         item = "grimemscoin",
-        minAmount = 1,
+        minAmount = 10,
         maxAmount = 10,
         job = "ambulance",
         scenario = "WORLD_HUMAN_JANITOR",
-        blip = {
-            label = "City HP Mopping",
-            sprite = 403,
-            color = 1,
-        },
+        -- no map blip (MopGrind handles EMS coin farming)
         zone = "City Hospital Mopping",
         rarity = "common",
         locations = {
@@ -144,15 +140,10 @@ ConfigAutofarm.Farms = {
     {
         item = "grimemscoin",
         minAmount = 1,
-        maxAmount = 10,
+        maxAmount = 1,
         job = "ambulance",
         animDict = "missfbi3_party_b",
         animName = "clean_counter_loop",
-        blip = {
-            label = "City HP Wiping & Sanitizing",
-            sprite = 403,
-            color = 2,
-        },
         zone = "City Hospital Sanitizing",
         rarity = "uncommon",
         locations = {
@@ -163,15 +154,10 @@ ConfigAutofarm.Farms = {
     },
     {
         item = "grimemscoin",
-        minAmount = 1,
+        minAmount = 10,
         maxAmount = 10,
         job = "sambulance",
         scenario = "WORLD_HUMAN_JANITOR",
-        blip = {
-            label = "Sandy HP Mopping",
-            sprite = 403,
-            color = 1,
-        },
         zone = "Sandy Hospital Mopping",
         rarity = "common",
         locations = {
@@ -183,15 +169,10 @@ ConfigAutofarm.Farms = {
     {
         item = "grimemscoin",
         minAmount = 1,
-        maxAmount = 10,
+        maxAmount = 1,
         job = "sambulance",
         animDict = "missfbi3_party_b",
         animName = "clean_counter_loop",
-        blip = {
-            label = "Sandy HP Wiping & Sanitizing",
-            sprite = 403,
-            color = 2,
-        },
         zone = "Sandy Hospital Sanitizing",
         rarity = "uncommon",
         locations = {
@@ -202,15 +183,10 @@ ConfigAutofarm.Farms = {
     },
     {
         item = "grimemscoin",
-        minAmount = 1,
+        minAmount = 10,
         maxAmount = 10,
         job = "pambulance",
         scenario = "WORLD_HUMAN_JANITOR",
-        blip = {
-            label = "Paleto HP Mopping",
-            sprite = 403,
-            color = 1,
-        },
         zone = "Paleto Hospital Mopping",
         rarity = "common",
         locations = {
@@ -222,15 +198,10 @@ ConfigAutofarm.Farms = {
     {
         item = "grimemscoin",
         minAmount = 1,
-        maxAmount = 10,
+        maxAmount = 1,
         job = "pambulance",
         animDict = "missfbi3_party_b",
         animName = "clean_counter_loop",
-        blip = {
-            label = "Paleto HP Wiping & Sanitizing",
-            sprite = 403,
-            color = 2,
-        },
         zone = "Paleto Hospital Sanitizing",
         rarity = "uncommon",
         locations = {

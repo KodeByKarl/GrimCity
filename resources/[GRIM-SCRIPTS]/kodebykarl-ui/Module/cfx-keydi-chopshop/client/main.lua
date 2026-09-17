@@ -150,6 +150,8 @@ local function StartChop(entity)
             Notify("Job vehicles cannot be chopped.", "error")
         elseif reason == "blocked" then
             Notify("That plate is blocked from the chop shop.", "error")
+        elseif reason == "already_chopped" then
+            Notify("That vehicle was already chopped. Available again after server restart.", "error")
         elseif reason == "busy" then
             Notify("Already chopping a vehicle.", "error")
         elseif reason == "in_use" then
